@@ -1,5 +1,5 @@
 // config/tools.ts
-import { Key, FileJson, Shield, Code, Calculator, Link as LinkIcon, Hash, KeyRound } from "lucide-react";
+import { Key, FileJson, Shield, Code, Calculator, Link as LinkIcon, Hash, KeyRound, FileBadge } from "lucide-react";
 
 export interface ToolItem {
   name: string;
@@ -45,6 +45,13 @@ export const toolsConfig: ToolCategory[] = [
       icon: KeyRound,  // 或使用 Key
       desc: "浏览器本地生成 RSA 公钥/私钥对，支持 1024/2048/4096 位，输出 PEM 格式。",
       footerNote: "所有密钥在<strong>浏览器本地生成</strong>，不会上传到任何服务器。⚠️ 私钥请妥善保存，丢失无法恢复。"
+    },
+    {
+      name: "自签证书生成",
+      href: "/self-cert",
+      icon: FileBadge,
+      desc: "浏览器本地生成自签名 X.509 证书，支持 IP/域名 + SAN 扩展，输出标准 .key/.crt 文件。",
+      footerNote: "所有证书在 <strong>浏览器本地生成</strong>，不会上传到任何服务器。⚠️ 自签证书需手动导入信任存储，生产环境建议使用权威 CA。"
     },
     ]
   },
