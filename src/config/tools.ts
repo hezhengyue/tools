@@ -1,23 +1,62 @@
-import { Key, FileJson, Shield, Code, Calculator, Link as LinkIcon } from "lucide-react";
+// config/tools.ts
+import { Key, FileJson, Shield, Code, Calculator, Link as LinkIcon, Hash } from "lucide-react";
 
-// 这是一个全局的工具配置表
-export const toolsConfig = [
+export interface ToolItem {
+  name: string;
+  href: string;
+  icon: React.ElementType;
+  desc: string;
+  /** 底部说明（支持简单 HTML，如 <strong>）*/
+  footerNote?: string;
+  /** 是否显示底部说明（默认 true）*/
+  showFooter?: boolean;
+  /** 自定义元数据（供工具内部使用）*/
+  meta?: Record<string, any>;
+}
+
+export interface ToolCategory {
+  category: string;
+  icon: React.ElementType;
+  tools: ToolItem[];
+}
+
+export const toolsConfig: ToolCategory[] = [
   {
     category: "安全与加密",
     icon: Shield,
     tools: [
-      { name: "强密码生成", href: "/password", icon: Key, desc: "一键生成高强度、安全的随机密码，支持自定义长度。" },
-      // 以后就在这里无脑往下加
-      // { name: "MD5加密", href: "/md5", icon: Shield, desc: "快速计算字符串的 MD5 哈希值。" },
+      {
+        name: "强密码生成",
+        href: "/password",
+        icon: Key,
+        desc: "一键生成高强度、安全的随机密码，支持自定义长度。",
+        footerNote: "所有密码在浏览器本地生成，<strong>不会上传到任何服务器</strong>，请放心使用。"
+      },
+      { 
+        name: "文本哈希计算", 
+        href: "/hash-text", 
+        icon: Hash, 
+        desc: "快速计算文本的 MD5/SHA-1/SHA-256 等哈希值，支持多种加密算法。",
+        footerNote: "哈希是单向函数，适合校验数据完整性，<strong>不可用于密码加密存储</strong>（请用 bcrypt/argon2）。所有计算均在本地完成。"
+      },
     ]
   },
   {
     category: "开发与转换",
     icon: Code,
     tools: [
-      { name: "JSON 转 YAML", href: "/json2yaml", icon: FileJson, desc: "将复杂的 JSON 数据快速转换为结构清晰的 YAML 格式。" },
-      // 以后就在这里无脑往下加
-      // { name: "URL 编码/解码", href: "/urlcode", icon: LinkIcon, desc: "URL 链接快速编码解码工具。" },
+      { 
+        name: "JSON 转 YAML", 
+        href: "/json-yaml", 
+        icon: FileJson, 
+        desc: "将复杂的 JSON 数据快速转换为结构清晰的 YAML 格式。",
+        showFooter: false // 这个工具不需要底部说明
+      },
     ]
   }
 ];
+
+// 辅助函数：根据 href 获取工具配置
+export function getToolByHref(href: string): ToolItem | undefined {
+  return toolsConfig.flatMap((cat) => cat.tools).find((tool) => tool.href === href);
+}
