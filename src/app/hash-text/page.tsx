@@ -6,7 +6,7 @@ import { Copy, Check, RefreshCw } from "lucide-react";
 import { MD5, RIPEMD160, SHA1, SHA224, SHA256, SHA3, SHA384, SHA512, enc } from "crypto-js";
 import ToolShell from "@/components/ToolShell";
 
-// ============ 只需关注：工具核心逻辑 ============
+// ============ 类型定义 ============
 
 type HashAlgorithm = "MD5" | "SHA1" | "SHA256" | "SHA224" | "SHA512" | "SHA384" | "SHA3" | "RIPEMD160";
 type Encoding = "Hex" | "Base64" | "Base64url" | "Bin";
@@ -29,7 +29,8 @@ const ENCodings: { label: string; value: Encoding }[] = [
   { label: "Binary (base 2)", value: "Bin" },
 ];
 
-// 工具函数（纯逻辑，无 UI）
+// ============ 工具函数 ============
+
 function convertHexToBin(hex: string): string {
   return hex.trim().split("").map((byte) => parseInt(byte, 16).toString(2).padStart(4, "0")).join("");
 }
@@ -47,10 +48,11 @@ function hashText(algorithm: HashAlgorithm, text: string, encoding: Encoding = "
   const algorithms: Record<HashAlgorithm, (text: string) => CryptoJS.lib.WordArray> = {
     MD5, SHA1, SHA256, SHA224, SHA512, SHA384, SHA3, RIPEMD160,
   };
-  return formatWithEncoding(algorithms[algorithm](text), encoding);
+  const wordArray = algorithms[algorithm](text);
+  return formatWithEncoding(wordArray, encoding);
 }
 
-// ============ 核心功能组件（只写业务） ============
+// ============ 核心功能组件 ============
 
 function HashTextCore() {
   const [inputText, setInputText] = useState("");
@@ -58,10 +60,10 @@ function HashTextCore() {
   const [copiedHash, setCopiedHash] = useState<string | null>(null);
   const [isGenerating, setIsGenerating] = useState(false);
 
+  // ✅ 修复：始终返回正确类型的对象
   const hashes = useMemo(() => {
-    if (!inputText) return {};
     return ALGORITHMS.reduce((acc, { value }) => {
-      acc[value] = hashText(value, inputText, encoding);
+      acc[value] = inputText ? hashText(value, inputText, encoding) : "";
       return acc;
     }, {} as Record<HashAlgorithm, string>);
   }, [inputText, encoding]);
@@ -127,6 +129,7 @@ function HashTextCore() {
       {/* 哈希结果列表 */}
       <div className="space-y-3">
         {ALGORITHMS.map(({ label, value, color }) => {
+          // ✅ 现在 TypeScript 知道 hashes 有 HashAlgorithm 键
           const hashValue = hashes[value] || "";
           const isCopied = copiedHash === label;
           const colorClasses: Record<string, string> = {
@@ -190,7 +193,7 @@ function HashTextCore() {
   );
 }
 
-// ============ 页面导出（用 ToolShell 包裹） ============
+// ============ 页面导出 ============
 
 export default function HashTextPage() {
   return (
