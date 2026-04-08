@@ -13,7 +13,6 @@ export const metadata: Metadata = {
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="zh-CN">
-      {/* ❌ 删除了手动写的 <head> */}
       <body className={`${inter.className} flex h-screen bg-slate-50/50 overflow-hidden`}>
         
         <Sidebar />
