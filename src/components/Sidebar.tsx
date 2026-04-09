@@ -30,7 +30,7 @@ export default function Sidebar({ className = "" }: SidebarProps) {
       {/* Logo 区域 */}
       <div className="h-20 flex items-center px-6 border-b border-slate-100 shrink-0">
         <img src="/logo.png" alt="Logo" className="w-10 h-10 rounded-lg mr-3 object-contain" />
-        <span className="font-bold text-xl tracking-tight text-slate-800 whitespace-nowrap">正月工具箱</span>
+        <span className="font-bold text-xl tracking-tight text-slate-800 whitespace-nowrap">月工具箱</span>
       </div>
 
       {/* 搜索框区域 */}

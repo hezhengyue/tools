@@ -1,5 +1,8 @@
 // config/tools.ts
-import { Key, FileJson, Shield, Code, Calculator, Link as LinkIcon, Hash, KeyRound, FileBadge } from "lucide-react";
+import { 
+  Key, FileJson, Shield, Code, Calculator, Link as LinkIcon, 
+  Hash, KeyRound, FileBadge, FileDiff, Type 
+} from "lucide-react";
 
 export interface ToolItem {
   name: string;
@@ -40,19 +43,32 @@ export const toolsConfig: ToolCategory[] = [
         footerNote: "哈希是单向函数，适合校验数据完整性，<strong>不可用于密码加密存储</strong>（请用 bcrypt/argon2）。所有计算均在本地完成。"
       },
       {
-      name: "RSA 密钥生成",
-      href: "/rsa-key",
-      icon: KeyRound,  // 或使用 Key
-      desc: "浏览器本地生成 RSA 公钥/私钥对，支持 1024/2048/4096 位，输出 PEM 格式。",
-      footerNote: "所有密钥在<strong>浏览器本地生成</strong>，不会上传到任何服务器。⚠️ 私钥请妥善保存，丢失无法恢复。"
-    },
-    {
-      name: "自签证书生成",
-      href: "/self-cert",
-      icon: FileBadge,
-      desc: "浏览器本地生成自签名 X.509 证书，支持 IP/域名 + SAN 扩展，输出标准 .key/.crt 文件。",
-      footerNote: "所有证书在 <strong>浏览器本地生成</strong>，不会上传到任何服务器。⚠️ 自签证书需手动导入信任存储，生产环境建议使用权威 CA。"
-    },
+        name: "RSA 密钥生成",
+        href: "/rsa-key",
+        icon: KeyRound,
+        desc: "浏览器本地生成 RSA 公钥/私钥对，支持 1024/2048/4096 位，输出 PEM 格式。",
+        footerNote: "所有密钥在<strong>浏览器本地生成</strong>，不会上传到任何服务器。⚠️ 私钥请妥善保存，丢失无法恢复。"
+      },
+      {
+        name: "自签证书生成",
+        href: "/self-cert",
+        icon: FileBadge,
+        desc: "浏览器本地生成自签名 X.509 证书，支持 IP/域名 + SAN 扩展，输出标准 .key/.crt 文件。",
+        footerNote: "所有证书在 <strong>浏览器本地生成</strong>，不会上传到任何服务器。⚠️ 自签证书需手动导入信任存储，生产环境建议使用权威 CA。"
+      },
+    ]
+  },
+  {
+    category: "文本处理",
+    icon: Type,
+    tools: [
+      {
+        name: "文本对比",
+        href: "/text-diff",
+        icon: FileDiff,
+        desc: "实时对比两段文本的差异，支持按行/词/字符三种模式，高亮显示增删内容。",
+        footerNote: "所有对比计算在 <strong>浏览器本地完成</strong>，文本不会上传到服务器。"
+      },
     ]
   },
   {
@@ -64,7 +80,7 @@ export const toolsConfig: ToolCategory[] = [
         href: "/json-yaml", 
         icon: FileJson, 
         desc: "将复杂的 JSON 数据快速转换为结构清晰的 YAML 格式。",
-        showFooter: false // 这个工具不需要底部说明
+        showFooter: false
       },
     ]
   }

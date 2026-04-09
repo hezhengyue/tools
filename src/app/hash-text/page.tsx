@@ -89,7 +89,7 @@ function HashTextCore() {
       {/* 输入区域 */}
       <div className="mb-6">
         <div className="flex justify-between items-center mb-3">
-          <label className="font-semibold text-slate-700">待哈希文本</label>
+          <label className="font-semibold text-slate-700">哈希文本</label>
           {inputText && (
             <button onClick={handleClear} className="text-sm text-slate-500 hover:text-indigo-600 transition-colors">
               清空
