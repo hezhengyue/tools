@@ -1,7 +1,7 @@
 // config/tools.ts
 import { 
   Key, FileJson, Shield, Code, Calculator, Link as LinkIcon, 
-  Hash, KeyRound, FileBadge, FileDiff, Type 
+  Hash, KeyRound, FileBadge, FileDiff, Type, Palette, Gamepad
 } from "lucide-react";
 
 export interface ToolItem {
@@ -24,6 +24,19 @@ export interface ToolCategory {
 }
 
 export const toolsConfig: ToolCategory[] = [
+  {
+    category: "游戏",
+    icon: Gamepad,
+    tools: [
+      {
+        name: "画板",
+        href: "/draw-board",
+        icon: Palette,
+        desc: "轻量级在线画板，支持多色画笔、橡皮擦、撤销重做。",
+        footerNote: "纯前端运行，所有数据仅保存在本地"
+      }
+    ]
+  },
   {
     category: "安全与加密",
     icon: Shield,
