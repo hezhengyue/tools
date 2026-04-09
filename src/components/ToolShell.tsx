@@ -1,4 +1,4 @@
-// components/ToolShell.tsx
+// src/components/ToolShell.tsx
 "use client";
 
 import { ReactNode } from "react";
@@ -8,9 +8,7 @@ import { AlertCircle } from "lucide-react";
 
 interface ToolShellProps {
   children: ReactNode;
-  /** 是否显示底部说明（默认 true） */
   showFooter?: boolean;
-  /** 自定义额外内容（可选） */
   extraContent?: ReactNode;
 }
 
@@ -21,16 +19,14 @@ export default function ToolShell({
 }: ToolShellProps) {
   const pathname = usePathname();
   
-  // 根据当前路径匹配工具配置
   const currentTool = toolsConfig
     .flatMap((cat) => cat.tools)
     .find((tool) => tool.href === pathname);
 
-  // 未找到配置时降级渲染
   if (!currentTool) {
     return (
       <div className="max-w-4xl mx-auto">
-        <div className="bg-white p-8 rounded-3xl border border-slate-200/60 shadow-sm">
+        <div className="bg-white p-6 md:p-8 rounded-3xl border border-slate-200/60 shadow-sm">
           {children}
         </div>
       </div>
@@ -41,35 +37,37 @@ export default function ToolShell({
 
   return (
     <div className="max-w-4xl mx-auto opacity-100 transition-opacity duration-500">
-      {/* 统一头部 */}
-      <div className="mb-8">
-        <div className="flex items-center space-x-4 mb-4">
-          <div className="w-12 h-12 bg-indigo-50 text-indigo-600 rounded-2xl flex items-center justify-center shadow-inner">
-            <Icon size={24} strokeWidth={1.5} />
+      {/* 头部：响应式排版 */}
+      <div className="mb-6 md:mb-8">
+        <div className="flex items-center space-x-3 md:space-x-4 mb-3 md:mb-4">
+          <div className="w-10 h-10 md:w-12 md:h-12 bg-indigo-50 text-indigo-600 rounded-2xl flex items-center justify-center shadow-inner shrink-0">
+            <Icon size={20} strokeWidth={1.5} className="w-5 h-5 md:w-6 md:h-6" />
           </div>
-          <h1 className="text-3xl font-extrabold tracking-tight text-slate-900">
+          <h1 className="text-2xl md:text-3xl font-extrabold tracking-tight text-slate-900 break-words">
             {currentTool.name}
           </h1>
         </div>
-        <p className="text-slate-500">{currentTool.desc}</p>
+        <p className="text-slate-500 text-sm md:text-base break-words">{currentTool.desc}</p>
       </div>
 
-      {/* 统一内容卡片 */}
-      <div className="bg-white p-8 rounded-3xl border border-slate-200/60 shadow-sm">
+      {/* 内容卡片：移动端内边距减小 */}
+      <div className="bg-white p-5 md:p-8 rounded-3xl border border-slate-200/60 shadow-sm">
         {children}
       </div>
 
-      {/* 统一底部说明（可配置显示/隐藏） */}
+      {/* 底部说明 */}
       {showFooter && currentTool.footerNote && (
-        <div className="mt-8 p-4 bg-slate-50 rounded-2xl border border-slate-200/60">
+        <div className="mt-6 md:mt-8 p-4 bg-slate-50 rounded-2xl border border-slate-200/60">
           <div className="flex items-start gap-2 text-sm text-slate-600">
             <AlertCircle className="w-4 h-4 mt-0.5 shrink-0 text-amber-500" />
-            <div dangerouslySetInnerHTML={{ __html: currentTool.footerNote }} />
+            <div 
+              className="break-words"
+              dangerouslySetInnerHTML={{ __html: currentTool.footerNote }} 
+            />
           </div>
         </div>
       )}
 
-      {/* 自定义额外内容 */}
       {extraContent}
     </div>
   );

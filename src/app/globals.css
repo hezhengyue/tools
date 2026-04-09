@@ -6,6 +6,11 @@
   body {
     @apply bg-slate-50 text-slate-900 antialiased selection:bg-blue-200 selection:text-blue-900;
   }
+  
+  /* 防止文字在小屏幕被挤压竖排 */
+  h1, h2, h3, h4, h5, h6, p, span, div {
+    @apply break-words;
+  }
 }
 
 /* 美化滚动条 */
@@ -18,4 +23,12 @@
 }
 ::-webkit-scrollbar-thumb {
   @apply bg-slate-300 rounded-full hover:bg-slate-400 transition-colors;
+}
+
+/* 自定义滚动条类（可选） */
+.custom-scrollbar::-webkit-scrollbar {
+  width: 6px;
+}
+.custom-scrollbar::-webkit-scrollbar-thumb {
+  @apply bg-slate-200 rounded hover:bg-slate-300;
 }
