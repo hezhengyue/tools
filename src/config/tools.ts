@@ -1,7 +1,7 @@
 // config/tools.ts
 import { 
   Key, FileJson, Shield, Code, Calculator, Link as LinkIcon, 
-  Hash, KeyRound, FileBadge, FileDiff, Type, Palette, Gamepad
+  Hash, KeyRound, FileBadge, FileDiff, Type, Palette, Gamepad, Gift
 } from "lucide-react";
 
 export interface ToolItem {
@@ -33,8 +33,15 @@ export const toolsConfig: ToolCategory[] = [
         href: "/draw-board",
         icon: Palette,
         desc: "轻量级在线画板，支持多色画笔、橡皮擦、撤销重做。",
-        footerNote: "纯前端运行，所有数据仅保存在本地"
-      }
+        showFooter: false // 页面内已包含说明，无需底部提示
+      },
+      {
+      name: "随机抽奖",
+      href: "/lucky-draw",
+      icon: Gift,
+      desc: "支持名单管理、自定义抽取人数、炫酷动画的在线抽奖工具。",
+      showFooter: false
+    },
     ]
   },
   {
