@@ -17,7 +17,7 @@ export default function DrawBoardPage() {
   const [historyIndex, setHistoryIndex] = useState(-1);
   const [isFullscreen, setIsFullscreen] = useState(false);
 
-  // 初始化与尺寸适配（缩放时保存/恢复画面）
+  // 🔧 核心修复：尺寸适配 + 背景白色 + 任意缩放恢复
   const resizeCanvas = useCallback(() => {
     const canvas = canvasRef.current;
     const container = containerRef.current;
@@ -25,31 +25,55 @@ export default function DrawBoardPage() {
     const ctx = canvas.getContext("2d");
     if (!ctx) return;
 
-    // 保存当前画面（防缩放丢失）
+    // 1. 保存当前画面（物理像素）
     let savedData: ImageData | null = null;
-    if (canvas.width > 0 && canvas.height > 0) {
-      try { savedData = ctx.getImageData(0, 0, canvas.width, canvas.height); } catch {}
+    const oldWidth = canvas.width;
+    const oldHeight = canvas.height;
+    if (oldWidth > 0 && oldHeight > 0) {
+      try { savedData = ctx.getImageData(0, 0, oldWidth, oldHeight); } catch {}
     }
 
     const rect = container.getBoundingClientRect();
     const dpr = window.devicePixelRatio || 1;
+    const newWidth = Math.max(1, Math.floor(rect.width * dpr));
+    const newHeight = Math.max(1, Math.floor(rect.height * dpr));
     
-    // 重设画布实际像素（会清空内容，需恢复）
-    canvas.width = rect.width * dpr;
-    canvas.height = rect.height * dpr;
+    // 2. 重设画布（会清空内容）
+    canvas.width = newWidth;
+    canvas.height = newHeight;
     canvas.style.width = `${rect.width}px`;
     canvas.style.height = `${rect.height}px`;
-    ctx.scale(dpr, dpr);
-
-    // 恢复画面或初始化白色背景
-    if (savedData) {
-      ctx.putImageData(savedData, 0, 0);
-    } else {
-      ctx.fillStyle = "#ffffff";
-      ctx.fillRect(0, 0, canvas.width, canvas.height);
-      if (history.length === 0) saveState();
+    
+    // 3. 🔥 关键：先填充白色背景（物理像素坐标，scale 之前）
+    ctx.fillStyle = "#ffffff";
+    ctx.fillRect(0, 0, newWidth, newHeight);
+    
+    // 4. 恢复画面（仍在 scale 之前，用物理像素操作）
+    if (savedData && oldWidth > 0 && oldHeight > 0) {
+      if (oldWidth === newWidth && oldHeight === newHeight) {
+        // 尺寸相同：直接恢复
+        ctx.putImageData(savedData, 0, 0);
+      } else {
+        // 尺寸不同：用临时 canvas 缩放恢复
+        const temp = document.createElement("canvas");
+        temp.width = oldWidth;
+        temp.height = oldHeight;
+        const tCtx = temp.getContext("2d");
+        if (tCtx) {
+          tCtx.putImageData(savedData, 0, 0);
+          ctx.drawImage(temp, 0, 0, newWidth, newHeight);
+        }
+      }
+    } else if (history.length === 0) {
+      // 首次初始化：保存白色背景状态
+      saveState();
     }
 
+    // 5. 设置缩放（后续绘制使用逻辑像素坐标）
+    ctx.setTransform(1, 0, 0, 1, 0, 0); // 先重置避免叠加
+    ctx.scale(dpr, dpr);
+
+    // 6. 恢复绘制样式
     ctx.lineCap = "round";
     ctx.lineJoin = "round";
     ctx.strokeStyle = color;
@@ -77,10 +101,10 @@ export default function DrawBoardPage() {
 
     const newHistory = history.slice(0, historyIndex + 1);
     newHistory.push(ctx.getImageData(0, 0, canvas.width, canvas.height));
-    if (newHistory.length > 30) newHistory.shift(); // 限制最多 30 步
+    if (newHistory.length > 30) newHistory.shift();
     
     setHistory(newHistory);
-    setHistoryIndex(Math.min(newHistory.length - 1, 29));
+    setHistoryIndex(newHistory.length - 1);
   };
 
   // 获取绘制坐标（兼容鼠标/触控）
@@ -177,7 +201,6 @@ export default function DrawBoardPage() {
   // 工具栏组件
   const renderToolbar = () => (
     <div className={`flex flex-wrap items-center gap-3 p-3 bg-white/90 backdrop-blur-sm border-b border-slate-200 ${isFullscreen ? "rounded-none" : "rounded-xl border"}`}>
-      {/* 颜色选择 */}
       <div className="flex items-center gap-2">
         <Palette size={16} className="text-slate-500" />
         <input
@@ -188,7 +211,6 @@ export default function DrawBoardPage() {
         />
       </div>
 
-      {/* 笔刷粗细 */}
       <div className="flex items-center gap-2">
         <span className="text-xs text-slate-500 hidden sm:inline">粗细</span>
         <input
@@ -202,7 +224,6 @@ export default function DrawBoardPage() {
         <span className="text-xs w-6 text-center">{brushSize}</span>
       </div>
 
-      {/* 橡皮擦 */}
       <button
         onClick={() => setIsEraser(!isEraser)}
         className={`p-2 rounded-lg transition-all ${
@@ -213,7 +234,6 @@ export default function DrawBoardPage() {
         <Eraser size={18} />
       </button>
 
-      {/* 撤销/重做 */}
       <div className="flex items-center gap-1">
         <button
           onClick={handleUndo}
@@ -233,7 +253,6 @@ export default function DrawBoardPage() {
         </button>
       </div>
 
-      {/* 右侧操作 */}
       <div className="flex items-center gap-2 ml-auto">
         <button
           onClick={handleClear}
@@ -286,7 +305,6 @@ export default function DrawBoardPage() {
   return (
     <ToolShell>
       <div className="space-y-4">
-        {/* 画板容器 */}
         <div ref={containerRef} className="relative w-full aspect-[4/3] bg-white rounded-2xl border-2 border-slate-200 shadow-inner overflow-hidden">
           <canvas
             ref={canvasRef}
@@ -301,15 +319,13 @@ export default function DrawBoardPage() {
           />
         </div>
 
-        {/* 工具栏 */}
         {renderToolbar()}
 
-        {/* 使用说明 */}
         <div className="p-4 bg-slate-50 rounded-2xl border border-slate-200/60 text-sm text-slate-600">
           <strong>📌 提示：</strong>
           <ul className="mt-2 space-y-1 list-disc list-inside">
             <li>支持鼠标与触屏绘画，自动适配高清屏</li>
-            <li>缩放页面或切换全屏时，画面自动保留不丢失</li>
+            <li>缩放/全屏时画面自动保留，背景始终为白色</li>
             <li>历史记录最多保留 30 步，防止内存占用</li>
             <li>纯前端运行，所有数据仅保存在本地</li>
           </ul>

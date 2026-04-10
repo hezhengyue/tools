@@ -22,7 +22,7 @@ export default function MobileHeader() {
         
         <Link href="/" className="flex items-center">
           <img src="/logo.png" alt="Logo" className="w-8 h-8 rounded-lg object-contain" />
-          <span className="font-bold text-lg text-slate-800 ml-2 whitespace-nowrap">正月工具箱</span>
+          <span className="font-bold text-lg text-slate-800 ml-2 whitespace-nowrap">月工具箱</span>
         </Link>
         
         {/* 占位按钮保持居中 */}
