@@ -374,24 +374,22 @@ export default function ImageBackgroundBlurPage() {
                 <div className="w-full h-[65vh] min-h-[400px] bg-slate-100/80 border border-slate-200 rounded-2xl flex items-center justify-center p-4">
                   <img src={resultUrl} alt="Blurred Result" className="max-w-full max-h-full object-contain drop-shadow-xl rounded-lg" />
                 </div>
-                <div className="flex justify-between items-center bg-emerald-50 text-emerald-700 px-6 py-4 rounded-2xl border border-emerald-100">
+                <div className="flex justify-center items-center bg-emerald-50 text-emerald-700 px-6 py-4 rounded-2xl border border-emerald-100">
                   <div className="flex items-center gap-2 font-medium">
-                    <span className="relative flex h-3 w-3"><span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span><span className="relative inline-flex rounded-full h-3 w-3 bg-emerald-500"></span></span>
+                    <span className="relative flex h-3 w-3">
+                      <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+                      <span className="relative inline-flex rounded-full h-3 w-3 bg-emerald-500"></span>
+                    </span>
                     处理完成，画质已无损保留
                   </div>
-                  <div className="flex gap-3">
-                    <button onClick={() => setResultUrl(null)} className="px-5 py-2.5 bg-white text-slate-700 rounded-xl hover:bg-slate-50 border border-slate-200 font-medium transition-all">
-                      返回修改
-                    </button>
-                    <a 
-                      href={resultUrl} 
-                      download={fileName.replace(/\.\w+$/, "") + "-blur.jpg"}
-                      className="px-5 py-2.5 bg-indigo-600 text-white rounded-xl hover:bg-indigo-700 font-medium flex items-center gap-2 shadow-sm transition-all"
-                    >
-                      <Download size={18} />
-                      下载高清图
-                    </a>
-                  </div>
+                  <a 
+                    href={resultUrl} 
+                    download={fileName.replace(/\.\w+$/, "") + "-blur.jpg"}
+                    className="ml-4 px-5 py-2.5 bg-indigo-600 text-white rounded-xl hover:bg-indigo-700 font-medium flex items-center gap-2 shadow-sm transition-all"
+                  >
+                    <Download size={18} />
+                    下载高清图
+                  </a>
                 </div>
               </div>
             )}
