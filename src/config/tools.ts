@@ -1,7 +1,8 @@
 // config/tools.ts
 import { 
   Key, FileJson, Shield, Code, Calculator, Link as LinkIcon, 
-  Hash, KeyRound, FileBadge, FileDiff, Type, Palette, Gamepad, Gift
+  Hash, KeyRound, FileBadge, FileDiff, Type, Palette, Gamepad, Gift,
+  Image, FileImage
 } from "lucide-react";
 
 export interface ToolItem {
@@ -91,6 +92,19 @@ export const toolsConfig: ToolCategory[] = [
       },
     ]
   },
+  {
+  category: "图片工具",
+  icon: Image,  // 需要先从 lucide-react 导入 Image 图标
+  tools: [
+    {
+      name: "图片预处理",
+      href: "/image-compress",
+      icon: FileImage,  // lucide-react 中的图标
+      desc: "必选清除隐私 + 可选压缩转格式，体积减少 40%~70%，纯前端处理。",
+      footerNote: "所有处理在 <strong>浏览器本地完成</strong>，图片<strong>不会上传到任何服务器</strong>。🔒 隐私保护为强制选项，确保上传安全。"
+    },
+  ]
+},
   {
     category: "开发与转换",
     icon: Code,

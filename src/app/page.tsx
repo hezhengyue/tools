@@ -10,9 +10,9 @@ export default function Home() {
         <h1 className="text-3xl sm:text-4xl font-extrabold tracking-tight text-slate-900 mb-3 md:mb-4">
           欢迎回来 👋
         </h1>
-        <p className="text-base md:text-lg text-slate-500">
+        {/* <p className="text-base md:text-lg text-slate-500">
           选择一个工具开始今天的高效工作。
-        </p>
+        </p> */}
       </header>
       
       <div className="space-y-8 md:space-y-12">
