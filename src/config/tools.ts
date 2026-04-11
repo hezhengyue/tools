@@ -2,7 +2,7 @@
 import { 
   Key, FileJson, Shield, Code, Calculator, Link as LinkIcon, 
   Hash, KeyRound, FileBadge, FileDiff, Type, Palette, Gamepad, Gift,
-  Image, FileImage
+  Image, FileImage, Sparkles
 } from "lucide-react";
 
 export interface ToolItem {
@@ -102,6 +102,13 @@ export const toolsConfig: ToolCategory[] = [
       icon: FileImage,  // lucide-react 中的图标
       desc: "必选清除隐私 + 可选压缩转格式，体积减少 40%~70%，纯前端处理。",
       footerNote: "所有处理在 <strong>浏览器本地完成</strong>，图片<strong>不会上传到任何服务器</strong>。🔒 隐私保护为强制选项，确保上传安全。"
+    },
+    {
+      name: "背景虚化",
+      href: "/image-background-blur",
+      icon: Sparkles, // 或 Brush
+      desc: "涂抹主体自动虚化背景，模拟单反景深效果，纯前端零延迟。",
+      footerNote: "所有处理在 <strong>浏览器本地完成</strong>，图片<strong>不会上传到任何服务器</strong>。🎨 使用画笔涂抹主体即可，支持撤销/橡皮擦修正。"
     },
   ]
 },
