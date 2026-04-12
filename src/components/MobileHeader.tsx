@@ -38,9 +38,9 @@ export default function MobileHeader() {
             onClick={() => setShowSidebar(false)}
           />
           
-          {/* 侧边栏抽屉 */}
-          <div className="absolute left-0 top-0 bottom-0 w-72 bg-white shadow-2xl animate-in slide-in-from-left duration-300">
-            <Sidebar />
+          {/* 侧边栏抽屉 👇 关键修复：添加 h-full overflow-y-auto */}
+          <div className="absolute left-0 top-0 bottom-0 w-72 h-full bg-white shadow-2xl animate-in slide-in-from-left duration-300 overflow-y-auto custom-scrollbar">
+            <Sidebar className="h-full" /> {/* 👈 透传 h-full */}
           </div>
           
           {/* 关闭按钮 */}

@@ -399,8 +399,7 @@ export default function ImageBackgroundBlurPage() {
         <div className="px-5 py-4 bg-slate-50 rounded-2xl text-sm text-slate-500 border border-slate-100 flex gap-3 leading-relaxed">
           <Info size={18} className="text-indigo-400 shrink-0 mt-0.5" />
           <p>
-            <strong>完美运行状态：</strong> 
-            已解决图片无法加载的生命周期问题。现在的“单画板引擎”不仅拥有无与伦比的性能，更彻底杜绝了偏移、错位和椭圆现象。无论你在哪里起笔，都绝对“指哪画哪”！
+            涂抹红色区域将保持清晰，其余背景自动虚化。所有处理在本地完成。
           </p>
         </div>
       </div>

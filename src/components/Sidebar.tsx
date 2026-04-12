@@ -26,7 +26,8 @@ export default function Sidebar({ className = "" }: SidebarProps) {
   };
 
   return (
-    <aside className={`w-72 bg-white/80 backdrop-blur-xl border-r border-slate-200 flex flex-col shadow-[4px_0_24px_rgba(0,0,0,0.02)] z-10 ${className}`}>
+   <aside className={`w-72 bg-white/80 backdrop-blur-xl border-r border-slate-200 flex flex-col shadow-[4px_0_24px_rgba(0,0,0,0.02)] z-10 h-full ${className}`}>
+      
       {/* Logo 区域 */}
       <div className="h-20 flex items-center px-6 border-b border-slate-100 shrink-0">
         <img src="/logo.png" alt="Logo" className="w-10 h-10 rounded-lg mr-3 object-contain" />
@@ -47,8 +48,8 @@ export default function Sidebar({ className = "" }: SidebarProps) {
         </div>
       </div>
 
-      {/* 导航菜单区域 */}
-      <nav className="flex-1 p-4 overflow-y-auto custom-scrollbar space-y-4">
+      {/* 导航菜单区域 👇 确保 flex-1 + overflow-y-auto 生效 */}
+      <nav className="flex-1 overflow-y-auto custom-scrollbar p-4 space-y-4">
         {/* 全部工具按钮 */}
         <Link
           href="/"
