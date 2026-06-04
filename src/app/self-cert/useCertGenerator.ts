@@ -1,141 +1,236 @@
-// app/self-cert/useCertGenerator.ts
-import { useEffect, useRef, useCallback, useState } from "react";
+// src/app/self-cert/useCertGenerator.ts
+import { useCallback, useEffect, useRef, useState } from "react";
 
-export type SanType = "DNS" | "IP" | "Email" | "URI";
+export type SanType = "DNS" | "IP";
 
-export type SanEntry = {
+export interface SanEntry {
   id: string;
   type: SanType;
   value: string;
-};
+}
 
-export type CertRequestPayload = {
+export interface CertRequestPayload {
   commonName: string;
   sanEntries: SanEntry[];
+
   keySize: 2048 | 4096;
-  hash: "sha256" | "sha384" | "sha512";
+
+  hash:
+    | "sha256"
+    | "sha384"
+    | "sha512";
+
   days: number;
+
   organization?: string;
+
   country?: string;
-};
+}
 
 export interface CertResult {
   privateKey: string;
+
   certificate: string;
+
   generatedAt: number;
+
   info: {
     subject: string;
+
     issuer: string;
+
     notBefore: string;
+
     notAfter: string;
+
     san: string[];
+
+    keySize: number;
+
+    hash: string;
   };
 }
 
-interface UseCertGeneratorReturn {
-  result: CertResult | null;
-  isGenerating: boolean;
-  error: string | null;
-  generateCert: (payload: CertRequestPayload) => void;
+interface WorkerMessage {
+  type:
+    | "CERT_GENERATED"
+    | "CERT_ERROR";
+
+  payload: any;
 }
 
-export function useCertGenerator(): UseCertGeneratorReturn {
-  const workerRef = useRef<Worker | null>(null);
-  const timerRef = useRef<NodeJS.Timeout | null>(null);
-  const [result, setResult] = useState<CertResult | null>(null);
-  const [isGenerating, setIsGenerating] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  
-  // ✅ 保存完整的 requestId 字符串（修复匹配问题）
-  const currentRequestIdRef = useRef<string>("");
+export function useCertGenerator() {
+  const workerRef =
+    useRef<Worker | null>(null);
+
+  const timeoutRef =
+    useRef<ReturnType<
+      typeof setTimeout
+    > | null>(null);
+
+  const requestIdRef =
+    useRef<string>("");
+
+  const [result, setResult] =
+    useState<CertResult | null>(null);
+
+  const [isGenerating, setIsGenerating] =
+    useState(false);
+
+  const [error, setError] =
+    useState<string | null>(null);
 
   useEffect(() => {
-    console.log("[Hook] 🟢 初始化 Worker...");
     try {
-      // ✅ 路径调整：当前目录下的 worker 文件
-      workerRef.current = new Worker(
-        new URL("./cert-generator.worker.ts", import.meta.url)
-      );
+      workerRef.current =
+        new Worker(
+          new URL(
+            "./cert-generator.worker.ts",
+            import.meta.url
+          ),
+          {
+            type: "module",
+          }
+        );
 
-      workerRef.current.onmessage = (e: MessageEvent) => {
-        console.log("[Hook] 📥 收到 Worker 消息:", e.data);
-        
-        const { type, payload } = e.data;
-        
-        // ✅ 比较完整的 requestId 字符串
-        if (payload.requestId !== currentRequestIdRef.current) {
-          console.warn(
-            `[Hook] ⚠️ 忽略不匹配的请求: ` +
-            `期望 ${currentRequestIdRef.current}, ` +
-            `收到 ${payload.requestId}`
-          );
+      workerRef.current.onmessage = (
+        event: MessageEvent<WorkerMessage>
+      ) => {
+        const { type, payload } =
+          event.data;
+
+        if (
+          payload.requestId !==
+          requestIdRef.current
+        ) {
           return;
         }
 
-        clearTimeout(timerRef.current!);
+        if (timeoutRef.current) {
+          clearTimeout(
+            timeoutRef.current
+          );
+        }
+
         setIsGenerating(false);
 
-        if (type === "CERT_GENERATED") {
-          console.log("[Hook] 🟢 生成成功");
-          setResult({
-            privateKey: payload.privateKey,
-            certificate: payload.certificate,
-            generatedAt: payload.generatedAt,
-            info: payload.info,
-          });
+        if (
+          type ===
+          "CERT_GENERATED"
+        ) {
+          setResult(payload);
+
           setError(null);
-        } else if (type === "CERT_ERROR") {
-          console.error("[Hook] 🔴 生成失败:", payload.error);
-          setError(payload.error || "未知错误");
+
+          return;
+        }
+
+        if (
+          type === "CERT_ERROR"
+        ) {
           setResult(null);
+
+          setError(
+            payload.error ??
+              "生成失败"
+          );
         }
       };
 
-      workerRef.current.onerror = (err) => {
-        console.error("[Hook] 🔴 Worker 错误:", err);
-        clearTimeout(timerRef.current!);
+      workerRef.current.onerror = (
+        err
+      ) => {
+        if (timeoutRef.current) {
+          clearTimeout(
+            timeoutRef.current
+          );
+        }
+
         setIsGenerating(false);
-        setError(`Worker 错误: ${err.message || "未知错误"}`);
+
+        setError(
+          err.message ??
+            "Worker执行失败"
+        );
       };
     } catch (err) {
-      console.error("[Hook] 🔴 Worker 初始化失败:", err);
-      setError("无法创建 Worker");
+      console.error(err);
+
+      setError(
+        "Worker初始化失败"
+      );
     }
 
     return () => {
       workerRef.current?.terminate();
-      clearTimeout(timerRef.current!);
-      console.log("[Hook] 🧹 Worker 已清理");
+
+      if (timeoutRef.current) {
+        clearTimeout(
+          timeoutRef.current
+        );
+      }
     };
   }, []);
 
-  const generateCert = useCallback((payload: CertRequestPayload) => {
-    if (!workerRef.current) {
-      setError("Worker 未就绪，请刷新页面");
-      return;
-    }
+  const generateCert =
+    useCallback(
+      (
+        payload: CertRequestPayload
+      ) => {
+        if (
+          !workerRef.current
+        ) {
+          setError(
+            "Worker未就绪"
+          );
 
-    setIsGenerating(true);
-    setError(null);
-    setResult(null);
-    
-    // ✅ 生成完整的 requestId 字符串并保存
-    const timestamp = Date.now();
-    const requestId = `cert_${timestamp}_${Math.random().toString(36).slice(2, 8)}`;
-    currentRequestIdRef.current = requestId;
-    
-    // 设置超时（15 秒）
-    timerRef.current = setTimeout(() => {
-      setIsGenerating(false);
-      setError("生成超时，请重试");
-    }, 15000);
+          return;
+        }
 
-    workerRef.current.postMessage({
-      type: "GENERATE_CERT",
-      payload: { ...payload, requestId },
-    });
-    console.log(`[Hook] 📤 已发送请求: ${requestId}`);
-  }, []);
+        setResult(null);
 
-  return { result, isGenerating, error, generateCert };
+        setError(null);
+
+        setIsGenerating(true);
+
+        const requestId =
+          crypto.randomUUID();
+
+        requestIdRef.current =
+          requestId;
+
+        timeoutRef.current =
+          setTimeout(() => {
+            setIsGenerating(false);
+
+            setError(
+              "证书生成超时（60秒）"
+            );
+          }, 60000);
+
+        workerRef.current.postMessage(
+          {
+            type:
+              "GENERATE_CERT",
+
+            payload: {
+              ...payload,
+
+              requestId,
+            },
+          }
+        );
+      },
+      []
+    );
+
+  return {
+    result,
+
+    error,
+
+    isGenerating,
+
+    generateCert,
+  };
 }

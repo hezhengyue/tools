@@ -74,8 +74,9 @@ export const toolsConfig: ToolCategory[] = [
         name: "自签证书生成",
         href: "/self-cert",
         icon: FileBadge,
-        desc: "浏览器本地生成自签名 X.509 证书，支持 IP/域名 + SAN 扩展，输出标准 .key/.crt 文件。",
-        footerNote: "所有证书在 <strong>浏览器本地生成</strong>，不会上传到任何服务器。⚠️ 自签证书需手动导入信任存储，生产环境建议使用权威 CA。"
+        desc: "浏览器本地生成自签名 X.509 TLS 证书，自动识别域名/IP，支持 SAN 扩展，输出标准 PEM 格式证书与私钥。",
+        footerNote:
+          "所有证书均在 <strong>浏览器本地生成</strong>，私钥不会上传到任何服务器。支持 RSA 2048/4096、SHA256/384/512、SAN 扩展及 localhost 开发证书。⚠️ 自签证书默认不受浏览器信任，生产环境建议使用权威 CA 签发证书。"
       },
     ]
   },

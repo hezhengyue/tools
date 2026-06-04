@@ -1,123 +1,366 @@
-// app/self-cert/cert-generator.worker.ts
 /// <reference lib="webworker" />
 
 import * as forge from "node-forge";
 
-// 确保 Worker 环境有 crypto
-if (typeof self !== "undefined" && !self.crypto) {
-  // @ts-ignore
-  self.crypto = typeof globalThis !== "undefined" ? globalThis.crypto : undefined;
+interface GenerateRequest {
+  requestId: string;
+
+  commonName: string;
+
+  sanEntries: {
+    id: string;
+    type: "DNS" | "IP";
+    value: string;
+  }[];
+
+  keySize: 2048 | 4096;
+
+  hash:
+    | "sha256"
+    | "sha384"
+    | "sha512";
+
+  days: number;
+
+  organization?: string;
+
+  country?: string;
 }
 
-self.onmessage = function (e: MessageEvent) {
-  const { type, payload } = e.data;
+interface SuccessResponse {
+  requestId: string;
 
-  if (type !== "GENERATE_CERT") return;
+  privateKey: string;
 
-  const {
-    requestId,
-    commonName,
-    sanEntries,
-    keySize,
-    hash,
-    days,
-    organization,
-    country,
-  } = payload;
+  certificate: string;
 
-  console.log(`[Worker] 🟢 开始处理: ${requestId} | ${keySize} 位 | ${hash}`);
+  generatedAt: number;
+
+  info: {
+    subject: string;
+
+    issuer: string;
+
+    notBefore: string;
+
+    notAfter: string;
+
+    san: string[];
+
+    keySize: number;
+
+    hash: string;
+  };
+}
+function getDigest(
+  hash:
+    | "sha256"
+    | "sha384"
+    | "sha512"
+) {
+  switch (hash) {
+    case "sha384":
+      return forge.md.sha384.create();
+
+    case "sha512":
+      return forge.md.sha512.create();
+
+    default:
+      return forge.md.sha256.create();
+  }
+}
+
+/**
+ * RFC 5280兼容
+ * Go x509兼容
+ * SFTPGo兼容
+ */
+function createSerialNumber(): string {
+  const bytes =
+    crypto.getRandomValues(
+      new Uint8Array(20)
+    );
+
+  // 保证序列号始终为正整数
+  bytes[0] &= 0x7f;
+
+  return Array.from(bytes)
+    .map((b) =>
+      b.toString(16).padStart(2, "0")
+    )
+    .join("");
+}
+
+function createKeyPair(
+  bits: 2048 | 4096
+): Promise<forge.pki.rsa.KeyPair> {
+  return new Promise(
+    (resolve, reject) => {
+      forge.pki.rsa.generateKeyPair(
+        {
+          bits,
+          workers: 2,
+        } as any,
+        (err, keypair) => {
+          if (err) {
+            reject(err);
+            return;
+          }
+
+          resolve(keypair);
+        }
+      );
+    }
+  );
+}
+self.onmessage = async (
+  event: MessageEvent
+) => {
+  const { type, payload } =
+    event.data;
+
+  if (
+    type !==
+    "GENERATE_CERT"
+  ) {
+    return;
+  }
+
+  const request =
+    payload as GenerateRequest;
 
   try {
-    // 1. 生成密钥对
-    console.log("[Worker] 🔄 生成 RSA 密钥对...");
-    const keys = forge.pki.rsa.generateKeyPair(keySize);
-    console.log("[Worker] ✅ 密钥对完成");
+    const keys =
+      await createKeyPair(
+        request.keySize
+      );
 
-    // 2. 创建证书
-    const cert = forge.pki.createCertificate();
-    cert.publicKey = keys.publicKey;
-    cert.serialNumber = Math.floor(Math.random() * 1000000000).toString(16).padStart(16, "0");
-    cert.validity.notBefore = new Date();
-    cert.validity.notAfter = new Date();
-    cert.validity.notAfter.setDate(cert.validity.notBefore.getDate() + days);
+    const cert =
+      forge.pki.createCertificate();
 
-    // 3. 设置 Subject & Issuer
-    const attrs: forge.pki.CertificateField[] = [];
-    if (country) attrs.push({ name: "countryName", value: country });
-    if (organization) attrs.push({ name: "organizationName", value: organization });
-    attrs.push({ name: "commonName", value: commonName });
+    cert.publicKey =
+      keys.publicKey;
 
-    cert.setSubject(attrs);
-    cert.setIssuer(attrs);
+    cert.serialNumber =
+      createSerialNumber();
 
-    // 4. 设置扩展
-    cert.setExtensions([
-      { name: "basicConstraints", critical: true, cA: false },
-      { name: "keyUsage", critical: true, digitalSignature: true, keyEncipherment: true },
-      { name: "extKeyUsage", serverAuth: true, clientAuth: true },
-      {
-        name: "subjectAltName",
-        altNames: sanEntries.map((entry: any) => {
-          if (entry.type === "DNS") return { type: 2, value: entry.value };
-          if (entry.type === "IP") return { type: 7, ip: entry.value };
-          if (entry.type === "Email") return { type: 1, value: entry.value };
-          if (entry.type === "URI") return { type: 6, value: entry.value };
-          throw new Error(`不支持的 SAN 类型: ${entry.type}`);
-        }),
-      },
-      { name: "subjectKeyIdentifier" },
-      { name: "authorityKeyIdentifier" },
-    ]);
+    /**
+     * 提前5分钟生效
+     * 防止客户端时间漂移
+     */
+    cert.validity.notBefore =
+      new Date(
+        Date.now() -
+          5 * 60 * 1000
+      );
 
-    // 5. 签名证书 ✅ switch 语句修复 TS 索引问题
-    let mdFactory: () => forge.md.MessageDigest;
-    switch (hash) {
-      case "sha384":
-        // @ts-ignore - sha384 是 sha512 的变体
-        mdFactory = () => forge.md.sha512.create("SHA-384");
-        break;
-      case "sha512":
-        mdFactory = () => forge.md.sha512.create();
-        break;
-      case "sha256":
-      default:
-        mdFactory = () => forge.md.sha256.create();
-        break;
+    cert.validity.notAfter =
+      new Date();
+
+    cert.validity.notAfter.setDate(
+      cert.validity.notAfter.getDate() +
+        request.days
+    );
+        const attrs:
+      forge.pki.CertificateField[] =
+      [];
+
+    if (
+      request.country
+    ) {
+      attrs.push({
+        name:
+          "countryName",
+        value:
+          request.country,
+      });
     }
-    cert.sign(keys.privateKey, mdFactory());
-    console.log(`[Worker] ✍️ 签名完成 (${hash})`);
 
-    // 6. 导出 PEM
-    const privateKeyPem = forge.pki.privateKeyToPem(keys.privateKey);
-    const certificatePem = forge.pki.certificateToPem(cert);
+    if (
+      request.organization
+    ) {
+      attrs.push({
+        name:
+          "organizationName",
+        value:
+          request.organization,
+      });
+    }
 
-    // 7. 发送结果
-    self.postMessage({
-      type: "CERT_GENERATED",
-      payload: {
-        requestId,
-        privateKey: privateKeyPem,
-        certificate: certificatePem,
-        generatedAt: Date.now(),
-        info: {
-          subject: `CN=${commonName}`,
-          issuer: `CN=${commonName}`,
-          notBefore: cert.validity.notBefore.toISOString(),
-          notAfter: cert.validity.notAfter.toISOString(),
-          san: sanEntries.map((e: any) => `${e.type}:${e.value}`),
-        },
-      },
+    attrs.push({
+      name:
+        "commonName",
+      value:
+        request.commonName,
     });
-    console.log(`[Worker] 🟢 结果已发送: ${requestId}`);
 
-  } catch (err: any) {
-    console.error(`[Worker] 🔴 失败 [${requestId}]:`, err);
+    cert.setSubject(
+      attrs
+    );
+
+    cert.setIssuer(
+      attrs
+    );
+        const altNames =
+      request.sanEntries.map(
+        (item) => {
+          if (
+            item.type ===
+            "DNS"
+          ) {
+            return {
+              type: 2,
+              value:
+                item.value,
+            };
+          }
+
+          return {
+            type: 7,
+            ip: item.value,
+          };
+        }
+      );
+
+    cert.setExtensions([
+      {
+        name:
+          "basicConstraints",
+
+        critical: true,
+
+        cA: false,
+      },
+
+      {
+        name:
+          "keyUsage",
+
+        critical: true,
+
+        digitalSignature: true,
+
+        keyEncipherment: true,
+
+        dataEncipherment: true,
+
+        keyAgreement: true,
+      },
+
+      {
+        name:
+          "extKeyUsage",
+
+        serverAuth: true,
+
+        clientAuth: true,
+      },
+
+      {
+        name:
+          "subjectAltName",
+
+        altNames,
+      },
+
+      {
+        name:
+          "subjectKeyIdentifier",
+      },
+
+      {
+        name:
+          "authorityKeyIdentifier",
+
+        keyIdentifier: true,
+      },
+    ]);
+        cert.sign(
+      keys.privateKey,
+      getDigest(
+        request.hash
+      )
+    );
+
+    const privateKeyPem =
+      forge.pki.privateKeyToPem(
+        keys.privateKey
+      );
+
+    const certificatePem =
+      forge.pki.certificateToPem(
+        cert
+      );
+          const response: SuccessResponse =
+      {
+        requestId:
+          request.requestId,
+
+        privateKey:
+          privateKeyPem,
+
+        certificate:
+          certificatePem,
+
+        generatedAt:
+          Date.now(),
+
+        info: {
+          subject:
+            attrs
+              .map(
+                (x) =>
+                  `${x.name}=${x.value}`
+              )
+              .join(", "),
+
+          issuer:
+            attrs
+              .map(
+                (x) =>
+                  `${x.name}=${x.value}`
+              )
+              .join(", "),
+
+          notBefore:
+            cert.validity.notBefore.toISOString(),
+
+          notAfter:
+            cert.validity.notAfter.toISOString(),
+
+          san:
+            request.sanEntries.map(
+              (s) =>
+                `${s.type}:${s.value}`
+            ),
+
+          keySize:
+            request.keySize,
+
+          hash:
+            request.hash.toUpperCase(),
+        },
+      };
+
     self.postMessage({
-      type: "CERT_ERROR",
+      type:
+        "CERT_GENERATED",
+
+      payload:
+        response,
+    });
+      } catch (err: any) {
+    self.postMessage({
+      type:
+        "CERT_ERROR",
+
       payload: {
-        requestId,
-        error: err.message || "Worker 内部错误",
-        stack: err.stack,
+        requestId:
+          request.requestId,
+
+        error:
+          err?.message ??
+          "证书生成失败",
       },
     });
   }

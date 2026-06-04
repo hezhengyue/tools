@@ -1,406 +1,771 @@
-// app/self-cert/page.tsx
 "use client";
 
-import { useState, useEffect } from "react";
-import { Copy, Check, Download, RefreshCw, Plus, Trash2, Shield, Info } from "lucide-react";
+import { useMemo, useState } from "react";
+
+import {
+  Shield,
+  Plus,
+  Trash2,
+  Download,
+  Copy,
+  Check,
+  ChevronDown,
+  ChevronUp,
+  Laptop,
+} from "lucide-react";
+
 import ToolShell from "@/components/ToolShell";
-import { useCertGenerator, type SanEntry } from "./useCertGenerator";
 
-function SelfCertCore() {
-  const [commonName, setCommonName] = useState("localhost");
-  const [sanEntries, setSanEntries] = useState<SanEntry[]>([
-    { id: "1", type: "DNS", value: "localhost" },
-  ]);
-  const [keySize, setKeySize] = useState<2048 | 4096>(2048);
-  const [hash, setHash] = useState<"sha256" | "sha384" | "sha512">("sha256");
-  const [days, setDays] = useState(3650);
-  const [organization, setOrganization] = useState("");
-  const [country, setCountry] = useState("");
-  
-  const [copied, setCopied] = useState<"key" | "crt" | null>(null);
-  
-  const { result, isGenerating, error, generateCert } = useCertGenerator();
+import {
+  useCertGenerator,
+  type SanEntry,
+} from "./useCertGenerator";
 
-  // 添加 SAN 条目
-  const addSanEntry = () => {
-    const id = `san_${Date.now()}`;
-    setSanEntries([...sanEntries, { id, type: "DNS", value: "" }]);
+export default function SelfCertPage() {
+  const {
+    result,
+    error,
+    isGenerating,
+    generateCert,
+  } = useCertGenerator();
+
+  const [commonName, setCommonName] =
+    useState("");
+
+  const [showAdvanced, setShowAdvanced] =
+    useState(false);
+
+  const [copied, setCopied] =
+    useState<
+      "key" | "cert" | null
+    >(null);
+
+  const [organization, setOrganization] =
+    useState("");
+
+  const [country, setCountry] =
+    useState("");
+
+  const [days, setDays] =
+    useState(3650);
+
+  const [keySize, setKeySize] =
+    useState<2048 | 4096>(2048);
+
+  const [hash, setHash] =
+    useState<
+      "sha256" |
+      "sha384" |
+      "sha512"
+    >("sha256");
+
+  const [sanEntries, setSanEntries] =
+    useState<SanEntry[]>([]);
+
+  const addSan = () => {
+    setSanEntries((prev) => [
+      ...prev,
+      {
+        id: crypto.randomUUID(),
+        type: "DNS",
+        value: "",
+      },
+    ]);
   };
 
-  // 更新 SAN 条目
-  const updateSanEntry = (id: string, field: keyof SanEntry, value: string) => {
-    setSanEntries(sanEntries.map(entry => 
-      entry.id === id ? { ...entry, [field]: value } : entry
-    ));
+  const removeSan = (
+    id: string
+  ) => {
+    setSanEntries((prev) =>
+      prev.filter(
+        (x) => x.id !== id
+      )
+    );
   };
 
-  // 删除 SAN 条目
-  const removeSanEntry = (id: string) => {
-    if (sanEntries.length <= 1) return; // 至少保留一个
-    setSanEntries(sanEntries.filter(entry => entry.id !== id));
+  const updateSan = (
+    id: string,
+    value: string
+  ) => {
+    setSanEntries((prev) =>
+      prev.map((item) =>
+        item.id === id
+          ? {
+              ...item,
+              value,
+            }
+          : item
+      )
+    );
   };
+    const autoSan =
+    useMemo(() => {
+      const value =
+        commonName.trim();
 
-  // 生成证书
-  const handleGenerate = () => {
-    // 验证输入
-    const validSan = sanEntries.filter(e => e.value.trim());
-    if (!commonName.trim() || validSan.length === 0) {
-      alert("请填写通用名称 (CN) 和至少一个 SAN 条目");
+      if (!value) {
+        return null;
+      }
+
+      const isIPv4 =
+        /^(\d{1,3}\.){3}\d{1,3}$/.test(
+          value
+        );
+
+      const isIPv6 =
+        value.includes(":");
+
+      const isIP =
+        isIPv4 || isIPv6;
+
+      return {
+        id: "auto-cn",
+
+        type: isIP
+          ? "IP"
+          : "DNS",
+
+        value,
+      } as SanEntry;
+    }, [commonName]);
+
+  const finalSan =
+    useMemo(() => {
+      const map =
+        new Map<
+          string,
+          SanEntry
+        >();
+
+      if (autoSan) {
+        map.set(
+          `${autoSan.type}:${autoSan.value}`.toLowerCase(),
+          autoSan
+        );
+      }
+
+      sanEntries.forEach(
+        (item) => {
+          const key =
+            `${item.type}:${item.value}`
+              .trim()
+              .toLowerCase();
+
+          if (
+            item.value.trim() &&
+            !map.has(key)
+          ) {
+            map.set(
+              key,
+              item
+            );
+          }
+        }
+      );
+
+      return Array.from(
+        map.values()
+      );
+    }, [
+      autoSan,
+      sanEntries,
+    ]);
+      const generate = () => {
+    const cn =
+      commonName.trim();
+
+    if (!cn) {
+      alert(
+        "请输入证书名称"
+      );
+
       return;
     }
-    
+
+    if (
+      country &&
+      !/^[A-Za-z]{2}$/.test(
+        country
+      )
+    ) {
+      alert(
+        "国家代码必须为2位字母，例如 CN、US、KR"
+      );
+
+      return;
+    }
+
     generateCert({
-      commonName: commonName.trim(),
-      sanEntries: validSan,
+      commonName: cn,
+
+      sanEntries: finalSan,
+
       keySize,
+
       hash,
+
       days,
-      organization: organization.trim() || undefined,
-      country: country.trim().toUpperCase() || undefined,
+
+      organization:
+        organization ||
+        undefined,
+
+      country:
+        country
+          .trim()
+          .toUpperCase() ||
+        undefined,
     });
   };
 
-  // 复制功能
-  const copyToClipboard = async (text: string, type: "key" | "crt") => {
-    if (!text) return;
-    try {
-      await navigator.clipboard.writeText(text);
-      setCopied(type);
-      setTimeout(() => setCopied(null), 1500);
-    } catch (err) {
-      console.error("复制失败:", err);
-    }
+  const generateLocalhost =
+    () => {
+      generateCert({
+        commonName:
+          "localhost",
+
+        sanEntries: [
+          {
+            id: "1",
+            type: "DNS",
+            value:
+              "localhost",
+          },
+          {
+            id: "2",
+            type: "IP",
+            value:
+              "127.0.0.1",
+          },
+          {
+            id: "3",
+            type: "IP",
+            value: "::1",
+          },
+        ],
+
+        keySize,
+
+        hash,
+
+        days,
+
+        organization:
+          organization ||
+          undefined,
+
+        country:
+          country
+            .trim()
+            .toUpperCase() ||
+          undefined,
+      });
+    };
+
+  const copyText = async (
+    text: string,
+    type:
+      | "key"
+      | "cert"
+  ) => {
+    await navigator.clipboard.writeText(
+      text
+    );
+
+    setCopied(type);
+
+    setTimeout(() => {
+      setCopied(null);
+    }, 1500);
   };
 
-  // 下载功能
-  const downloadFile = (content: string, filename: string) => {
-    const blob = new Blob([content], { type: "application/x-pem-file" });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = filename;
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-    URL.revokeObjectURL(url);
+  const downloadFile = (
+    content: string,
+    filename: string
+  ) => {
+    const blob =
+      new Blob(
+        [content],
+        {
+          type:
+            "application/x-pem-file;charset=utf-8",
+        }
+      );
+
+    const url =
+      URL.createObjectURL(
+        blob
+      );
+
+    const link =
+      document.createElement(
+        "a"
+      );
+
+    link.href = url;
+
+    link.download =
+      filename;
+
+    link.click();
+
+    URL.revokeObjectURL(
+      url
+    );
   };
 
-  // 快速填充示例
-  const fillExample = (type: "ip" | "domain") => {
-    if (type === "ip") {
-      setCommonName("192.168.1.100");
-      setSanEntries([
-        { id: "1", type: "IP", value: "192.168.1.100" },
-        { id: "2", type: "DNS", value: "hostname" },
-      ]);
-    } else {
-      setCommonName("hezhengyue.com");
-      setSanEntries([
-        { id: "1", type: "DNS", value: "hezhengyue.com" },
-        { id: "2", type: "DNS", value: "hostname" },
-      ]);
-    }
-  };
-
-  return (
-    <>
-      {/* 快速示例按钮 */}
-      <div className="mb-6 flex flex-wrap gap-2">
-        <button
-          onClick={() => fillExample("ip")}
-          className="px-3 py-1.5 text-xs bg-slate-100 text-slate-600 rounded-lg hover:bg-slate-200 transition-colors"
-        >
-          📍 填充 IP 示例
-        </button>
-        <button
-          onClick={() => fillExample("domain")}
-          className="px-3 py-1.5 text-xs bg-slate-100 text-slate-600 rounded-lg hover:bg-slate-200 transition-colors"
-        >
-          🌐 填充域名示例
-        </button>
-      </div>
-
-      {/* 表单区域 */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
-        {/* 左侧：证书信息 */}
-        <div className="space-y-4">
-          <div>
-            <label className="font-semibold text-slate-700 block mb-2">通用名称 (CN) *</label>
-            <input
-              type="text"
-              value={commonName}
-              onChange={(e) => setCommonName(e.target.value)}
-              placeholder="如: localhost, 192.168.1.100, hezhengyue.com"
-              className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 outline-none"
-            />
-          </div>
-
-          <div>
-            <label className="font-semibold text-slate-700 block mb-2">SAN 扩展 (Subject Alternative Name) *</label>
-            <div className="space-y-2">
-              {sanEntries.map((entry) => (
-                <div key={entry.id} className="flex gap-2">
-                  <select
-                    value={entry.type}
-                    onChange={(e) => updateSanEntry(entry.id, "type", e.target.value as any)}
-                    className="px-3 py-2.5 bg-slate-50 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/20"
-                  >
-                    <option value="DNS">DNS</option>
-                    <option value="IP">IP</option>
-                    <option value="Email">Email</option>
-                    <option value="URI">URI</option>
-                  </select>
-                  <input
-                    type="text"
-                    value={entry.value}
-                    onChange={(e) => updateSanEntry(entry.id, "value", e.target.value)}
-                    placeholder={entry.type === "IP" ? "192.168.1.100" : entry.type === "DNS" ? "hezhengyue.com" : "value"}
-                    className="flex-1 p-2.5 bg-slate-50 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/20"
-                  />
-                  <button
-                    onClick={() => removeSanEntry(entry.id)}
-                    disabled={sanEntries.length <= 1}
-                    className="p-2.5 text-slate-400 hover:text-red-500 transition-colors disabled:opacity-50"
-                    title="删除"
-                  >
-                    <Trash2 size={16} />
-                  </button>
-                </div>
-              ))}
-            </div>
-            <button
-              onClick={addSanEntry}
-              className="mt-2 flex items-center gap-1.5 text-sm text-indigo-600 hover:text-indigo-700 transition-colors"
-            >
-              <Plus size={14} /> 添加 SAN 条目
-            </button>
-          </div>
-
-          <div className="grid grid-cols-2 gap-4">
-            <div>
-              <label className="font-semibold text-slate-700 block mb-2">国家代码 (C)</label>
-              <input
-                type="text"
-                value={country}
-                onChange={(e) => setCountry(e.target.value)}
-                placeholder="如: CN, US"
-                maxLength={2}
-                className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl uppercase focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 outline-none"
-              />
-            </div>
-            <div>
-              <label className="font-semibold text-slate-700 block mb-2">组织 (O)</label>
-              <input
-                type="text"
-                value={organization}
-                onChange={(e) => setOrganization(e.target.value)}
-                placeholder="如: My Company"
-                className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 outline-none"
-              />
-            </div>
-          </div>
-        </div>
-
-        {/* 右侧：证书参数 */}
-        <div className="space-y-4">
-          <div>
-            <label className="font-semibold text-slate-700 block mb-2">密钥长度</label>
-            <div className="grid grid-cols-2 gap-3">
-              {[2048, 4096].map((size) => (
-                <button
-                  key={size}
-                  onClick={() => setKeySize(size as 2048 | 4096)}
-                  disabled={isGenerating}
-                  className={`p-3 rounded-xl text-left transition-all border disabled:opacity-50 ${
-                    keySize === size
-                      ? "bg-indigo-600 text-white border-indigo-600"
-                      : "bg-slate-50 text-slate-600 border-slate-200 hover:border-indigo-300"
-                  }`}
-                >
-                  <div className="font-medium">{size} 位</div>
-                  <div className="text-xs opacity-80">{size === 2048 ? "推荐" : "更高安全"}</div>
-                </button>
-              ))}
-            </div>
-          </div>
-
-          <div>
-            <label className="font-semibold text-slate-700 block mb-2">签名哈希</label>
-            <select
-              value={hash}
-              onChange={(e) => setHash(e.target.value as any)}
-              disabled={isGenerating}
-              className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 outline-none disabled:opacity-50"
-            >
-              <option value="sha256">SHA-256 (推荐)</option>
-              <option value="sha384">SHA-384</option>
-              <option value="sha512">SHA-512</option>
-            </select>
-          </div>
-
-          <div>
-            <label className="font-semibold text-slate-700 block mb-2">有效期 (天)</label>
-            <input
-              type="number"
-              min={1}
-              max={36500}
-              value={days}
-              onChange={(e) => setDays(Math.max(1, Math.min(36500, Number(e.target.value))))}
-              disabled={isGenerating}
-              className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 outline-none disabled:opacity-50"
-            />
-            <div className="text-xs text-slate-400 mt-1">
-              默认 3650 天 (10 年)，自签证书建议设置合理有效期
-            </div>
-          </div>
-        </div>
-      </div>
-
-      {/* 生成按钮 */}
-      <button
-        onClick={handleGenerate}
-        disabled={isGenerating}
-        className="w-full flex items-center justify-center py-3.5 bg-indigo-600 text-white rounded-xl font-semibold hover:bg-indigo-700 hover:-translate-y-0.5 transition-all shadow-md shadow-indigo-600/20 active:translate-y-0 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:translate-y-0"
-      >
-        <Shield size={18} className="mr-2" />
-        {isGenerating ? "生成证书中..." : "生成自签名证书"}
-      </button>
-
-      {/* 错误提示 */}
-      {error && (
-        <div className="mt-4 p-3 bg-red-50 border border-red-200 rounded-xl text-red-600 text-sm flex items-center gap-2">
-          <span>⚠️</span>
-          {error}
-        </div>
-      )}
-
-      {/* 证书结果 */}
-      {result && !isGenerating && (
-        <div className="mt-8 space-y-6">
-          {/* 证书信息摘要 */}
-          <div className="p-4 bg-slate-50 border border-slate-200 rounded-2xl">
-            <h4 className="font-semibold text-slate-700 mb-3 flex items-center gap-2">
-              <Info size={16} /> 证书信息
-            </h4>
-            <div className="grid grid-cols-2 gap-4 text-sm">
-              <div>
-                <span className="text-slate-400">使用者 (Subject):</span>
-                <div className="font-mono text-slate-700">{result.info.subject}</div>
-              </div>
-              <div>
-                <span className="text-slate-400">颁发者 (Issuer):</span>
-                <div className="font-mono text-slate-700">{result.info.issuer}</div>
-              </div>
-              <div>
-                <span className="text-slate-400">生效时间:</span>
-                <div className="font-mono text-slate-700">{new Date(result.info.notBefore).toLocaleString("zh-CN")}</div>
-              </div>
-              <div>
-                <span className="text-slate-400">过期时间:</span>
-                <div className="font-mono text-slate-700">{new Date(result.info.notAfter).toLocaleString("zh-CN")}</div>
-              </div>
-              <div className="col-span-2">
-                <span className="text-slate-400">SAN 扩展:</span>
-                <div className="font-mono text-slate-700 mt-1 flex flex-wrap gap-2">
-                  {result.info.san.map((san, i) => (
-                    <span key={i} className="px-2 py-0.5 bg-slate-200 rounded text-xs">{san}</span>
-                  ))}
-                </div>
-              </div>
-            </div>
-          </div>
-
-          {/* 私钥 */}
-          <div>
-            <div className="flex items-center justify-between mb-3">
-              <label className="font-semibold text-slate-700 flex items-center gap-2">
-                <span className="w-2 h-2 bg-amber-500 rounded-full" />
-                私钥 (.key) ⚠️ 请妥善保存
-              </label>
-              <div className="flex items-center gap-2">
-                <button
-                  onClick={() => downloadFile(result.privateKey, `${commonName}.key`)}
-                  className="p-2 text-slate-500 hover:text-indigo-600 transition-colors"
-                  title="下载 .key 文件"
-                >
-                  <Download size={16} />
-                </button>
-                <button
-                  onClick={() => copyToClipboard(result.privateKey, "key")}
-                  className={`p-2 rounded-lg transition-all ${
-                    copied === "key"
-                      ? "bg-green-100 text-green-600"
-                      : "bg-white border border-slate-200 text-slate-500 hover:text-indigo-600"
-                  }`}
-                  title={copied === "key" ? "已复制" : "复制私钥"}
-                >
-                  {copied === "key" ? <Check size={16} /> : <Copy size={16} />}
-                </button>
-              </div>
-            </div>
-            <textarea
-              readOnly
-              value={result.privateKey}
-              className="w-full p-4 bg-amber-50/50 border border-amber-200 rounded-2xl font-mono text-xs text-slate-700 min-h-[200px] resize-none focus:outline-none"
-            />
-          </div>
-
-          {/* 证书 */}
-          <div>
-            <div className="flex items-center justify-between mb-3">
-              <label className="font-semibold text-slate-700 flex items-center gap-2">
-                <span className="w-2 h-2 bg-emerald-500 rounded-full" />
-                证书 (.crt)
-              </label>
-              <div className="flex items-center gap-2">
-                <button
-                  onClick={() => downloadFile(result.certificate, `${commonName}.crt`)}
-                  className="p-2 text-slate-500 hover:text-indigo-600 transition-colors"
-                  title="下载 .crt 文件"
-                >
-                  <Download size={16} />
-                </button>
-                <button
-                  onClick={() => copyToClipboard(result.certificate, "crt")}
-                  className={`p-2 rounded-lg transition-all ${
-                    copied === "crt"
-                      ? "bg-green-100 text-green-600"
-                      : "bg-white border border-slate-200 text-slate-500 hover:text-indigo-600"
-                  }`}
-                  title={copied === "crt" ? "已复制" : "复制证书"}
-                >
-                  {copied === "crt" ? <Check size={16} /> : <Copy size={16} />}
-                </button>
-              </div>
-            </div>
-            <textarea
-              readOnly
-              value={result.certificate}
-              className="w-full p-4 bg-slate-50 border border-slate-200 rounded-2xl font-mono text-xs text-slate-700 min-h-[280px] resize-none focus:outline-none"
-            />
-          </div>
-        </div>
-      )}
-
-      {/* 使用说明 */}
-      <div className="mt-8 p-4 bg-slate-50 rounded-2xl border border-slate-200/60">
-        <h4 className="font-semibold text-slate-700 mb-3">📋 使用说明</h4>
-        <ul className="text-sm text-slate-600 space-y-2">
-          <li>• <strong>IP 证书</strong>: CN 和 SAN 中至少一个填 IP 地址，如 <code>192.168.1.100</code></li>
-          <li>• <strong>域名证书</strong>: CN 和 SAN 中填域名，如 <code>*.hezhengyue.com</code> 支持通配符</li>
-          <li>• <strong>安装证书</strong>: 将 <code>.crt</code> 导入系统/浏览器信任存储，<code>.key</code> 用于服务端配置</li>
-          <li>• <strong>验证证书</strong>: <code>openssl x509 -in cert.crt -text -noout</code></li>
-          <li>• <strong>⚠️ 注意</strong>: 自签证书不会被浏览器默认信任，需手动添加例外</li>
-        </ul>
-      </div>
-    </>
-  );
-}
-
-export default function SelfCertPage() {
   return (
     <ToolShell>
-      <SelfCertCore />
+      <div className="max-w-5xl mx-auto space-y-6">
+
+        <div>
+          <h1 className="text-3xl font-bold">
+            自签名证书生成器
+          </h1>
+
+          <p className="text-slate-500 mt-2">
+            自动识别域名/IP，
+            自动生成 SAN 扩展
+          </p>
+        </div>
+
+        <div className="bg-white rounded-2xl border p-6 space-y-5">
+
+          <div>
+            <label className="font-medium">
+              证书名称(CN)
+            </label>
+
+            <input
+              value={
+                commonName
+              }
+              onChange={(
+                e
+              ) =>
+                setCommonName(
+                  e.target
+                    .value
+                )
+              }
+              placeholder="example.com、*.example.com、192.168.1.100"
+              className="w-full mt-2 border rounded-xl p-3"
+            />
+          </div>
+
+          <div>
+
+            <div className="flex justify-between items-center">
+
+              <label className="font-medium">
+                SAN 扩展
+              </label>
+
+              <button
+                onClick={
+                  addSan
+                }
+                className="flex items-center gap-1 text-indigo-600"
+              >
+                <Plus
+                  size={16}
+                />
+                添加
+              </button>
+
+            </div>
+
+            <div className="space-y-2 mt-3">
+
+              {autoSan && (
+                <div className="flex gap-2">
+
+                  <span className="w-20 rounded-lg bg-green-100 text-green-700 flex items-center justify-center">
+                    AUTO
+                  </span>
+
+                  <input
+                    readOnly
+                    value={`${autoSan.type}: ${autoSan.value}`}
+                    className="flex-1 border rounded-lg p-2 bg-slate-50"
+                  />
+
+                </div>
+              )}
+
+              {sanEntries.map(
+                (item) => (
+                  <div
+                    key={
+                      item.id
+                    }
+                    className="flex gap-2"
+                  >
+
+                    <input
+                      value={
+                        item.value
+                      }
+                      onChange={(
+                        e
+                      ) =>
+                        updateSan(
+                          item.id,
+                          e.target
+                            .value
+                        )
+                      }
+                      placeholder="额外SAN"
+                      className="flex-1 border rounded-lg p-2"
+                    />
+
+                    <button
+                      onClick={() =>
+                        removeSan(
+                          item.id
+                        )
+                      }
+                      className="text-red-500"
+                    >
+                      <Trash2
+                        size={
+                          16
+                        }
+                      />
+                    </button>
+
+                  </div>
+                )
+              )}
+
+            </div>
+
+          </div>
+                    <div className="border-t pt-4">
+
+            <button
+              onClick={() =>
+                setShowAdvanced(
+                  !showAdvanced
+                )
+              }
+              className="flex items-center gap-2"
+            >
+              高级选项
+
+              {showAdvanced ? (
+                <ChevronUp size={16} />
+              ) : (
+                <ChevronDown size={16} />
+              )}
+            </button>
+
+            {showAdvanced && (
+              <div className="grid md:grid-cols-2 gap-4 mt-4">
+
+                <input
+                  placeholder="组织(O)"
+                  value={organization}
+                  onChange={(e) =>
+                    setOrganization(
+                      e.target.value
+                    )
+                  }
+                  className="border rounded-xl p-3"
+                />
+
+                <input
+                  placeholder="国家(C)"
+                  maxLength={2}
+                  value={country}
+                  onChange={(e) =>
+                    setCountry(
+                      e.target.value
+                    )
+                  }
+                  className="border rounded-xl p-3"
+                />
+
+                <input
+                  type="number"
+                  min={1}
+                  max={3650}
+                  value={days}
+                  onChange={(e) =>
+                    setDays(
+                      Math.min(
+                        3650,
+                        Math.max(
+                          1,
+                          Number(
+                            e.target.value
+                          )
+                        )
+                      )
+                    )
+                  }
+                  className="border rounded-xl p-3"
+                />
+
+                <select
+                  value={keySize}
+                  onChange={(e) =>
+                    setKeySize(
+                      Number(
+                        e.target.value
+                      ) as 2048 | 4096
+                    )
+                  }
+                  className="border rounded-xl p-3"
+                >
+                  <option value={2048}>
+                    RSA 2048
+                  </option>
+
+                  <option value={4096}>
+                    RSA 4096
+                  </option>
+                </select>
+
+                <select
+                  value={hash}
+                  onChange={(e) =>
+                    setHash(
+                      e.target.value as
+                        | "sha256"
+                        | "sha384"
+                        | "sha512"
+                    )
+                  }
+                  className="border rounded-xl p-3"
+                >
+                  <option value="sha256">
+                    SHA256
+                  </option>
+
+                  <option value="sha384">
+                    SHA384
+                  </option>
+
+                  <option value="sha512">
+                    SHA512
+                  </option>
+                </select>
+
+              </div>
+            )}
+          </div>
+
+          <div className="grid md:grid-cols-2 gap-4">
+
+            <button
+              disabled={isGenerating}
+              onClick={generate}
+              className="bg-indigo-600 text-white py-3 rounded-xl flex items-center justify-center gap-2"
+            >
+              <Shield size={18} />
+
+              {isGenerating
+                ? "生成中..."
+                : "生成证书"}
+            </button>
+
+            <button
+              disabled={isGenerating}
+              onClick={generateLocalhost}
+              className="bg-emerald-600 text-white py-3 rounded-xl flex items-center justify-center gap-2"
+            >
+              <Laptop size={18} />
+
+              localhost开发证书
+            </button>
+
+          </div>
+
+          {error && (
+            <div className="p-4 rounded-xl bg-red-50 text-red-600 border border-red-200">
+              {error}
+            </div>
+          )}
+
+        </div>
+
+        {result && (
+          <div className="space-y-6">
+
+            <div className="bg-green-50 border border-green-200 rounded-2xl p-6">
+
+              <h2 className="text-lg font-semibold text-green-700">
+                证书生成成功
+              </h2>
+
+              <div className="grid md:grid-cols-2 gap-4 mt-4">
+
+                <div>
+                  <div className="text-slate-500 text-sm">
+                    算法
+                  </div>
+
+                  <div>
+                    RSA {result.info.keySize}
+                  </div>
+                </div>
+
+                <div>
+                  <div className="text-slate-500 text-sm">
+                    签名算法
+                  </div>
+
+                  <div>
+                    {result.info.hash}
+                  </div>
+                </div>
+
+                <div>
+                  <div className="text-slate-500 text-sm">
+                    生效时间
+                  </div>
+
+                  <div>
+                    {new Date(
+                      result.info.notBefore
+                    ).toLocaleString()}
+                  </div>
+                </div>
+
+                <div>
+                  <div className="text-slate-500 text-sm">
+                    过期时间
+                  </div>
+
+                  <div>
+                    {new Date(
+                      result.info.notAfter
+                    ).toLocaleString()}
+                  </div>
+                </div>
+
+              </div>
+
+              <div className="mt-4">
+                <div className="text-slate-500 text-sm mb-2">
+                  SAN扩展
+                </div>
+
+                <div className="flex flex-wrap gap-2">
+                  {result.info.san.map(
+                    (item, index) => (
+                      <span
+                        key={index}
+                        className="px-2 py-1 rounded-lg border bg-white text-xs"
+                      >
+                        {item}
+                      </span>
+                    )
+                  )}
+                </div>
+              </div>
+
+            </div>
+
+            <div className="grid md:grid-cols-2 gap-4">
+
+              <button
+                onClick={() =>
+                  downloadFile(
+                    result.privateKey,
+                    "private-key.pem"
+                  )
+                }
+                className="bg-indigo-600 text-white py-3 rounded-xl flex items-center justify-center gap-2"
+              >
+                <Download size={16} />
+                下载 private-key.pem
+              </button>
+
+              <button
+                onClick={() =>
+                  downloadFile(
+                    result.certificate,
+                    "certificate.pem"
+                  )
+                }
+                className="bg-emerald-600 text-white py-3 rounded-xl flex items-center justify-center gap-2"
+              >
+                <Download size={16} />
+                下载 certificate.pem
+              </button>
+
+            </div>
+
+            <div className="grid md:grid-cols-2 gap-4">
+
+              <button
+                onClick={() =>
+                  copyText(
+                    result.privateKey,
+                    "key"
+                  )
+                }
+                className="border rounded-xl py-3 flex items-center justify-center gap-2"
+              >
+                {copied === "key"
+                  ? <Check size={16} />
+                  : <Copy size={16} />}
+
+                复制私钥
+              </button>
+
+              <button
+                onClick={() =>
+                  copyText(
+                    result.certificate,
+                    "cert"
+                  )
+                }
+                className="border rounded-xl py-3 flex items-center justify-center gap-2"
+              >
+                {copied === "cert"
+                  ? <Check size={16} />
+                  : <Copy size={16} />}
+
+                复制证书
+              </button>
+
+            </div>
+
+            <details className="bg-white border rounded-2xl p-4">
+
+              <summary className="cursor-pointer font-medium">
+                查看 private-key.pem
+              </summary>
+
+              <textarea
+                readOnly
+                value={result.privateKey}
+                className="w-full mt-4 min-h-[250px] border rounded-xl p-4 font-mono text-xs"
+              />
+
+            </details>
+
+            <details className="bg-white border rounded-2xl p-4">
+
+              <summary className="cursor-pointer font-medium">
+                查看 certificate.pem
+              </summary>
+
+              <textarea
+                readOnly
+                value={result.certificate}
+                className="w-full mt-4 min-h-[250px] border rounded-xl p-4 font-mono text-xs"
+              />
+
+            </details>
+
+          </div>
+        )}
+
+      </div>
     </ToolShell>
   );
 }
