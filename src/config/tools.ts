@@ -67,7 +67,7 @@ export const toolsConfig: ToolCategory[] = [
         name: "SSH 密钥生成",
         href: "/ssh-key",
         icon: KeyRound,
-        desc: "浏览器本地生成 SSH 公钥/私钥对，支持 1024/2048/4096 位。",
+        desc: "浏览器本地生成 SSH 公钥/私钥对，支持 RSA 和 Ed25519。",
         footerNote: "所有密钥在<strong>浏览器本地生成</strong>，不会上传到任何服务器。⚠️ 私钥请妥善保存，丢失无法恢复。"
       },
       {
