@@ -8,6 +8,14 @@ import {
 } from "lucide-react";
 import ToolShell from "@/components/ToolShell";
 
+// 定义粒子数据的类型
+interface Particle {
+  left: number;
+  top: number;
+  delay: number;
+  duration: number;
+}
+
 export default function LuckyDrawPage() {
   // 名单管理
   const [participants, setParticipants] = useState<string[]>([
@@ -25,12 +33,29 @@ export default function LuckyDrawPage() {
   const [winners, setWinners] = useState<string[]>([]);
   const [showResult, setShowResult] = useState(false);
   
+  // 🔥 修复：粒子动画数据（初始为空数组，保证 SSR 和客户端首次渲染一致，避免水合错误）
+  const [particles, setParticles] = useState<Particle[]>([]);
+
   // 动画控制
   const animationRef = useRef<NodeJS.Timeout | null>(null);
   const namesRef = useRef<string[]>([]);
   
   // 同步 ref（避免动画闭包问题）
-  useEffect(() => { namesRef.current = participants; }, [participants]);
+  useEffect(() => { 
+    namesRef.current = participants; 
+  }, [participants]);
+
+  // 🔥 修复：仅在客户端挂载后生成随机粒子数据
+  useEffect(() => {
+    setParticles(
+      Array.from({ length: 20 }, () => ({
+        left: Math.random() * 100,
+        top: Math.random() * 100,
+        delay: Math.random() * 2,
+        duration: 2 + Math.random() * 3,
+      }))
+    );
+  }, []);
 
   // 添加参与者
   const addParticipant = () => {
@@ -177,17 +202,17 @@ export default function LuckyDrawPage() {
       <div className="space-y-6">
         {/* 顶部：抽奖显示区 */}
         <div className="relative p-8 bg-gradient-to-br from-indigo-500 via-purple-500 to-pink-500 rounded-3xl text-white text-center overflow-hidden">
-          {/* 动态背景粒子 */}
+          {/* 🔥 修复：动态背景粒子（使用 state 渲染，避免 SSR 和客户端 Math.random() 不一致） */}
           <div className="absolute inset-0 opacity-20">
-            {[...Array(20)].map((_, i) => (
+            {particles.map((p, i) => (
               <div
                 key={i}
                 className="absolute w-2 h-2 bg-white rounded-full animate-pulse"
                 style={{
-                  left: `${Math.random() * 100}%`,
-                  top: `${Math.random() * 100}%`,
-                  animationDelay: `${Math.random() * 2}s`,
-                  animationDuration: `${2 + Math.random() * 3}s`,
+                  left: `${p.left}%`,
+                  top: `${p.top}%`,
+                  animationDelay: `${p.delay}s`,
+                  animationDuration: `${p.duration}s`,
                 }}
               />
             ))}
