@@ -81,11 +81,10 @@ export const toolsConfig: ToolCategory[] = [
         name: "设备检测",
         href: "/device-info",
         icon: MonitorSmartphone,
-        desc: "查看当前公网IP、浏览器、系统、屏幕等信息。",
+        desc: "查看当前公网IP、浏览器、系统、GPU、屏幕等信息。",
         footerNote:
-          "除公网IP外，其余信息均在浏览器本地检测完成，不会上传到任何服务器。"
+          "所有信息在 <strong>浏览器本地完成</strong>，不会上传到任何服务器。"
       },
-            // 👇 新增的工具
       {
         name: "IP 地理位置",
         href: "/ip-geo",
@@ -111,19 +110,19 @@ export const toolsConfig: ToolCategory[] = [
   },
   {
   category: "图片工具",
-  icon: Image,  // 需要先从 lucide-react 导入 Image 图标
+  icon: Image,
   tools: [
     {
       name: "图片预处理",
       href: "/image-compress",
-      icon: FileImage,  // lucide-react 中的图标
+      icon: FileImage,  
       desc: "必选清除隐私 + 可选压缩转格式，体积减少 40%~70%，纯前端处理。",
       footerNote: "所有处理在 <strong>浏览器本地完成</strong>，图片<strong>不会上传到任何服务器</strong>。🔒 隐私保护为强制选项，确保上传安全。"
     },
     {
       name: "背景虚化",
       href: "/image-background-blur",
-      icon: Sparkles, // 或 Brush
+      icon: Sparkles, 
       desc: "涂抹主体自动虚化背景，模拟单反景深效果，纯前端零延迟。",
       footerNote: "所有处理在 <strong>浏览器本地完成</strong>，图片<strong>不会上传到任何服务器</strong>。🎨 使用画笔涂抹主体即可，支持撤销/橡皮擦修正。"
     },

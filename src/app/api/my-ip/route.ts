@@ -24,14 +24,8 @@ function parseGeoString(geoStr: string): Record<string, string> {
 export async function GET(request: Request) {
   const h = await headers();
 
-  // 1. 获取 IP
-  const ip =
-    h.get("eo-connecting-ip") ||
-    h.get("edge-inner-client-ip") ||
-    h.get("cf-connecting-ip") ||
-    h.get("x-forwarded-for")?.split(",")[0].trim() ||
-    h.get("x-real-ip") ||
-    "127.0.0.1";
+  // 1. 获取 IP (在 EdgeOne 环境下，直接取 eo-connecting-ip 即可，本地开发时回退到 127.0.0.1)
+  const ip = h.get("eo-connecting-ip") || "127.0.0.1";
 
   // 2. 获取并解析 eo-connecting-geo
   const geoStr = h.get("eo-connecting-geo");
@@ -69,6 +63,6 @@ export async function GET(request: Request) {
     local: ip === "127.0.0.1" || ip === "::1",
     geo,
     asn: geo?.asn || null,
-    clientIp: h.get("eo-connecting-ip") || ip,
+    clientIp: ip, // 直接复用 ip 即可，不需要再重复获取 header
   });
 }

@@ -13,8 +13,6 @@ import {
 import ToolShell from "@/components/ToolShell";
 
 interface DeviceInfo {
-  ip: string;
-
   browser: string;
   browserVersion: string;
   language: string;
@@ -42,9 +40,7 @@ interface DeviceInfo {
 
 function DeviceInfoCore() {
   const [info, setInfo] = useState<DeviceInfo | null>(null);
-
   const [loading, setLoading] = useState(false);
-
   const [copied, setCopied] = useState(false);
 
   function parseBrowser(ua: string) {
@@ -95,16 +91,12 @@ function DeviceInfoCore() {
   function getGpuInfo() {
     try {
       const canvas = document.createElement("canvas");
-
       const gl =
         canvas.getContext("webgl") ||
         canvas.getContext("experimental-webgl");
 
       if (!gl) {
-        return {
-          gpuName: "-",
-          gpuVendor: "-",
-        };
+        return { gpuName: "-", gpuVendor: "-" };
       }
 
       const ext = (gl as WebGLRenderingContext).getExtension(
@@ -112,10 +104,7 @@ function DeviceInfoCore() {
       );
 
       if (!ext) {
-        return {
-          gpuName: "-",
-          gpuVendor: "-",
-        };
+        return { gpuName: "-", gpuVendor: "-" };
       }
 
       const renderer = String(
@@ -131,9 +120,7 @@ function DeviceInfoCore() {
       );
 
       let gpuName = renderer;
-
       const angleMatch = renderer.match(/ANGLE \((.*?) Direct3D/i);
-
       if (angleMatch) {
         gpuName = angleMatch[1];
       }
@@ -144,20 +131,13 @@ function DeviceInfoCore() {
         .trim();
 
       let gpuVendor = vendor;
-
       if (vendor.includes("NVIDIA")) gpuVendor = "NVIDIA";
       else if (vendor.includes("Intel")) gpuVendor = "Intel";
       else if (vendor.includes("AMD")) gpuVendor = "AMD";
 
-      return {
-        gpuName,
-        gpuVendor,
-      };
+      return { gpuName, gpuVendor };
     } catch {
-      return {
-        gpuName: "-",
-        gpuVendor: "-",
-      };
+      return { gpuName: "-", gpuVendor: "-" };
     }
   }
 
@@ -165,60 +145,28 @@ function DeviceInfoCore() {
     setLoading(true);
 
     try {
-      let ip = "127.0.0.1";
-
-      try {
-        const res = await fetch("/api/my-ip", {
-          cache: "no-store",
-        });
-
-        if (res.ok) {
-          const json = await res.json();
-
-          ip = json.ip || ip;
-        }
-      } catch {}
-
       const ua = navigator.userAgent;
-
       const browser = parseBrowser(ua);
-
       const gpu = getGpuInfo();
 
       setInfo({
-        ip,
-
         browser: browser.name,
         browserVersion: browser.version,
-
         language: navigator.language,
         languages: [...navigator.languages],
-
         userAgent: ua,
-
         os: parseOS(ua),
         platform: navigator.platform,
-
         cpu: navigator.hardwareConcurrency || "-",
-
         memory: (navigator as any).deviceMemory || "-",
-
         gpuName: gpu.gpuName,
         gpuVendor: gpu.gpuVendor,
-
         resolution: `${screen.width} × ${screen.height}`,
-
         availableResolution: `${screen.availWidth} × ${screen.availHeight}`,
-
         colorDepth: screen.colorDepth,
-
         pixelRatio: window.devicePixelRatio,
-
-        orientation:
-          screen.orientation?.type || "Unknown",
-
-        timezone:
-          Intl.DateTimeFormat().resolvedOptions().timeZone,
+        orientation: screen.orientation?.type || "Unknown",
+        timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
       });
     } finally {
       setLoading(false);
@@ -233,8 +181,6 @@ function DeviceInfoCore() {
     if (!info) return;
 
     navigator.clipboard.writeText(`
-公网IP：${info.ip}
-
 浏览器：${info.browser}
 版本：${info.browserVersion}
 语言：${info.language}
@@ -268,26 +214,14 @@ ${info.userAgent}
   }
 
   return (
-    <>
-          {/* 当前公网IP */}
-      <div className="relative mb-6">
-        <div className="bg-slate-50 border border-slate-200 rounded-2xl p-6 text-center shadow-inner relative overflow-hidden">
-          <div className="text-slate-500 text-sm mb-2">
-            🌍 当前公网IP
-          </div>
-
-          <div className="text-3xl md:text-4xl font-mono font-bold text-slate-800 break-all">
-            {loading ? "检测中..." : info?.ip}
-          </div>
-
-          {copied && (
-            <div className="absolute inset-0 bg-green-50 flex items-center justify-center text-green-600 font-medium rounded-2xl">
-              <Check className="w-5 h-5 mr-2" />
-              已复制全部信息
-            </div>
-          )}
+    <div className="relative">
+      {/* 复制成功的全局提示 */}
+      {copied && (
+        <div className="absolute inset-0 z-50 bg-green-50/95 flex items-center justify-center text-green-600 font-medium rounded-2xl border border-green-200 shadow-lg backdrop-blur-sm">
+          <Check className="w-6 h-6 mr-2" />
+          已复制全部信息
         </div>
-      </div>
+      )}
 
       {/* 浏览器 */}
       <div className="bg-white border border-slate-200 rounded-2xl p-5 mb-6">
@@ -314,7 +248,6 @@ ${info.userAgent}
 
           <div className="flex justify-between items-start">
             <span className="text-slate-500">备用语言</span>
-
             <span className="text-right max-w-[70%] break-all">
               {info?.languages.join(", ")}
             </span>
@@ -362,7 +295,6 @@ ${info.userAgent}
         <div className="space-y-3 text-sm">
           <div className="flex justify-between items-start">
             <span className="text-slate-500">型号</span>
-
             <span className="text-right max-w-[70%] break-all">
               {info?.gpuName}
             </span>
@@ -456,7 +388,7 @@ ${info.userAgent}
           重新检测
         </button>
       </div>
-    </>
+    </div>
   );
 }
 
