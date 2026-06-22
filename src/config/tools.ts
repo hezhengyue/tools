@@ -2,7 +2,7 @@
 import { 
   Key, FileJson, Shield, Code, Calculator, Link as LinkIcon, 
   Hash, KeyRound, FileBadge, FileDiff, Type, Palette, Gamepad, Gift,
-  Image, FileImage, Sparkles, Globe, MonitorSmartphone
+  Image, FileImage, Sparkles, Globe, MonitorSmartphone, MapPin, Brush
 } from "lucide-react";
 
 export interface ToolItem {
@@ -84,6 +84,15 @@ export const toolsConfig: ToolCategory[] = [
         desc: "查看当前公网IP、浏览器、系统、屏幕等信息。",
         footerNote:
           "除公网IP外，其余信息均在浏览器本地检测完成，不会上传到任何服务器。"
+      },
+            // 👇 新增的工具
+      {
+        name: "IP 地理位置",
+        href: "/ip-geo",
+        icon: MapPin,
+        desc: "查询当前公网 IP 及详细的国家、城市、经纬度、运营商等归属地信息。",
+        footerNote:
+          "地理位置数据由 <strong>EdgeOne 边缘节点</strong> 自动解析提供，无需调用第三方 API，精准且快速。"
       }
     ]
   },
