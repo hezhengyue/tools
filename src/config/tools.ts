@@ -2,7 +2,7 @@
 import { 
   Key, FileJson, Shield, Code, Calculator, Link as LinkIcon, 
   Hash, KeyRound, FileBadge, FileDiff, Type, Palette, Gamepad, Gift,
-  Image, FileImage, Sparkles, Globe,
+  Image, FileImage, Sparkles, Globe, MonitorSmartphone
 } from "lucide-react";
 
 export interface ToolItem {
@@ -85,13 +85,13 @@ export const toolsConfig: ToolCategory[] = [
     icon: Globe,
     tools: [
       {
-        name: "IP 查询",
-        href: "/lookup-ip",
-        icon: Globe,
-        desc: "查询当前公网 IP、地理位置、运营商及浏览器设备信息，支持一键复制。",
+        name: "设备检测",
+        href: "/device-info",
+        icon: MonitorSmartphone,
+        desc: "查看当前公网IP、浏览器、系统、屏幕及网络环境信息。",
         footerNote:
-          "IP 信息通过公开接口获取，设备信息由浏览器本地读取，<strong>不会上传任何图片、文件或隐私数据</strong>。"
-      },
+          "除公网IP外，其余信息均在浏览器本地检测完成，不会上传到任何服务器。"
+      }
     ]
   },
   {
