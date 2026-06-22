@@ -4,10 +4,27 @@ import { NextResponse } from "next/server";
 
 export const runtime = 'edge'; 
 
+// 解析 eo-connecting-geo 的键值对字符串
+function parseGeoString(geoStr: string): Record<string, string> {
+  const result: Record<string, string> = {};
+  
+  // 匹配键值对，支持带引号的值（如 nation_name="China"）
+  const regex = /(\w+)=("([^"]*)"|(\S+))/g;
+  let match;
+  
+  while ((match = regex.exec(geoStr)) !== null) {
+    const key = match[1];
+    const value = match[3] || match[4]; // 优先取带引号的值，否则取不带引号的
+    result[key] = value;
+  }
+  
+  return result;
+}
+
 export async function GET(request: Request) {
   const h = await headers();
 
-  // 1. 获取 IP (保持原有逻辑)
+  // 1. 获取 IP
   const ip =
     h.get("eo-connecting-ip") ||
     h.get("edge-inner-client-ip") ||
@@ -16,50 +33,34 @@ export async function GET(request: Request) {
     h.get("x-real-ip") ||
     "127.0.0.1";
 
-  // 2. 调试：收集所有可能包含地理位置信息的 Headers
-  const debugHeaders: Record<string, string> = {};
-  h.forEach((value, key) => {
-    // 只过滤出包含 eo, geo, ip, country, city, region, forwarded, real 等关键字的 header
-    const lowerKey = key.toLowerCase();
-    if (
-      lowerKey.includes('eo') || 
-      lowerKey.includes('geo') || 
-      lowerKey.includes('ip') || 
-      lowerKey.includes('country') || 
-      lowerKey.includes('city') || 
-      lowerKey.includes('region') || 
-      lowerKey.includes('forwarded') || 
-      lowerKey.includes('real')
-    ) {
-      debugHeaders[key] = value;
-    }
-  });
-
-  // 3. 尝试从常见的 Header 中提取地理位置 (兼容多种可能的命名)
-  const countryName = h.get("eo-ip-country-name") || h.get("x-eo-ip-country-name") || h.get("cf-ipcountry") || "";
-  const countryCode = h.get("eo-ip-country") || h.get("x-eo-ip-country") || "";
-  const regionName = h.get("eo-ip-region-name") || h.get("x-eo-ip-region-name") || "";
-  const cityName = h.get("eo-ip-city") || h.get("x-eo-ip-city") || "";
-  const latStr = h.get("eo-ip-latitude") || h.get("x-eo-ip-latitude") || "";
-  const lonStr = h.get("eo-ip-longitude") || h.get("x-eo-ip-longitude") || "";
-  const asnStr = h.get("eo-ip-asn") || h.get("x-eo-ip-asn") || "";
-  const cisp = h.get("eo-ip-cisp") || h.get("eo-ip-isp") || "";
-
+  // 2. 获取并解析 eo-connecting-geo
+  const geoStr = h.get("eo-connecting-geo");
   let geo = null;
-  if (countryName || cityName) {
-    geo = {
-      asn: asnStr ? parseInt(asnStr.replace(/AS/i, ''), 10) : 0,
-      countryName,
-      countryCodeAlpha2: countryCode,
-      countryCodeAlpha3: "",
-      countryCodeNumeric: "",
-      regionName,
-      regionCode: "",
-      cityName,
-      latitude: latStr ? parseFloat(latStr) : 0,
-      longitude: lonStr ? parseFloat(lonStr) : 0,
-      cisp,
-    };
+  
+  if (geoStr) {
+    try {
+      // 先 URL 解码
+      const decoded = decodeURIComponent(geoStr);
+      // 解析键值对
+      const geoData = parseGeoString(decoded);
+      
+      // 组装成前端需要的格式
+      geo = {
+        asn: parseInt(geoData.asn || '0', 10),
+        countryName: geoData.nation_name || '',
+        countryCodeAlpha2: geoData.nation_alpha2 || '',
+        countryCodeAlpha3: geoData.nation_alpha3 || '',
+        countryCodeNumeric: geoData.nation_numeric || '',
+        regionName: geoData.region_name || '',
+        regionCode: geoData.region_code || '',
+        cityName: geoData.city_name || '',
+        latitude: parseFloat(geoData.latitude || '0'),
+        longitude: parseFloat(geoData.longitude || '0'),
+        cisp: geoData.network_operator || '',
+      };
+    } catch (e) {
+      console.error('Failed to parse geo data:', e);
+    }
   }
 
   return NextResponse.json({
@@ -69,7 +70,5 @@ export async function GET(request: Request) {
     geo,
     asn: geo?.asn || null,
     clientIp: h.get("eo-connecting-ip") || ip,
-    // 👇 关键调试信息：返回所有相关的 Headers
-    debugHeaders 
   });
 }
