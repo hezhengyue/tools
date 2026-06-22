@@ -26,26 +26,6 @@ export interface ToolCategory {
 
 export const toolsConfig: ToolCategory[] = [
   {
-    category: "游戏",
-    icon: Gamepad,
-    tools: [
-      {
-        name: "画板",
-        href: "/draw-board",
-        icon: Palette,
-        desc: "轻量级在线画板，支持多色画笔、橡皮擦、撤销重做。",
-        footerNote: "所有处理在 <strong>浏览器本地完成</strong>，图片<strong>不会上传到任何服务器</strong>。"
-      },
-      {
-      name: "随机抽奖",
-      href: "/lucky-draw",
-      icon: Gift,
-      desc: "支持名单管理、自定义抽取人数、炫酷动画的在线抽奖工具。",
-      footerNote: "所有处理在 <strong>浏览器本地完成</strong>，数据<strong>不会上传到任何服务器</strong>。"
-    },
-    ]
-  },
-  {
     category: "安全与加密",
     icon: Shield,
     tools: [
@@ -67,7 +47,7 @@ export const toolsConfig: ToolCategory[] = [
         name: "SSH 密钥生成",
         href: "/ssh-key",
         icon: KeyRound,
-        desc: "浏览器本地生成 SSH 公钥/私钥对，支持 RSA 和 Ed25519。",
+        desc: "浏览器本地生成 SSH 公钥/私钥对。",
         footerNote: "所有密钥在<strong>浏览器本地生成</strong>，不会上传到任何服务器。⚠️ 私钥请妥善保存，丢失无法恢复。"
       },
       {
@@ -81,6 +61,19 @@ export const toolsConfig: ToolCategory[] = [
     ]
   },
   {
+    category: "开发与转换",
+    icon: Code,
+    tools: [
+      { 
+        name: "JSON 转 YAML", 
+        href: "/json-yaml", 
+        icon: FileJson, 
+        desc: "将复杂的 JSON 数据快速转换为结构清晰的 YAML 格式。",
+        showFooter: false
+      },
+    ]
+  },
+  {
     category: "网络工具",
     icon: Globe,
     tools: [
@@ -88,7 +81,7 @@ export const toolsConfig: ToolCategory[] = [
         name: "设备检测",
         href: "/device-info",
         icon: MonitorSmartphone,
-        desc: "查看当前公网IP、浏览器、系统、屏幕及网络环境信息。",
+        desc: "查看当前公网IP、浏览器、系统、屏幕等信息。",
         footerNote:
           "除公网IP外，其余信息均在浏览器本地检测完成，不会上传到任何服务器。"
       }
@@ -126,20 +119,28 @@ export const toolsConfig: ToolCategory[] = [
       footerNote: "所有处理在 <strong>浏览器本地完成</strong>，图片<strong>不会上传到任何服务器</strong>。🎨 使用画笔涂抹主体即可，支持撤销/橡皮擦修正。"
     },
   ]
-},
+  },
+
   {
-    category: "开发与转换",
-    icon: Code,
+    category: "游戏",
+    icon: Gamepad,
     tools: [
-      { 
-        name: "JSON 转 YAML", 
-        href: "/json-yaml", 
-        icon: FileJson, 
-        desc: "将复杂的 JSON 数据快速转换为结构清晰的 YAML 格式。",
-        showFooter: false
+      {
+        name: "画板",
+        href: "/draw-board",
+        icon: Palette,
+        desc: "轻量级在线画板，支持多色画笔、橡皮擦、撤销重做。",
+        footerNote: "所有处理在 <strong>浏览器本地完成</strong>，图片<strong>不会上传到任何服务器</strong>。"
       },
+      {
+      name: "随机抽奖",
+      href: "/lucky-draw",
+      icon: Gift,
+      desc: "支持名单管理、自定义抽取人数、炫酷动画的在线抽奖工具。",
+      footerNote: "所有处理在 <strong>浏览器本地完成</strong>，数据<strong>不会上传到任何服务器</strong>。"
+    },
     ]
-  }
+  },
 ];
 
 // 辅助函数：根据 href 获取工具配置
