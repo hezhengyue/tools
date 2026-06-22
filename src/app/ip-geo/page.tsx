@@ -38,7 +38,9 @@ function IpGeoCore() {
   async function loadData() {
     setLoading(true);
     try {
+      // 👇 修改这里：将 /api/my-ip 改为 /edge-geo
       const res = await fetch("/api/my-ip", { cache: "no-store" });
+      
       if (res.ok) {
         const json = await res.json();
         setData(json);
@@ -47,7 +49,6 @@ function IpGeoCore() {
       }
     } catch (e) {
       console.error("Fetch Error", e);
-      // 本地开发如果 API 报错，给个默认值防止页面崩溃
       setData({ ip: "127.0.0.1", local: true, geo: null });
     } finally {
       setLoading(false);
