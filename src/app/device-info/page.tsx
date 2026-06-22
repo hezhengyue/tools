@@ -2,15 +2,13 @@
 
 import { useEffect, useState } from "react";
 import {
+  Globe,
+  Cpu,
+  Monitor,
+  MonitorSmartphone,
   Copy,
   Check,
   RefreshCw,
-  Globe,
-  Monitor,
-  Cpu,
-  MonitorSmartphone,
-  ChevronDown,
-  ChevronUp,
 } from "lucide-react";
 import ToolShell from "@/components/ToolShell";
 
@@ -21,14 +19,16 @@ interface DeviceInfo {
   browserVersion: string;
   language: string;
   languages: string[];
+
   userAgent: string;
 
   os: string;
   platform: string;
+
   cpu: number | string;
   memory: number | string;
 
-  gpuRenderer: string;
+  gpuName: string;
   gpuVendor: string;
 
   resolution: string;
@@ -47,9 +47,7 @@ function DeviceInfoCore() {
 
   const [copied, setCopied] = useState(false);
 
-  const [showUA, setShowUA] = useState(false);
-
-  const parseBrowser = (ua: string) => {
+  function parseBrowser(ua: string) {
     if (ua.includes("Edg/")) {
       return {
         name: "Microsoft Edge",
@@ -66,7 +64,7 @@ function DeviceInfoCore() {
 
     if (ua.includes("Firefox/")) {
       return {
-        name: "Firefox",
+        name: "Mozilla Firefox",
         version: ua.match(/Firefox\/([\d.]+)/)?.[1] || "-",
       };
     }
@@ -82,19 +80,19 @@ function DeviceInfoCore() {
       name: navigator.appName,
       version: "-",
     };
-  };
+  }
 
-  const parseOS = (ua: string) => {
-    if (ua.includes("Windows NT 10.0")) return "Windows 10 / 11";
+  function parseOS(ua: string) {
     if (ua.includes("Windows")) return "Windows";
-    if (ua.includes("Mac OS")) return "macOS";
+    if (ua.includes("Mac")) return "macOS";
     if (ua.includes("Android")) return "Android";
-    if (ua.includes("iPhone")) return "iOS";
+    if (ua.includes("iPhone") || ua.includes("iPad")) return "iOS";
     if (ua.includes("Linux")) return "Linux";
-    return "Unknown";
-  };
 
-  const getGpuInfo = () => {
+    return "Unknown";
+  }
+
+  function getGpuInfo() {
     try {
       const canvas = document.createElement("canvas");
 
@@ -104,8 +102,8 @@ function DeviceInfoCore() {
 
       if (!gl) {
         return {
-          renderer: "-",
-          vendor: "-",
+          gpuName: "-",
+          gpuVendor: "-",
         };
       }
 
@@ -115,28 +113,55 @@ function DeviceInfoCore() {
 
       if (!ext) {
         return {
-          renderer: "-",
-          vendor: "-",
+          gpuName: "-",
+          gpuVendor: "-",
         };
       }
 
-      return {
-        renderer: (gl as WebGLRenderingContext).getParameter(
+      const renderer = String(
+        (gl as WebGLRenderingContext).getParameter(
           (ext as any).UNMASKED_RENDERER_WEBGL
-        ),
-        vendor: (gl as WebGLRenderingContext).getParameter(
+        )
+      );
+
+      const vendor = String(
+        (gl as WebGLRenderingContext).getParameter(
           (ext as any).UNMASKED_VENDOR_WEBGL
-        ),
+        )
+      );
+
+      let gpuName = renderer;
+
+      const angleMatch = renderer.match(/ANGLE \((.*?) Direct3D/i);
+
+      if (angleMatch) {
+        gpuName = angleMatch[1];
+      }
+
+      gpuName = gpuName
+        .replace("Google", "")
+        .replace(/\s+/g, " ")
+        .trim();
+
+      let gpuVendor = vendor;
+
+      if (vendor.includes("NVIDIA")) gpuVendor = "NVIDIA";
+      else if (vendor.includes("Intel")) gpuVendor = "Intel";
+      else if (vendor.includes("AMD")) gpuVendor = "AMD";
+
+      return {
+        gpuName,
+        gpuVendor,
       };
     } catch {
       return {
-        renderer: "-",
-        vendor: "-",
+        gpuName: "-",
+        gpuVendor: "-",
       };
     }
-  };
+  }
 
-  const loadInfo = async () => {
+  async function loadInfo() {
     setLoading(true);
 
     try {
@@ -148,9 +173,9 @@ function DeviceInfoCore() {
         });
 
         if (res.ok) {
-          const data = await res.json();
+          const json = await res.json();
 
-          ip = data.ip || ip;
+          ip = json.ip || ip;
         }
       } catch {}
 
@@ -167,33 +192,30 @@ function DeviceInfoCore() {
         browserVersion: browser.version,
 
         language: navigator.language,
-
         languages: [...navigator.languages],
 
         userAgent: ua,
 
         os: parseOS(ua),
-
         platform: navigator.platform,
 
         cpu: navigator.hardwareConcurrency || "-",
 
         memory: (navigator as any).deviceMemory || "-",
 
-        gpuRenderer: gpu.renderer,
+        gpuName: gpu.gpuName,
+        gpuVendor: gpu.gpuVendor,
 
-        gpuVendor: gpu.vendor,
+        resolution: `${screen.width} × ${screen.height}`,
 
-        resolution: `${window.screen.width} × ${window.screen.height}`,
+        availableResolution: `${screen.availWidth} × ${screen.availHeight}`,
 
-        availableResolution: `${window.screen.availWidth} × ${window.screen.availHeight}`,
-
-        colorDepth: window.screen.colorDepth,
+        colorDepth: screen.colorDepth,
 
         pixelRatio: window.devicePixelRatio,
 
         orientation:
-          window.screen.orientation?.type || "Unknown",
+          screen.orientation?.type || "Unknown",
 
         timezone:
           Intl.DateTimeFormat().resolvedOptions().timeZone,
@@ -201,25 +223,13 @@ function DeviceInfoCore() {
     } finally {
       setLoading(false);
     }
-  };
+  }
 
   useEffect(() => {
     loadInfo();
   }, []);
 
-  const copyIp = () => {
-    if (!info) return;
-
-    navigator.clipboard.writeText(info.ip);
-
-    setCopied(true);
-
-    setTimeout(() => {
-      setCopied(false);
-    }, 1500);
-  };
-
-  const copyAll = () => {
+  function copyAll() {
     if (!info) return;
 
     navigator.clipboard.writeText(`
@@ -228,19 +238,19 @@ function DeviceInfoCore() {
 浏览器：${info.browser}
 版本：${info.browserVersion}
 语言：${info.language}
-备用语言：${info.languages.join(", ")}
+备用语言：${info.languages.join(",")}
 
 操作系统：${info.os}
 平台：${info.platform}
 CPU线程：${info.cpu}
 设备内存：${info.memory} GB
 
-GPU Renderer：${info.gpuRenderer}
-GPU Vendor：${info.gpuVendor}
+GPU型号：${info.gpuName}
+GPU厂商：${info.gpuVendor}
 
 分辨率：${info.resolution}
 可用区域：${info.availableResolution}
-颜色深度：${info.colorDepth} bit
+颜色深度：${info.colorDepth}
 像素比：${info.pixelRatio}
 屏幕方向：${info.orientation}
 
@@ -255,15 +265,15 @@ ${info.userAgent}
     setTimeout(() => {
       setCopied(false);
     }, 1500);
-  };
+  }
 
   return (
     <>
-          {/* 公网IP */}
+          {/* 当前公网IP */}
       <div className="relative mb-6">
-        <div className="bg-slate-50 border border-slate-200 rounded-2xl p-6 shadow-inner text-center relative overflow-hidden">
+        <div className="bg-slate-50 border border-slate-200 rounded-2xl p-6 text-center shadow-inner relative overflow-hidden">
           <div className="text-slate-500 text-sm mb-2">
-            当前公网 IP
+            🌍 当前公网IP
           </div>
 
           <div className="text-3xl md:text-4xl font-mono font-bold text-slate-800 break-all">
@@ -271,26 +281,19 @@ ${info.userAgent}
           </div>
 
           {copied && (
-            <div className="absolute inset-0 bg-green-50 flex items-center justify-center rounded-2xl text-green-600 font-medium">
+            <div className="absolute inset-0 bg-green-50 flex items-center justify-center text-green-600 font-medium rounded-2xl">
               <Check className="w-5 h-5 mr-2" />
-              已复制
+              已复制全部信息
             </div>
           )}
         </div>
-
-        <button
-          onClick={copyIp}
-          className="absolute right-4 top-1/2 -translate-y-1/2 p-3 bg-white border border-slate-200 rounded-xl text-slate-500 hover:text-indigo-600 hover:border-indigo-200 hover:bg-indigo-50 shadow-sm transition-all"
-        >
-          <Copy size={18} />
-        </button>
       </div>
 
-      {/* 浏览器信息 */}
+      {/* 浏览器 */}
       <div className="bg-white border border-slate-200 rounded-2xl p-5 mb-6">
         <h3 className="flex items-center font-semibold text-slate-700 mb-4">
           <Globe className="w-5 h-5 mr-2 text-indigo-600" />
-          浏览器
+          💻 浏览器
         </h3>
 
         <div className="space-y-3 text-sm">
@@ -311,6 +314,7 @@ ${info.userAgent}
 
           <div className="flex justify-between items-start">
             <span className="text-slate-500">备用语言</span>
+
             <span className="text-right max-w-[70%] break-all">
               {info?.languages.join(", ")}
             </span>
@@ -318,11 +322,11 @@ ${info.userAgent}
         </div>
       </div>
 
-      {/* 系统信息 */}
+      {/* 系统 */}
       <div className="bg-white border border-slate-200 rounded-2xl p-5 mb-6">
         <h3 className="flex items-center font-semibold text-slate-700 mb-4">
           <Cpu className="w-5 h-5 mr-2 text-indigo-600" />
-          系统
+          🖥 系统
         </h3>
 
         <div className="space-y-3 text-sm">
@@ -352,22 +356,21 @@ ${info.userAgent}
       <div className="bg-white border border-slate-200 rounded-2xl p-5 mb-6">
         <h3 className="flex items-center font-semibold text-slate-700 mb-4">
           <MonitorSmartphone className="w-5 h-5 mr-2 text-indigo-600" />
-          GPU
+          🎮 GPU
         </h3>
 
         <div className="space-y-3 text-sm">
-          <div>
-            <div className="text-slate-500 mb-1">Renderer</div>
-            <div className="break-all text-slate-700">
-              {info?.gpuRenderer}
-            </div>
+          <div className="flex justify-between items-start">
+            <span className="text-slate-500">型号</span>
+
+            <span className="text-right max-w-[70%] break-all">
+              {info?.gpuName}
+            </span>
           </div>
 
-          <div>
-            <div className="text-slate-500 mb-1">Vendor</div>
-            <div className="break-all text-slate-700">
-              {info?.gpuVendor}
-            </div>
+          <div className="flex justify-between">
+            <span className="text-slate-500">厂商</span>
+            <span>{info?.gpuVendor}</span>
           </div>
         </div>
       </div>
@@ -376,7 +379,7 @@ ${info.userAgent}
       <div className="bg-white border border-slate-200 rounded-2xl p-5 mb-6">
         <h3 className="flex items-center font-semibold text-slate-700 mb-4">
           <Monitor className="w-5 h-5 mr-2 text-indigo-600" />
-          屏幕
+          📺 屏幕
         </h3>
 
         <div className="space-y-3 text-sm">
@@ -421,24 +424,15 @@ ${info.userAgent}
 
       {/* UserAgent */}
       <div className="bg-white border border-slate-200 rounded-2xl p-5 mb-6">
-        <button
-          onClick={() => setShowUA(!showUA)}
-          className="w-full flex items-center justify-between font-semibold text-slate-700"
-        >
-          <span>UserAgent</span>
+        <h3 className="font-semibold text-slate-700 mb-4">
+          📄 UserAgent
+        </h3>
 
-          {showUA ? (
-            <ChevronUp size={18} />
-          ) : (
-            <ChevronDown size={18} />
-          )}
-        </button>
-
-        {showUA && (
-          <div className="mt-4 bg-slate-50 border border-slate-200 rounded-xl p-4 text-xs font-mono text-slate-600 break-all leading-6">
+        <div className="bg-slate-50 border border-slate-200 rounded-xl p-4">
+          <pre className="whitespace-pre-wrap break-all text-xs leading-6 text-slate-600 font-mono">
             {info?.userAgent}
-          </div>
-        )}
+          </pre>
+        </div>
       </div>
 
       {/* 操作按钮 */}
