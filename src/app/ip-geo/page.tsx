@@ -19,7 +19,7 @@ interface GeoInfo {
   cityName: string;
   latitude: number;
   longitude: number;
-  cisp: string; // 运营商
+  cisp: string;
 }
 
 interface IpGeoData {
@@ -42,8 +42,11 @@ function IpGeoCore() {
       if (res.ok) {
         const json = await res.json();
         setData(json);
+      } else {
+        console.error("API Error", res.status);
       }
-    } catch {
+    } catch (e) {
+      console.error("Fetch Error", e);
       // 本地开发如果 API 报错，给个默认值防止页面崩溃
       setData({ ip: "127.0.0.1", local: true, geo: null });
     } finally {
@@ -72,7 +75,7 @@ function IpGeoCore() {
       text += `ASN：AS${geo.asn || data.asn || "-"}\n`;
       text += `运营商/ISP：${geo.cisp || "-"}\n`;
     } else {
-      text += `\n地理位置信息：暂无 (本地开发或边缘节点未注入)\n`;
+      text += `\n地理位置信息：暂无 (本地开发或未部署至 EdgeOne)\n`;
     }
 
     navigator.clipboard.writeText(text);
@@ -82,7 +85,7 @@ function IpGeoCore() {
 
   return (
     <>
-      {/* 当前公网IP (复用你的顶部大卡片样式) */}
+      {/* 当前公网IP */}
       <div className="relative mb-6">
         <div className="bg-slate-50 border border-slate-200 rounded-2xl p-6 text-center shadow-inner relative overflow-hidden">
           <div className="text-slate-500 text-sm mb-2">
@@ -128,7 +131,7 @@ function IpGeoCore() {
             </>
           ) : (
             <div className="text-slate-400 text-center py-4">
-              {loading ? "正在获取..." : "暂无数据 (本地环境或未部署至 EdgeOne)"}
+              {loading ? "正在获取..." : "暂无数据 (请确保已部署至 EdgeOne Pages)"}
             </div>
           )}
         </div>
@@ -160,7 +163,7 @@ function IpGeoCore() {
         </div>
       </div>
 
-      {/* 操作按钮 (复用你的底部按钮样式) */}
+      {/* 操作按钮 */}
       <div className="grid grid-cols-2 gap-4">
         <button
           onClick={copyAll}
