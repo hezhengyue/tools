@@ -2,7 +2,7 @@
 import { 
   Key, FileJson, Shield, Code, Calculator, Link as LinkIcon, 
   Hash, KeyRound, FileBadge, FileDiff, Type, Palette, Gamepad, Gift,
-  Image, FileImage, Sparkles
+  Image, FileImage, Sparkles, Globe,
 } from "lucide-react";
 
 export interface ToolItem {
@@ -77,6 +77,20 @@ export const toolsConfig: ToolCategory[] = [
         desc: "浏览器本地生成自签名 X.509 TLS 证书，自动识别域名/IP，支持 SAN 扩展，输出标准 PEM 格式证书与私钥。",
         footerNote:
           "所有证书均在 <strong>浏览器本地生成</strong>，私钥不会上传到任何服务器。支持 RSA 2048/4096、SHA256/384/512、SAN 扩展及 localhost 开发证书。⚠️ 自签证书默认不受浏览器信任，生产环境建议使用权威 CA 签发证书。"
+      },
+    ]
+  },
+  {
+    category: "网络工具",
+    icon: Globe,
+    tools: [
+      {
+        name: "IP 查询",
+        href: "/lookup-ip",
+        icon: Globe,
+        desc: "查询当前公网 IP、地理位置、运营商及浏览器设备信息，支持一键复制。",
+        footerNote:
+          "IP 信息通过公开接口获取，设备信息由浏览器本地读取，<strong>不会上传任何图片、文件或隐私数据</strong>。"
       },
     ]
   },
