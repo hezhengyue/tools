@@ -494,17 +494,6 @@ export default function ImageCompressPage() {
             </div>
           </div>
         </div>
-
-        {/* 底部说明 */}
-        <div className="p-4 bg-slate-50 rounded-2xl border border-slate-200/60 text-sm text-slate-600">
-          <div className="flex items-start gap-2">
-            <Settings size={16} className="text-slate-400 mt-0.5 flex-shrink-0" />
-            <div className="space-y-1">
-              <p><strong>⚡ 纯前端处理</strong>：所有计算在浏览器完成，图片<em>不会上传到服务器</em></p>
-              <p><strong>💡 使用建议</strong>：上传社交媒体前开启压缩；仅清除隐私时关闭压缩保留原画质</p>
-            </div>
-          </div>
-        </div>
       </div>
     </ToolShell>
   );

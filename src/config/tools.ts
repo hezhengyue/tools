@@ -2,7 +2,7 @@
 import { 
   Key, FileJson, Shield, Code, Calculator, Link as LinkIcon, 
   Hash, KeyRound, FileBadge, FileDiff, Type, Palette, Gamepad, Gift,
-  Image, FileImage, Sparkles, Globe, MonitorSmartphone, MapPin, Brush
+  Image, FileImage, Sparkles, Globe, MonitorSmartphone, MapPin, Brush, FileCode
 } from "lucide-react";
 
 export interface ToolItem {
@@ -125,6 +125,13 @@ export const toolsConfig: ToolCategory[] = [
       icon: Sparkles, 
       desc: "涂抹主体自动虚化背景，模拟单反景深效果，纯前端零延迟。",
       footerNote: "所有处理在 <strong>浏览器本地完成</strong>，图片<strong>不会上传到任何服务器</strong>。🎨 使用画笔涂抹主体即可，支持撤销/橡皮擦修正。"
+    },
+    {
+      name: "图片转 Base64",
+      href: "/image-to-base64",
+      icon: FileCode,
+      desc: "一键将图片转换为 Base64 字符串，支持内联到 HTML/CSS 中，纯前端处理。",
+      footerNote: "所有转换均在 <strong>浏览器本地完成</strong>，图片<strong>不会上传到任何服务器</strong>。📋 支持复制带前缀或纯 Base64 数据。"
     },
   ]
   },
