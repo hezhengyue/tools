@@ -2,7 +2,8 @@
 import {
   Key, FileJson, Shield, Code,
   Hash, KeyRound, FileBadge, FileDiff, Type, Palette, Gamepad, Gift,
-  Image, FileImage, Sparkles, Globe, MonitorSmartphone, MapPin, FileCode
+  Image, FileImage, Sparkles, Globe, MonitorSmartphone, MapPin, FileCode,
+  Camera, ScreenShare, Video
 } from "lucide-react";
 
 /**
@@ -173,6 +174,34 @@ export const toolsConfig: ToolCategory[] = [
           mode: "local",
           subject: "图片",
           extra: "支持复制带前缀或纯 Base64 数据。"
+        }
+      },
+    ]
+  },
+  {
+    category: "媒体工具",
+    icon: Video,
+    tools: [
+      {
+        name: "在线截图",
+        href: "/screenshot",
+        icon: Camera,
+        desc: "捕获屏幕、窗口或标签页画面，支持延迟截取、拖动裁剪、复制到剪贴板与导出 PNG。",
+        footer: {
+          mode: "local",
+          subject: "截图内容",
+          extra: "截屏需要你在浏览器弹窗里手动选择要共享的画面，选择范围之外的内容不会被采集。"
+        }
+      },
+      {
+        name: "在线录屏",
+        href: "/screen-record",
+        icon: ScreenShare,
+        desc: "无需插件录制屏幕、窗口或标签页，可混入系统声音与麦克风，支持暂停续录，直接下载 WebM。",
+        footer: {
+          mode: "local",
+          subject: "录制内容",
+          extra: "录制同样需要手动授权共享画面，停止共享或关闭页面即自动结束并释放采集。"
         }
       },
     ]

@@ -20,7 +20,7 @@ This version has breaking changes — APIs, conventions, and file structure may 
 - `src/app/globals.css` → `@layer components` 里的 `.ui-*` 语义类（设计令牌）。
 - `src/components/ui/ToolUI.tsx` → 结构组件：`Panel` / `KeyRow` / `DisplayBox` / `Button` / `IconButton` / `Notice` / `EmptyState` / `Field` / `ToolActions` / `Badge`，以及输出块 `OutputBlock` / `CopyButton` / `DownloadButton` 与剪贴板工具 `writeClipboard`。
 - `src/config/site.ts` → 站点名称与描述的唯一来源（metadata / 侧栏 / 移动端顶栏共用）。
-- `src/components/ToolShell.tsx` → 所有工具页统一外壳（标题、图标、描述、内容卡、页脚）。13 个页面全部用它包裹。
+- `src/components/ToolShell.tsx` → 所有工具页统一外壳（标题、图标、描述、内容卡、页脚）。全部工具页都用它包裹。
 
 新工具页骨架：
 ```tsx
