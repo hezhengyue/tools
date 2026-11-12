@@ -1,24 +1,30 @@
 // src/components/ToolShell.tsx
+// 所有工具页共用的外壳模板：页面标题 → 内容卡 → 统一页脚说明。
+// 视觉样式统一取自 globals.css 的 .ui-* 语义类；页脚文案来自 config/tools.ts 的结构化数据。
 "use client";
 
 import { ReactNode } from "react";
 import { usePathname } from "next/navigation";
-import { toolsConfig } from "@/config/tools";
+import { toolsConfig, type ToolFooter } from "@/config/tools";
 import { AlertCircle } from "lucide-react";
 
 interface ToolShellProps {
   children: ReactNode;
-  showFooter?: boolean;
   extraContent?: ReactNode;
 }
 
-export default function ToolShell({ 
-  children, 
-  showFooter = true,
-  extraContent 
-}: ToolShellProps) {
+/** 按统一模板生成页脚主句：格式一致，内容按工具真实数据流区分 */
+function FooterSentence({ footer }: { footer: ToolFooter }) {
+  const emphasis = "font-semibold text-slate-800";
+  if (footer.mode === "server") {
+    return <>归属地由<strong className={emphasis}>服务端接口</strong>查询，仅将你的「{footer.subject}」发送给公共 IP 库。</>;
+  }
+  return <>所有处理在<strong className={emphasis}>浏览器本地完成</strong>，{footer.subject}不会上传到任何服务器。</>;
+}
+
+export default function ToolShell({ children, extraContent }: ToolShellProps) {
   const pathname = usePathname();
-  
+
   const currentTool = toolsConfig
     .flatMap((cat) => cat.tools)
     .find((tool) => tool.href === pathname);
@@ -26,14 +32,13 @@ export default function ToolShell({
   if (!currentTool) {
     return (
       <div className="max-w-4xl mx-auto">
-        <div className="bg-white p-6 md:p-8 rounded-3xl border border-slate-200/60 shadow-sm">
-          {children}
-        </div>
+        <div className="ui-panel md:p-8">{children}</div>
       </div>
     );
   }
 
   const Icon = currentTool.icon;
+  const footer = currentTool.footer;
 
   return (
     <div className="max-w-4xl mx-auto opacity-100 transition-opacity duration-500">
@@ -51,20 +56,16 @@ export default function ToolShell({
       </div>
 
       {/* 内容卡片：移动端内边距减小 */}
-      <div className="bg-white p-5 md:p-8 rounded-3xl border border-slate-200/60 shadow-sm">
-        {children}
-      </div>
+      <div className="ui-panel md:p-8">{children}</div>
 
-      {/* 底部说明 */}
-      {showFooter && currentTool.footerNote && (
-        <div className="mt-6 md:mt-8 p-4 bg-slate-50 rounded-2xl border border-slate-200/60">
-          <div className="flex items-start gap-2 text-sm text-slate-600">
-            <AlertCircle className="w-4 h-4 mt-0.5 shrink-0 text-amber-500" />
-            <div 
-              className="break-words"
-              dangerouslySetInnerHTML={{ __html: currentTool.footerNote }} 
-            />
-          </div>
+      {/* 底部说明：所有工具页格式统一（结构化渲染，不使用 innerHTML） */}
+      {footer && (
+        <div className="ui-footer">
+          <AlertCircle className="ui-footer-icon" />
+          <p className="min-w-0 leading-relaxed">
+            <FooterSentence footer={footer} />
+            {footer.extra && footer.extra}
+          </p>
         </div>
       )}
 

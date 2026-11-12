@@ -4,9 +4,10 @@
 import { useState, useRef, useCallback, useEffect } from "react";
 import { 
   Download, Trash2, Brush, Eraser, Undo, Redo,
-  Settings, Image as ImageIcon, Info, Loader2, Sparkles, Droplets
+  Settings, Image as ImageIcon, Loader2, Sparkles, Droplets
 } from "lucide-react";
 import ToolShell from "@/components/ToolShell";
+import { Notice } from "@/components/ui/ToolUI";
 
 export default function ImageBackgroundBlurPage() {
   const [image, setImage] = useState<HTMLImageElement | null>(null);
@@ -257,8 +258,8 @@ export default function ImageBackgroundBlurPage() {
       <div className="space-y-5">
         {!image ? (
           <div
-            className={`border-2 border-dashed rounded-3xl p-12 flex flex-col items-center justify-center transition-all cursor-pointer min-h-[400px] ${
-              dragActive ? "border-indigo-500 bg-indigo-50/50 scale-[1.01]" : "border-slate-300 hover:border-slate-400 bg-slate-50/50"
+            className={`border-2 border-dashed rounded-2xl p-12 flex flex-col items-center justify-center transition-all cursor-pointer min-h-[400px] ${
+              dragActive ? "border-indigo-500 bg-indigo-50/50 scale-[1.01]" : "border-slate-200 hover:border-slate-400 bg-slate-50/50"
             }`}
             onDragOver={(e) => { e.preventDefault(); setDragActive(true); }}
             onDragLeave={() => setDragActive(false)}
@@ -292,8 +293,8 @@ export default function ImageBackgroundBlurPage() {
               <div className="w-px h-8 bg-slate-200 mx-1 hidden sm:block" />
 
               <div className="flex items-center gap-1">
-                <button onClick={() => applyHistory(historyIndex - 1)} disabled={historyIndex <= 0} className="p-2 text-slate-600 rounded-lg hover:bg-slate-100 disabled:opacity-30"><Undo size={18} /></button>
-                <button onClick={() => applyHistory(historyIndex + 1)} disabled={historyIndex >= history.length - 1} className="p-2 text-slate-600 rounded-lg hover:bg-slate-100 disabled:opacity-30"><Redo size={18} /></button>
+                <button onClick={() => applyHistory(historyIndex - 1)} disabled={historyIndex <= 0} className="ui-icon-btn"><Undo size={18} /></button>
+                <button onClick={() => applyHistory(historyIndex + 1)} disabled={historyIndex >= history.length - 1} className="ui-icon-btn"><Redo size={18} /></button>
               </div>
 
               <div className="w-px h-8 bg-slate-200 mx-1 hidden sm:block" />
@@ -312,11 +313,11 @@ export default function ImageBackgroundBlurPage() {
               </div>
 
               <div className="flex items-center gap-2 ml-auto">
-                <button onClick={handleReset} className="p-2 text-red-500 rounded-lg hover:bg-red-50 border border-transparent hover:border-red-100"><Trash2 size={18} /></button>
+                <button onClick={handleReset} className="ui-icon-btn text-red-600 hover:bg-red-50"><Trash2 size={18} /></button>
                 <button 
                   onClick={handleProcess} 
                   disabled={isProcessing || !!resultUrl} 
-                  className="px-4 py-2 bg-slate-900 text-white rounded-xl font-medium hover:bg-slate-800 disabled:opacity-50 flex items-center gap-2 text-sm shadow-sm"
+                  className="px-4 py-2 bg-indigo-600 text-white rounded-xl font-medium hover:bg-indigo-700 disabled:opacity-50 flex items-center gap-2 text-sm shadow-sm"
                 >
                   {isProcessing ? <Loader2 size={16} className="animate-spin" /> : <Sparkles size={16} />}
                   {resultUrl ? "已生成" : "生成"}
@@ -385,7 +386,7 @@ export default function ImageBackgroundBlurPage() {
                   <a 
                     href={resultUrl} 
                     download={fileName.replace(/\.\w+$/, "") + "-blur.jpg"}
-                    className="ml-4 px-5 py-2.5 bg-indigo-600 text-white rounded-xl hover:bg-indigo-700 font-medium flex items-center gap-2 shadow-sm transition-all"
+                    className="ui-btn ui-btn-primary ui-btn-sm ml-4"
                   >
                     <Download size={18} />
                     下载高清图
@@ -396,12 +397,9 @@ export default function ImageBackgroundBlurPage() {
           </div>
         )}
 
-        <div className="px-5 py-4 bg-slate-50 rounded-2xl text-sm text-slate-500 border border-slate-100 flex gap-3 leading-relaxed">
-          <Info size={18} className="text-indigo-400 shrink-0 mt-0.5" />
-          <p>
-            涂抹红色区域将保持清晰，其余背景自动虚化。所有处理在本地完成。
-          </p>
-        </div>
+        <Notice tone="info">
+          涂抹红色区域将保持清晰，其余背景自动虚化。所有处理在本地完成。
+        </Notice>
       </div>
     </ToolShell>
   );

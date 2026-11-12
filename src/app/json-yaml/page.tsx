@@ -5,6 +5,7 @@ import { useState, useEffect, useMemo } from "react";
 import yaml from "js-yaml";
 import { AlertCircle, Copy, Check } from "lucide-react";
 import ToolShell from "@/components/ToolShell";
+import { Notice } from "@/components/ui/ToolUI";
 
 // ============ 核心功能组件（只写业务逻辑） ============
 
@@ -85,14 +86,14 @@ function JsonYamlCore() {
           <button
             onClick={handleFormatJson}
             disabled={!jsonInput.trim()}
-            className="px-3 py-1.5 text-sm bg-slate-100 text-slate-600 rounded-lg hover:bg-slate-200 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+            className="ui-btn ui-btn-ghost ui-btn-sm"
           >
             格式化
           </button>
           {jsonInput && (
             <button
               onClick={handleClear}
-              className="px-3 py-1.5 text-sm text-slate-500 hover:text-red-600 transition-colors"
+              className="ui-btn ui-btn-ghost ui-btn-sm hover:text-red-600"
             >
               清空
             </button>
@@ -111,10 +112,8 @@ function JsonYamlCore() {
           {yamlOutput && (
             <button
               onClick={copyToClipboard}
-              className={`flex items-center gap-1.5 px-3 py-1.5 text-sm rounded-lg transition-all ${
-                copied
-                  ? "bg-green-100 text-green-600"
-                  : "bg-teal-600 text-white hover:bg-teal-700"
+              className={`ui-btn ui-btn-sm ${
+                copied ? "bg-emerald-100 text-emerald-700" : "ui-btn-primary"
               }`}
             >
               {copied ? <Check size={14} /> : <Copy size={14} />}
@@ -130,7 +129,7 @@ function JsonYamlCore() {
         {/* 左侧输入框 */}
         <div className="flex-1 flex flex-col">
           <div className="flex items-center justify-between mb-3">
-            <label className="font-bold text-slate-700 text-sm tracking-wide">JSON 输入</label>
+            <label className="ui-label text-sm">JSON 输入</label>
             {error && (
               <span className="flex items-center text-xs text-red-500 font-medium animate-pulse">
                 <AlertCircle size={14} className="mr-1" /> {error}
@@ -138,8 +137,8 @@ function JsonYamlCore() {
             )}
           </div>
           <textarea 
-            className={`flex-1 w-full p-5 bg-slate-50/50 border rounded-2xl focus:outline-none focus:ring-2 focus:ring-teal-500/20 transition-all font-mono text-sm resize-none text-slate-700 ${
-              error ? "border-red-300 bg-red-50/30" : "border-slate-200 focus:border-teal-500"
+            className={`ui-textarea flex-1 resize-none ${
+              error ? "border-red-300 bg-red-50/30" : ""
             }`}
             placeholder={`{
   "name": "DevTools",
@@ -159,7 +158,7 @@ function JsonYamlCore() {
         {/* 右侧输出框 */}
         <div className="flex-1 flex flex-col">
           <div className="flex items-center justify-between mb-3">
-            <label className="font-bold text-slate-700 text-sm tracking-wide">YAML 输出</label>
+            <label className="ui-label text-sm">YAML 输出</label>
             {yamlOutput && (
               <span className="text-xs text-emerald-600 font-medium flex items-center gap-1">
                 <Check size={12} /> 已转换
@@ -167,7 +166,7 @@ function JsonYamlCore() {
             )}
           </div>
           <textarea 
-            className="flex-1 w-full p-5 bg-slate-100 border border-slate-200 rounded-2xl focus:outline-none font-mono text-sm resize-none text-slate-800 shadow-inner"
+            className="ui-textarea flex-1 resize-none"
             readOnly
             value={yamlOutput}
             placeholder="输入 JSON 后自动转换..."
@@ -177,16 +176,15 @@ function JsonYamlCore() {
 
       {/* 空状态提示 */}
       {!jsonInput && !yamlOutput && (
-        <div className="mt-6 p-4 bg-amber-50 border border-amber-200 rounded-2xl text-amber-700 text-sm flex items-start gap-2">
-          <span>💡</span>
-          <span>在左侧输入或粘贴标准 JSON 数据，<strong>实时自动转换</strong>为 YAML 格式，无需点击按钮。</span>
-        </div>
+        <Notice tone="tip" className="mt-6">
+          在左侧输入或粘贴标准 JSON 数据，<strong>实时自动转换</strong>为 YAML 格式，无需点击按钮。
+        </Notice>
       )}
 
       {/* 加载状态（解析中） */}
       {jsonInput.trim() && !yamlOutput && !error && (
         <div className="mt-4 flex items-center gap-2 text-sm text-slate-400">
-          <div className="w-4 h-4 border-2 border-slate-300 border-t-teal-500 rounded-full animate-spin" />
+          <div className="w-4 h-4 border-2 border-slate-200 border-t-indigo-600 rounded-full animate-spin" />
           解析中...
         </div>
       )}
@@ -198,7 +196,7 @@ function JsonYamlCore() {
 
 export default function JsonYamlPage() {
   return (
-    <ToolShell showFooter={false}>
+    <ToolShell>
       <JsonYamlCore />
     </ToolShell>
   );

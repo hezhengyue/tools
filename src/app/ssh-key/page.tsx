@@ -124,7 +124,7 @@ function SshKeyCore() {
       <button
         onClick={generate}
         disabled={loading}
-        className="w-full py-3 bg-indigo-600 hover:bg-indigo-700 active:bg-indigo-800 text-white rounded-xl flex justify-center items-center font-medium transition-colors disabled:opacity-70 disabled:cursor-not-allowed"
+        className="ui-btn ui-btn-primary w-full py-3"
       >
         <RefreshCw
           className={loading ? "animate-spin mr-2" : "mr-2"}
@@ -149,7 +149,7 @@ function SshKeyCore() {
               title="复制公钥"
             >
               {copied === "pub" ? (
-                <Check size={16} className="text-green-600" />
+                <Check size={16} className="text-emerald-700" />
               ) : (
                 <Copy size={16} className="text-slate-500" />
               )}
@@ -183,7 +183,7 @@ function SshKeyCore() {
           readOnly
           value={keyPair?.publicKey || ""}
           placeholder="点击上方按钮生成密钥..."
-          className="w-full min-h-[120px] font-mono text-xs p-3 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500/20 resize-y"
+          className="ui-textarea min-h-[120px] text-xs"
         />
       </div>
 
@@ -205,7 +205,7 @@ function SshKeyCore() {
               title="复制私钥"
             >
               {copied === "pri" ? (
-                <Check size={16} className="text-green-600" />
+                <Check size={16} className="text-emerald-700" />
               ) : (
                 <Copy size={16} className="text-slate-500" />
               )}
@@ -239,7 +239,7 @@ function SshKeyCore() {
           readOnly
           value={keyPair?.privateKey || ""}
           placeholder="点击上方按钮生成密钥..."
-          className="w-full min-h-[200px] font-mono text-xs p-3 bg-amber-50/50 border border-amber-200/50 rounded-xl focus:outline-none focus:ring-2 focus:ring-amber-500/20 resize-y text-amber-900"
+          className="ui-textarea min-h-[200px] text-xs bg-amber-50/50 border-amber-200/50 text-amber-900"
         />
       </div>
 
@@ -262,7 +262,7 @@ function SshKeyCore() {
                 title="复制命令"
               >
                 {copied === "cmd" ? (
-                  <Check size={16} className="text-green-600" />
+                  <Check size={16} className="text-emerald-700" />
                 ) : (
                   <Copy size={16} className="text-slate-500" />
                 )}

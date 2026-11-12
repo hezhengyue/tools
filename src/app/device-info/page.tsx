@@ -217,31 +217,31 @@ ${info.userAgent}
     <div className="relative">
       {/* 复制成功的全局提示 */}
       {copied && (
-        <div className="absolute inset-0 z-50 bg-green-50/95 flex items-center justify-center text-green-600 font-medium rounded-2xl border border-green-200 shadow-lg backdrop-blur-sm">
+        <div className="absolute inset-0 z-50 bg-emerald-50/95 flex items-center justify-center text-emerald-700 font-medium rounded-2xl border border-emerald-200 shadow-lg backdrop-blur-sm">
           <Check className="w-6 h-6 mr-2" />
           已复制全部信息
         </div>
       )}
 
       {/* 浏览器 */}
-      <div className="bg-white border border-slate-200 rounded-2xl p-5 mb-6">
-        <h3 className="flex items-center font-semibold text-slate-700 mb-4">
-          <Globe className="w-5 h-5 mr-2 text-indigo-600" />
+      <div className="ui-panel mb-6">
+        <h3 className="ui-panel-title">
+          <Globe className="ui-panel-icon" />
           💻 浏览器
         </h3>
 
-        <div className="space-y-3 text-sm">
-          <div className="flex justify-between">
+        <div className="ui-kv-list">
+          <div className="ui-kv">
             <span className="text-slate-500">浏览器</span>
             <span>{info?.browser}</span>
           </div>
 
-          <div className="flex justify-between">
+          <div className="ui-kv">
             <span className="text-slate-500">版本</span>
             <span>{info?.browserVersion}</span>
           </div>
 
-          <div className="flex justify-between">
+          <div className="ui-kv">
             <span className="text-slate-500">语言</span>
             <span>{info?.language}</span>
           </div>
@@ -256,29 +256,29 @@ ${info.userAgent}
       </div>
 
       {/* 系统 */}
-      <div className="bg-white border border-slate-200 rounded-2xl p-5 mb-6">
-        <h3 className="flex items-center font-semibold text-slate-700 mb-4">
-          <Cpu className="w-5 h-5 mr-2 text-indigo-600" />
+      <div className="ui-panel mb-6">
+        <h3 className="ui-panel-title">
+          <Cpu className="ui-panel-icon" />
           🖥 系统
         </h3>
 
-        <div className="space-y-3 text-sm">
-          <div className="flex justify-between">
+        <div className="ui-kv-list">
+          <div className="ui-kv">
             <span className="text-slate-500">操作系统</span>
             <span>{info?.os}</span>
           </div>
 
-          <div className="flex justify-between">
+          <div className="ui-kv">
             <span className="text-slate-500">平台</span>
             <span>{info?.platform}</span>
           </div>
 
-          <div className="flex justify-between">
+          <div className="ui-kv">
             <span className="text-slate-500">CPU线程</span>
             <span>{info?.cpu}</span>
           </div>
 
-          <div className="flex justify-between">
+          <div className="ui-kv">
             <span className="text-slate-500">设备内存</span>
             <span>{info?.memory} GB</span>
           </div>
@@ -286,13 +286,13 @@ ${info.userAgent}
       </div>
 
       {/* GPU */}
-      <div className="bg-white border border-slate-200 rounded-2xl p-5 mb-6">
-        <h3 className="flex items-center font-semibold text-slate-700 mb-4">
-          <MonitorSmartphone className="w-5 h-5 mr-2 text-indigo-600" />
+      <div className="ui-panel mb-6">
+        <h3 className="ui-panel-title">
+          <MonitorSmartphone className="ui-panel-icon" />
           🎮 GPU
         </h3>
 
-        <div className="space-y-3 text-sm">
+        <div className="ui-kv-list">
           <div className="flex justify-between items-start">
             <span className="text-slate-500">型号</span>
             <span className="text-right max-w-[70%] break-all">
@@ -300,7 +300,7 @@ ${info.userAgent}
             </span>
           </div>
 
-          <div className="flex justify-between">
+          <div className="ui-kv">
             <span className="text-slate-500">厂商</span>
             <span>{info?.gpuVendor}</span>
           </div>
@@ -308,34 +308,34 @@ ${info.userAgent}
       </div>
 
       {/* 屏幕 */}
-      <div className="bg-white border border-slate-200 rounded-2xl p-5 mb-6">
-        <h3 className="flex items-center font-semibold text-slate-700 mb-4">
-          <Monitor className="w-5 h-5 mr-2 text-indigo-600" />
+      <div className="ui-panel mb-6">
+        <h3 className="ui-panel-title">
+          <Monitor className="ui-panel-icon" />
           📺 屏幕
         </h3>
 
-        <div className="space-y-3 text-sm">
-          <div className="flex justify-between">
+        <div className="ui-kv-list">
+          <div className="ui-kv">
             <span className="text-slate-500">分辨率</span>
             <span>{info?.resolution}</span>
           </div>
 
-          <div className="flex justify-between">
+          <div className="ui-kv">
             <span className="text-slate-500">可用区域</span>
             <span>{info?.availableResolution}</span>
           </div>
 
-          <div className="flex justify-between">
+          <div className="ui-kv">
             <span className="text-slate-500">颜色深度</span>
             <span>{info?.colorDepth} bit</span>
           </div>
 
-          <div className="flex justify-between">
+          <div className="ui-kv">
             <span className="text-slate-500">像素比</span>
             <span>{info?.pixelRatio}</span>
           </div>
 
-          <div className="flex justify-between">
+          <div className="ui-kv">
             <span className="text-slate-500">屏幕方向</span>
             <span>{info?.orientation}</span>
           </div>
@@ -343,19 +343,19 @@ ${info.userAgent}
       </div>
 
       {/* 时区 */}
-      <div className="bg-white border border-slate-200 rounded-2xl p-5 mb-6">
+      <div className="ui-panel mb-6">
         <h3 className="font-semibold text-slate-700 mb-4">
           🌏 时区
         </h3>
 
-        <div className="flex justify-between text-sm">
+        <div className="ui-kv text-sm">
           <span className="text-slate-500">TimeZone</span>
           <span>{info?.timezone}</span>
         </div>
       </div>
 
       {/* UserAgent */}
-      <div className="bg-white border border-slate-200 rounded-2xl p-5 mb-6">
+      <div className="ui-panel mb-6">
         <h3 className="font-semibold text-slate-700 mb-4">
           📄 UserAgent
         </h3>
@@ -371,7 +371,7 @@ ${info.userAgent}
       <div className="grid grid-cols-2 gap-4">
         <button
           onClick={copyAll}
-          className="flex items-center justify-center py-3 bg-white border border-slate-200 rounded-xl font-semibold hover:bg-slate-50 transition-all"
+          className="ui-btn ui-btn-secondary w-full py-3"
         >
           <Copy size={18} className="mr-2" />
           复制全部
@@ -379,7 +379,7 @@ ${info.userAgent}
 
         <button
           onClick={loadInfo}
-          className="flex items-center justify-center py-3 bg-indigo-600 text-white rounded-xl font-semibold hover:bg-indigo-700 transition-all shadow-md shadow-indigo-600/20"
+          className="ui-btn ui-btn-primary w-full py-3"
         >
           <RefreshCw
             size={18}

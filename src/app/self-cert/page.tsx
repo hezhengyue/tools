@@ -15,6 +15,7 @@ import {
 } from "lucide-react";
 
 import ToolShell from "@/components/ToolShell";
+import { Notice } from "@/components/ui/ToolUI";
 
 import {
   useCertGenerator,
@@ -316,20 +317,10 @@ export default function SelfCertPage() {
 
   return (
     <ToolShell>
-      <div className="max-w-5xl mx-auto space-y-6">
+      <div className="space-y-6">
 
-        <div>
-          <h1 className="text-3xl font-bold">
-            自签名证书生成器
-          </h1>
-
-          <p className="text-slate-500 mt-2">
-            自动识别域名/IP，
-            自动生成 SAN 扩展
-          </p>
-        </div>
-
-        <div className="bg-white rounded-2xl border p-6 space-y-5">
+        {/* 页面标题与描述由 ToolShell 统一渲染，这里不再重复 */}
+        <div className="ui-panel-muted space-y-5">
 
           <div>
             <label className="font-medium">
@@ -349,7 +340,7 @@ export default function SelfCertPage() {
                 )
               }
               placeholder="example.com、*.example.com、192.168.1.100"
-              className="w-full mt-2 border rounded-xl p-3"
+              className="w-full mt-2 border border-slate-200 rounded-xl p-3"
             />
           </div>
 
@@ -380,14 +371,14 @@ export default function SelfCertPage() {
               {autoSan && (
                 <div className="flex gap-2">
 
-                  <span className="w-20 rounded-lg bg-green-100 text-green-700 flex items-center justify-center">
+                  <span className="w-20 rounded-lg bg-emerald-100 text-emerald-700 flex items-center justify-center">
                     AUTO
                   </span>
 
                   <input
                     readOnly
                     value={`${autoSan.type}: ${autoSan.value}`}
-                    className="flex-1 border rounded-lg p-2 bg-slate-50"
+                    className="flex-1 border border-slate-200 rounded-lg p-2 bg-slate-50"
                   />
 
                 </div>
@@ -416,7 +407,7 @@ export default function SelfCertPage() {
                         )
                       }
                       placeholder="额外SAN"
-                      className="flex-1 border rounded-lg p-2"
+                      className="flex-1 border border-slate-200 rounded-lg p-2"
                     />
 
                     <button
@@ -471,7 +462,7 @@ export default function SelfCertPage() {
                       e.target.value
                     )
                   }
-                  className="border rounded-xl p-3"
+                  className="border border-slate-200 rounded-xl p-3"
                 />
 
                 <input
@@ -483,7 +474,7 @@ export default function SelfCertPage() {
                       e.target.value
                     )
                   }
-                  className="border rounded-xl p-3"
+                  className="border border-slate-200 rounded-xl p-3"
                 />
 
                 <input
@@ -504,7 +495,7 @@ export default function SelfCertPage() {
                       )
                     )
                   }
-                  className="border rounded-xl p-3"
+                  className="border border-slate-200 rounded-xl p-3"
                 />
 
                 <select
@@ -516,7 +507,7 @@ export default function SelfCertPage() {
                       ) as 2048 | 4096
                     )
                   }
-                  className="border rounded-xl p-3"
+                  className="border border-slate-200 rounded-xl p-3"
                 >
                   <option value={2048}>
                     RSA 2048
@@ -537,7 +528,7 @@ export default function SelfCertPage() {
                         | "sha512"
                     )
                   }
-                  className="border rounded-xl p-3"
+                  className="border border-slate-200 rounded-xl p-3"
                 >
                   <option value="sha256">
                     SHA256
@@ -561,7 +552,7 @@ export default function SelfCertPage() {
             <button
               disabled={isGenerating}
               onClick={generate}
-              className="bg-indigo-600 text-white py-3 rounded-xl flex items-center justify-center gap-2"
+              className="ui-btn ui-btn-primary w-full py-3"
             >
               <Shield size={18} />
 
@@ -573,7 +564,7 @@ export default function SelfCertPage() {
             <button
               disabled={isGenerating}
               onClick={generateLocalhost}
-              className="bg-emerald-600 text-white py-3 rounded-xl flex items-center justify-center gap-2"
+              className="ui-btn ui-btn-primary w-full py-3"
             >
               <Laptop size={18} />
 
@@ -583,9 +574,7 @@ export default function SelfCertPage() {
           </div>
 
           {error && (
-            <div className="p-4 rounded-xl bg-red-50 text-red-600 border border-red-200">
-              {error}
-            </div>
+            <Notice tone="error">{error}</Notice>
           )}
 
         </div>
@@ -593,9 +582,9 @@ export default function SelfCertPage() {
         {result && (
           <div className="space-y-6">
 
-            <div className="bg-green-50 border border-green-200 rounded-2xl p-6">
+            <div className="bg-emerald-50 border border-emerald-200 rounded-2xl p-6">
 
-              <h2 className="text-lg font-semibold text-green-700">
+              <h2 className="text-lg font-semibold text-emerald-700">
                 证书生成成功
               </h2>
 
@@ -657,7 +646,7 @@ export default function SelfCertPage() {
                     (item, index) => (
                       <span
                         key={index}
-                        className="px-2 py-1 rounded-lg border bg-white text-xs"
+                        className="px-2 py-1 rounded-lg border border-slate-200 bg-white text-xs"
                       >
                         {item}
                       </span>
@@ -677,7 +666,7 @@ export default function SelfCertPage() {
                     "private-key.pem"
                   )
                 }
-                className="bg-indigo-600 text-white py-3 rounded-xl flex items-center justify-center gap-2"
+                className="ui-btn ui-btn-primary w-full py-3"
               >
                 <Download size={16} />
                 下载 private-key.pem
@@ -690,7 +679,7 @@ export default function SelfCertPage() {
                     "certificate.pem"
                   )
                 }
-                className="bg-emerald-600 text-white py-3 rounded-xl flex items-center justify-center gap-2"
+                className="ui-btn ui-btn-primary w-full py-3"
               >
                 <Download size={16} />
                 下载 certificate.pem
@@ -707,7 +696,7 @@ export default function SelfCertPage() {
                     "key"
                   )
                 }
-                className="border rounded-xl py-3 flex items-center justify-center gap-2"
+                className="ui-btn ui-btn-secondary w-full py-3"
               >
                 {copied === "key"
                   ? <Check size={16} />
@@ -723,7 +712,7 @@ export default function SelfCertPage() {
                     "cert"
                   )
                 }
-                className="border rounded-xl py-3 flex items-center justify-center gap-2"
+                className="ui-btn ui-btn-secondary w-full py-3"
               >
                 {copied === "cert"
                   ? <Check size={16} />
@@ -734,7 +723,7 @@ export default function SelfCertPage() {
 
             </div>
 
-            <details className="bg-white border rounded-2xl p-4">
+            <details className="bg-white border border-slate-200 rounded-2xl p-4">
 
               <summary className="cursor-pointer font-medium">
                 查看 private-key.pem
@@ -743,12 +732,12 @@ export default function SelfCertPage() {
               <textarea
                 readOnly
                 value={result.privateKey}
-                className="w-full mt-4 min-h-[250px] border rounded-xl p-4 font-mono text-xs"
+                className="ui-textarea mt-4 min-h-[250px] text-xs"
               />
 
             </details>
 
-            <details className="bg-white border rounded-2xl p-4">
+            <details className="bg-white border border-slate-200 rounded-2xl p-4">
 
               <summary className="cursor-pointer font-medium">
                 查看 certificate.pem
@@ -757,7 +746,7 @@ export default function SelfCertPage() {
               <textarea
                 readOnly
                 value={result.certificate}
-                className="w-full mt-4 min-h-[250px] border rounded-xl p-4 font-mono text-xs"
+                className="ui-textarea mt-4 min-h-[250px] text-xs"
               />
 
             </details>

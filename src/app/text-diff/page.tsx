@@ -4,6 +4,7 @@
 import { useState, useEffect } from "react";
 import { Copy, Check, RefreshCw, ArrowRightLeft, FileDiff } from "lucide-react";
 import ToolShell from "@/components/ToolShell";
+import { Notice } from "@/components/ui/ToolUI";
 import { useTextDiff, type DiffMode } from "./useTextDiff";
 
 function TextDiffCore() {
@@ -93,7 +94,7 @@ function TextDiffCore() {
         <div className="flex items-center gap-2">
           <button
             onClick={swapTexts}
-            className="flex items-center gap-1.5 px-3 py-1.5 text-sm bg-slate-100 text-slate-600 rounded-lg hover:bg-slate-200 transition-colors"
+            className="ui-btn ui-btn-ghost ui-btn-sm"
             title="交换左右内容"
           >
             <ArrowRightLeft size={14} />
@@ -101,7 +102,7 @@ function TextDiffCore() {
           </button>
           <button
             onClick={clearAll}
-            className="px-3 py-1.5 text-sm text-slate-500 hover:text-red-600 transition-colors"
+            className="ui-btn ui-btn-ghost ui-btn-sm hover:text-red-600"
           >
             清空
           </button>
@@ -118,7 +119,7 @@ function TextDiffCore() {
               <button
                 onClick={() => copyToClipboard(oldText, "old")}
                 className={`p-1.5 rounded transition-all ${
-                  copied === "old" ? "text-green-600" : "text-slate-400 hover:text-indigo-600"
+                  copied === "old" ? "text-emerald-700" : "text-slate-400 hover:text-indigo-600"
                 }`}
                 title="复制"
               >
@@ -130,7 +131,7 @@ function TextDiffCore() {
             value={oldText}
             onChange={(e) => setOldText(e.target.value)}
             placeholder="粘贴或输入原始文本..."
-            className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl font-mono text-sm min-h-[200px] resize-y focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 outline-none"
+            className="ui-textarea min-h-[200px]"
           />
         </div>
 
@@ -142,7 +143,7 @@ function TextDiffCore() {
               <button
                 onClick={() => copyToClipboard(newText, "new")}
                 className={`p-1.5 rounded transition-all ${
-                  copied === "new" ? "text-green-600" : "text-slate-400 hover:text-indigo-600"
+                  copied === "new" ? "text-emerald-700" : "text-slate-400 hover:text-indigo-600"
                 }`}
                 title="复制"
               >
@@ -154,17 +155,14 @@ function TextDiffCore() {
             value={newText}
             onChange={(e) => setNewText(e.target.value)}
             placeholder="粘贴或输入修改后的文本..."
-            className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl font-mono text-sm min-h-[200px] resize-y focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 outline-none"
+            className="ui-textarea min-h-[200px]"
           />
         </div>
       </div>
 
       {/* 错误提示 */}
       {error && (
-        <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-xl text-red-600 text-sm flex items-center gap-2">
-          <span>⚠️</span>
-          {error}
-        </div>
+        <Notice tone="error" className="mb-4">{error}</Notice>
       )}
 
       {/* 差异结果 */}
@@ -183,7 +181,7 @@ function TextDiffCore() {
                 }}
                 className={`flex items-center gap-1.5 px-3 py-1.5 text-sm rounded-lg transition-all ${
                   copied === "diff"
-                    ? "bg-green-100 text-green-600"
+                    ? "bg-emerald-100 text-emerald-700"
                     : "bg-indigo-600 text-white hover:bg-indigo-700"
                 }`}
               >
@@ -195,7 +193,7 @@ function TextDiffCore() {
           
           {isComputing ? (
             <div className="flex items-center gap-3 p-4 bg-slate-50 rounded-xl border border-slate-200">
-              <div className="w-5 h-5 border-2 border-slate-300 border-t-indigo-600 rounded-full animate-spin" />
+              <div className="w-5 h-5 border-2 border-slate-200 border-t-indigo-600 rounded-full animate-spin" />
               <span className="text-slate-600">计算差异中...</span>
             </div>
           ) : result ? (
@@ -219,26 +217,23 @@ function TextDiffCore() {
               {renderDiff()}
             </>
           ) : (
-            <div className="p-4 bg-slate-50 rounded-xl border border-slate-200 text-slate-500 text-sm">
-              输入文本后自动计算差异...
-            </div>
+            <Notice tone="info">输入文本后自动计算差异...</Notice>
           )}
         </div>
       )}
 
       {/* 空状态提示 */}
       {!oldText && !newText && (
-        <div className="p-4 bg-amber-50 border border-amber-200 rounded-2xl text-amber-700 text-sm flex items-start gap-2">
-          <span>💡</span>
-          <span>在左右两侧分别输入原文本和新文本，<strong>自动实时对比</strong>差异。支持按行/词/字符三种模式。</span>
-        </div>
+        <Notice tone="tip">
+          在左右两侧分别输入原文本和新文本，<strong>自动实时对比</strong>差异。支持按行/词/字符三种模式。
+        </Notice>
       )}
 
       {/* 手动触发按钮（备用） */}
       <button
         onClick={() => computeDiff({ oldText, newText, mode })}
         disabled={isComputing || (!oldText && !newText)}
-        className="w-full flex items-center justify-center py-3 bg-indigo-600 text-white rounded-xl font-medium hover:bg-indigo-700 transition-all disabled:opacity-50"
+        className="ui-btn ui-btn-primary w-full py-3"
       >
         <RefreshCw size={18} className={`mr-2 ${isComputing ? "animate-spin" : ""}`} />
         {isComputing ? "计算中..." : "重新计算差异"}

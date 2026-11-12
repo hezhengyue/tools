@@ -9,6 +9,9 @@ import {
   RefreshCw,
 } from "lucide-react";
 import ToolShell from "@/components/ToolShell";
+import {
+  Panel, KeyRow, Button, DisplayBox, EmptyState, ToolActions,
+} from "@/components/ui/ToolUI";
 
 interface GeoInfo {
   asn: number | null;
@@ -98,109 +101,65 @@ function IpGeoCore() {
     <>
       {/* 当前公网IP */}
       <div className="relative mb-6">
-        <div className="bg-slate-50 border border-slate-200 rounded-2xl p-6 text-center shadow-inner relative overflow-hidden">
-          <div className="text-slate-500 text-sm mb-2">
-            🌍 当前公网IP
-          </div>
-          <div className="text-3xl md:text-4xl font-mono font-bold text-slate-800 break-all">
-            {loading ? "检测中..." : fmt(data?.ip)}
-          </div>
+        <DisplayBox
+          className="relative overflow-hidden"
+          label="🌍 当前公网IP"
+          value={loading ? "检测中..." : fmt(data?.ip)}
+        >
           {data?.local && !loading && (
             <div className="text-xs text-amber-600 mt-2">
               本地开发环境：显示的是当前网络的出网公网 IP
             </div>
           )}
           {copied && (
-            <div className="absolute inset-0 bg-green-50 flex items-center justify-center text-green-600 font-medium rounded-2xl">
+            <div className="ui-success-overlay absolute inset-0 flex items-center justify-center font-medium rounded-2xl">
               <Check className="w-5 h-5 mr-2" />
               已复制全部信息
             </div>
           )}
-        </div>
+        </DisplayBox>
       </div>
 
       {/* 地理位置卡片 */}
-      <div className="bg-white border border-slate-200 rounded-2xl p-5 mb-6">
-        <h3 className="flex items-center font-semibold text-slate-700 mb-4">
-          <MapPin className="w-5 h-5 mr-2 text-indigo-600" />
-          📍 地理位置
-        </h3>
-        <div className="space-y-3 text-sm">
+      <Panel className="mb-6" icon={MapPin} title="📍 地理位置">
+        <div className="ui-kv-list">
           {geo ? (
             <>
-              <div className="flex justify-between">
-                <span className="text-slate-500">国家/地区</span>
-                <span>{geo.countryName} ({geo.countryCodeAlpha2})</span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-slate-500">省份/州</span>
-                <span>{fmt(geo.regionName)}</span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-slate-500">城市</span>
-                <span>{fmt(geo.cityName)}</span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-slate-500">经纬度</span>
-                <span className="font-mono">{fmt(geo.latitude)}, {fmt(geo.longitude)}</span>
-              </div>
+              <KeyRow label="国家/地区" value={`${geo.countryName} (${geo.countryCodeAlpha2})`} />
+              <KeyRow label="省份/州" value={fmt(geo.regionName)} />
+              <KeyRow label="城市" value={fmt(geo.cityName)} />
+              <KeyRow label="经纬度" value={`${fmt(geo.latitude)}, ${fmt(geo.longitude)}`} mono />
             </>
           ) : (
-            <div className="text-slate-400 text-center py-4">
-              {loading ? "正在获取..." : hint || "暂无数据"}
-            </div>
+            <EmptyState>{loading ? "正在获取..." : hint || "暂无数据"}</EmptyState>
           )}
         </div>
-      </div>
+      </Panel>
 
       {/* 网络信息卡片 */}
-      <div className="bg-white border border-slate-200 rounded-2xl p-5 mb-6">
-        <h3 className="flex items-center font-semibold text-slate-700 mb-4">
-          <Radio className="w-5 h-5 mr-2 text-indigo-600" />
-          📡 网络信息
-        </h3>
-        <div className="space-y-3 text-sm">
+      <Panel className="mb-6" icon={Radio} title="📡 网络信息">
+        <div className="ui-kv-list">
           {geo ? (
             <>
-              <div className="flex justify-between">
-                <span className="text-slate-500">ASN</span>
-                <span className="font-mono">{geo.asn ? `AS${geo.asn}` : "-"}</span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-slate-500">运营商/ISP</span>
-                <span>{fmt(geo.cisp)}</span>
-              </div>
+              <KeyRow label="ASN" value={geo.asn ? `AS${geo.asn}` : "-"} mono />
+              <KeyRow label="运营商/ISP" value={fmt(geo.cisp)} />
             </>
           ) : (
-            <div className="text-slate-400 text-center py-4">
-              {loading ? "正在获取..." : "暂无数据"}
-            </div>
+            <EmptyState>{loading ? "正在获取..." : "暂无数据"}</EmptyState>
           )}
         </div>
-      </div>
+      </Panel>
 
       {/* 操作按钮 */}
-      <div className="grid grid-cols-2 gap-4">
-        <button
-          onClick={copyAll}
-          disabled={!data}
-          className="flex items-center justify-center py-3 bg-white border border-slate-200 rounded-xl font-semibold hover:bg-slate-50 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
-        >
-          <Copy size={18} className="mr-2" />
+      <ToolActions>
+        <Button variant="secondary" icon={Copy} onClick={copyAll} disabled={!data}>
           复制全部
-        </button>
-        <button
-          onClick={loadData}
-          disabled={loading}
-          className="flex items-center justify-center py-3 bg-indigo-600 text-white rounded-xl font-semibold hover:bg-indigo-700 transition-all shadow-md shadow-indigo-600/20 disabled:opacity-70"
-        >
-          <RefreshCw
-            size={18}
-            className={`mr-2 ${loading ? "animate-spin" : ""}`}
-          />
+        </Button>
+        <Button onClick={loadData} disabled={loading}>
+          <RefreshCw size={18} className={loading ? "animate-spin" : ""} />
           重新检测
-        </button>
-      </div>
+        </Button>
+      </ToolActions>
     </>
   );
 }

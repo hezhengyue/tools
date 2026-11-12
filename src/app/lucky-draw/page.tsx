@@ -7,6 +7,7 @@ import {
   Users, Settings, Play, Pause, Check, X 
 } from "lucide-react";
 import ToolShell from "@/components/ToolShell";
+import { Notice } from "@/components/ui/ToolUI";
 
 // 定义粒子数据的类型
 interface Particle {
@@ -201,7 +202,7 @@ export default function LuckyDrawPage() {
     <ToolShell>
       <div className="space-y-6">
         {/* 顶部：抽奖显示区 */}
-        <div className="relative p-8 bg-gradient-to-br from-indigo-500 via-purple-500 to-pink-500 rounded-3xl text-white text-center overflow-hidden">
+        <div className="relative p-8 bg-gradient-to-br from-indigo-500 via-purple-500 to-pink-500 rounded-2xl text-white text-center overflow-hidden">
           {/* 🔥 修复：动态背景粒子（使用 state 渲染，避免 SSR 和客户端 Math.random() 不一致） */}
           <div className="absolute inset-0 opacity-20">
             {particles.map((p, i) => (
@@ -261,13 +262,13 @@ export default function LuckyDrawPage() {
             <>
               <button
                 onClick={copyResults}
-                className="flex items-center gap-2 px-4 py-2.5 bg-slate-100 text-slate-700 rounded-xl hover:bg-slate-200 transition-colors"
+                className="ui-btn ui-btn-ghost"
               >
                 <Copy size={16} /> 复制结果
               </button>
               <button
                 onClick={downloadResults}
-                className="flex items-center gap-2 px-4 py-2.5 bg-slate-100 text-slate-700 rounded-xl hover:bg-slate-200 transition-colors"
+                className="ui-btn ui-btn-ghost"
               >
                 <Download size={16} /> 下载
               </button>
@@ -277,7 +278,7 @@ export default function LuckyDrawPage() {
           <button
             onClick={shuffleList}
             disabled={participants.length < 2}
-            className="flex items-center gap-2 px-4 py-2.5 bg-slate-100 text-slate-600 rounded-xl hover:bg-slate-200 transition-colors disabled:opacity-50"
+            className="ui-btn ui-btn-ghost"
             title="随机打乱名单顺序"
           >
             <RefreshCw size={16} /> 打乱
@@ -296,7 +297,7 @@ export default function LuckyDrawPage() {
               value={drawCount}
               onChange={(e) => setDrawCount(Math.max(1, Math.min(100, Number(e.target.value))))}
               disabled={isDrawing}
-              className="w-16 px-2 py-1 border border-slate-300 rounded-lg text-center focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 outline-none disabled:opacity-50"
+              className="w-16 px-2 py-1 border border-slate-200 rounded-lg text-center focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 outline-none disabled:opacity-50"
             />
           </div>
           <div className="flex items-center gap-3">
@@ -344,7 +345,7 @@ export default function LuckyDrawPage() {
             <button
               onClick={addParticipant}
               disabled={!newName.trim() || isDrawing}
-              className="px-4 py-2.5 bg-indigo-600 text-white rounded-xl hover:bg-indigo-700 transition-colors disabled:opacity-50"
+              className="ui-btn ui-btn-primary"
             >
               <Plus size={18} />
             </button>
@@ -358,7 +359,7 @@ export default function LuckyDrawPage() {
             </summary>
             <textarea
               placeholder="张三&#10;李四&#10;王五，赵六、钱七"
-              className="mt-2 w-full p-3 bg-slate-50 border border-slate-200 rounded-xl text-sm h-24 resize-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 outline-none"
+              className="ui-textarea font-sans h-24 mt-2"
               onBlur={(e) => {
                 if (e.target.value.trim()) {
                   handleBulkImport(e.target.value);
@@ -371,7 +372,7 @@ export default function LuckyDrawPage() {
           {/* 名单列表 */}
           <div className="max-h-80 overflow-y-auto space-y-2 pr-2 custom-scrollbar">
             {participants.length === 0 ? (
-              <div className="p-6 text-center text-slate-400 text-sm bg-slate-50 rounded-xl border border-dashed border-slate-300">
+              <div className="p-6 text-center text-slate-400 text-sm bg-slate-50 rounded-xl border border-dashed border-slate-200">
                 暂无参与者，添加姓名开始抽奖 🎁
               </div>
             ) : (
@@ -412,7 +413,7 @@ export default function LuckyDrawPage() {
                           setEditingIndex(null);
                           setEditValue("");
                         }}
-                        className="p-1.5 text-slate-400 hover:bg-slate-100 rounded"
+                        className="ui-icon-btn"
                         title="取消"
                       >
                         <X size={16} />
@@ -430,7 +431,7 @@ export default function LuckyDrawPage() {
                         <button
                           onClick={() => startEdit(index, name)}
                           disabled={isDrawing}
-                          className="p-1.5 text-slate-400 hover:text-indigo-600 hover:bg-slate-100 rounded disabled:opacity-50"
+                          className="ui-icon-btn hover:text-indigo-600"
                           title="编辑"
                         >
                           <Settings size={14} />
@@ -438,7 +439,7 @@ export default function LuckyDrawPage() {
                         <button
                           onClick={() => removeParticipant(index)}
                           disabled={isDrawing}
-                          className="p-1.5 text-slate-400 hover:text-red-500 hover:bg-slate-100 rounded disabled:opacity-50"
+                          className="ui-icon-btn text-red-600 hover:bg-red-50"
                           title="删除"
                         >
                           <Trash2 size={14} />
@@ -453,15 +454,15 @@ export default function LuckyDrawPage() {
         </div>
 
         {/* 使用说明 */}
-        <div className="p-4 bg-slate-50 rounded-2xl border border-slate-200/60 text-sm text-slate-600">
-          <strong>📌 使用提示：</strong>
+        <Notice tone="info">
+          <strong>使用提示：</strong>
           <ul className="mt-2 space-y-1 list-disc list-inside">
             <li>添加参与者后，设置抽取人数，点击"开始抽奖"</li>
             <li>勾选"允许重复"可让同一人中多次奖</li>
             <li>抽奖结果支持复制和下载保存</li>
             <li>纯前端运行，所有数据仅保存在本地，刷新页面会重置</li>
           </ul>
-        </div>
+        </Notice>
       </div>
     </ToolShell>
   );

@@ -383,7 +383,7 @@ export default function DrawBoardPage() {
       <button
         type="button"
         onClick={undo}
-        className="p-2 rounded-lg hover:bg-slate-100"
+        className="ui-icon-btn"
       >
         <Undo size={18} />
       </button>
@@ -391,7 +391,7 @@ export default function DrawBoardPage() {
       <button
         type="button"
         onClick={redo}
-        className="p-2 rounded-lg hover:bg-slate-100"
+        className="ui-icon-btn"
       >
         <Redo size={18} />
       </button>
@@ -399,7 +399,7 @@ export default function DrawBoardPage() {
       <button
         type="button"
         onClick={clear}
-        className="p-2 rounded-lg hover:bg-slate-100"
+        className="ui-icon-btn"
       >
         <Trash2 size={18} />
       </button>
@@ -407,7 +407,7 @@ export default function DrawBoardPage() {
       <button
         type="button"
         onClick={download}
-        className="p-2 rounded-lg hover:bg-slate-100"
+        className="ui-icon-btn"
       >
         <Download size={18} />
       </button>

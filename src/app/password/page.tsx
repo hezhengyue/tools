@@ -120,7 +120,7 @@ function PasswordGeneratorCore() {
           {password || "请选择字符类型"}
 
           {copied && (
-            <div className="absolute inset-0 bg-green-50 text-green-600 flex items-center justify-center rounded-2xl animate-fade-in-up text-lg font-medium">
+            <div className="absolute inset-0 bg-emerald-50 text-emerald-700 flex items-center justify-center rounded-2xl animate-fade-in-up text-lg font-medium">
               <Check className="w-5 h-5 mr-2" />
               复制成功
             </div>
@@ -151,7 +151,7 @@ function PasswordGeneratorCore() {
                 ? "text-blue-600"
                 : strength.color === "gray"
                 ? "text-slate-400"
-                : "text-green-600"
+                : "text-emerald-700"
             }`}
           >
             {strength.label}
@@ -161,7 +161,7 @@ function PasswordGeneratorCore() {
           <div className={`h-full rounded-full flex-1 ${strength.level >= 1 ? "bg-red-500" : "bg-slate-200"}`} />
           <div className={`h-full rounded-full flex-1 ${strength.level >= 2 ? "bg-orange-500" : "bg-slate-200"}`} />
           <div className={`h-full rounded-full flex-1 ${strength.level >= 3 ? "bg-blue-500" : "bg-slate-200"}`} />
-          <div className={`h-full rounded-full flex-1 ${strength.level >= 4 ? "bg-green-500" : "bg-slate-200"}`} />
+          <div className={`h-full rounded-full flex-1 ${strength.level >= 4 ? "bg-emerald-500" : "bg-slate-200"}`} />
         </div>
       </div>
 
@@ -176,7 +176,7 @@ function PasswordGeneratorCore() {
               max={64}
               value={length}
               onChange={handleLengthChange}
-              className="w-16 px-2 py-1 border border-slate-300 rounded-lg text-center text-sm"
+              className="w-16 px-2 py-1 border border-slate-200 rounded-lg text-center text-sm"
             />
             <span className="text-sm text-slate-500">位</span>
           </div>
@@ -244,7 +244,7 @@ function PasswordGeneratorCore() {
       {/* 生成按钮 */}
       <button
         onClick={generatePassword}
-        className="w-full flex items-center justify-center py-3.5 bg-indigo-600 text-white rounded-xl font-semibold hover:bg-indigo-700 hover:-translate-y-0.5 transition-all shadow-md shadow-indigo-600/20 active:translate-y-0"
+        className="ui-btn ui-btn-primary ui-btn-block"
       >
         <RefreshCw size={18} className="mr-2" />
         重新生成密码

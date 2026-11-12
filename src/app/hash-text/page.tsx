@@ -5,6 +5,7 @@ import { useState, useMemo } from "react";
 import { Copy, Check, RefreshCw } from "lucide-react";
 import { MD5, RIPEMD160, SHA1, SHA224, SHA256, SHA3, SHA384, SHA512, enc } from "crypto-js";
 import ToolShell from "@/components/ToolShell";
+import { Notice } from "@/components/ui/ToolUI";
 
 // ============ 类型定义 ============
 
@@ -100,7 +101,7 @@ function HashTextCore() {
           value={inputText}
           onChange={(e) => { setInputText(e.target.value); handleRegenerate(); }}
           placeholder="输入任意文本进行哈希计算..."
-          className="w-full p-4 bg-slate-50 border border-slate-200 rounded-2xl font-mono text-slate-800 min-h-[120px] focus:ring-2 focus:ring-indigo-500 focus:border-transparent outline-none transition-all resize-y"
+          className="ui-textarea min-h-[120px]"
           autoFocus
         />
         <div className="text-right text-xs text-slate-400 mt-2">{inputText.length} 个字符</div>
@@ -161,7 +162,7 @@ function HashTextCore() {
                 onClick={() => copyToClipboard(hashValue, label)}
                 disabled={!hashValue}
                 className={`p-2.5 rounded-xl transition-all shrink-0 ${
-                  isCopied ? "bg-green-100 text-green-600" : "bg-white border border-slate-200 text-slate-500 hover:text-indigo-600 hover:border-indigo-200 hover:bg-indigo-50"
+                  isCopied ? "bg-emerald-100 text-emerald-700" : "bg-white border border-slate-200 text-slate-500 hover:text-indigo-600 hover:border-indigo-200 hover:bg-indigo-50"
                 } disabled:opacity-50 disabled:cursor-not-allowed`}
                 title={isCopied ? "已复制" : "复制哈希值"}
               >
@@ -174,17 +175,16 @@ function HashTextCore() {
 
       {/* 空状态提示 */}
       {!inputText && (
-        <div className="mt-6 p-4 bg-amber-50 border border-amber-200 rounded-2xl text-amber-700 text-sm flex items-start gap-2">
-          <span>💡</span>
-          <span>在上方输入文本，即可实时生成各种哈希值。所有计算均在本地完成，数据不会上传。</span>
-        </div>
+        <Notice tone="tip" className="mt-6">
+          在上方输入文本，即可实时生成各种哈希值。所有计算均在本地完成，数据不会上传。
+        </Notice>
       )}
 
       {/* 重新生成按钮 */}
       <button
         onClick={handleRegenerate}
         disabled={!inputText}
-        className="w-full mt-6 flex items-center justify-center py-3.5 bg-indigo-600 text-white rounded-xl font-semibold hover:bg-indigo-700 hover:-translate-y-0.5 transition-all shadow-md shadow-indigo-600/20 active:translate-y-0 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:translate-y-0"
+        className="ui-btn ui-btn-primary ui-btn-block mt-6"
       >
         <RefreshCw size={18} className={`mr-2 ${isGenerating ? "animate-spin" : ""}`} />
         重新计算哈希

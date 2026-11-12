@@ -12,6 +12,49 @@ This version has breaking changes — APIs, conventions, and file structure may 
 - 禁止在仓库外生成同名副本、影子目录或平行工程。
 - 生成产物、临时脚本、调试文件一律放在已被 `.gitignore` 忽略的目录内，提交前确认 `git status`。
 
+# 界面模板规范
+
+全站界面只有一套模板，**新增或修改工具页时必须复用，不要再写自己的配色/圆角/边框/按钮样式**。
+
+唯一视觉来源：
+- `src/app/globals.css` → `@layer components` 里的 `.ui-*` 语义类（设计令牌）。
+- `src/components/ui/ToolUI.tsx` → 结构组件：`Panel` / `KeyRow` / `DisplayBox` / `Button` / `IconButton` / `Notice` / `EmptyState` / `Field` / `ToolActions` / `Badge`。
+- `src/components/ToolShell.tsx` → 所有工具页统一外壳（标题、图标、描述、内容卡、页脚）。13 个页面全部用它包裹。
+
+新工具页骨架：
+```tsx
+"use client";
+import ToolShell from "@/components/ToolShell";
+import { Panel, KeyRow, Button, Notice, ToolActions } from "@/components/ui/ToolUI";
+import { SomeIcon } from "lucide-react";
+
+export default function XxxPage() {
+  return (
+    <ToolShell>
+      <Panel icon={SomeIcon} title="区块标题">
+        <div className="ui-kv-list">
+          <KeyRow label="名称" value="值" />
+        </div>
+      </Panel>
+      <Notice tone="tip">提示内容</Notice>
+      <ToolActions>
+        <Button variant="secondary">次要操作</Button>
+        <Button>主操作</Button>
+      </ToolActions>
+    </ToolShell>
+  );
+}
+```
+然后在 `src/config/tools.ts` 注册工具（名称、图标、描述、分类）并填 `footer`。
+
+设计约定：主色 `indigo-600`；成功 `emerald`；提示 `amber`；错误 `red`；卡片 `rounded-2xl`，按钮 `rounded-xl`，小控件 `rounded-lg`；边框统一 `border-slate-200`；次级底色 `bg-slate-50`。语义色（哈希算法标签、密码强度、增删高亮、私钥警示）可保留。
+
+页脚说明是**结构化数据**，不是 HTML：
+```ts
+footer: { mode: "local", subject: "文本", extra: "补充说明（可选）" }
+```
+`mode: "local"` 生成「所有处理在浏览器本地完成，{subject}不会上传到任何服务器。」；`mode: "server"` 用于确实需要服务端查询的工具（目前仅 IP 地理位置），生成「归属地由服务端接口查询…」。ToolShell 统一渲染，**禁止 `dangerouslySetInnerHTML`、禁止页脚写自由 HTML、禁止在页面里自写 `<h1>` 重复标题**。
+
 # 提交前检查
 
 提交到 GitHub 前必须确认 `git status` 中没有 `node_modules/`、`.next/`、`.env*`、`*.key`、`*.pem`、`.workbuddy/` 等内容；只添加源码与必要配置。

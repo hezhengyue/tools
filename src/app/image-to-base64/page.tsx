@@ -76,8 +76,8 @@ export default function ImageToBase64Page() {
       <div className="space-y-5">
         {!file ? (
           <div
-            className={`border-2 border-dashed rounded-3xl p-12 flex flex-col items-center justify-center transition-all cursor-pointer min-h-[400px] ${
-              dragActive ? "border-indigo-500 bg-indigo-50/50 scale-[1.01]" : "border-slate-300 hover:border-slate-400 bg-slate-50/50"
+            className={`border-2 border-dashed rounded-2xl p-12 flex flex-col items-center justify-center transition-all cursor-pointer min-h-[400px] ${
+              dragActive ? "border-indigo-500 bg-indigo-50/50 scale-[1.01]" : "border-slate-200 hover:border-slate-400 bg-slate-50/50"
             }`}
             onDragOver={(e) => { e.preventDefault(); setDragActive(true); }}
             onDragLeave={() => setDragActive(false)}
@@ -106,7 +106,7 @@ export default function ImageToBase64Page() {
                   <p className="text-xs text-slate-500">{file.type || "image/*"} • {formatFileSize(file.size)}</p>
                 </div>
               </div>
-              <button onClick={handleReset} className="p-2 text-red-500 rounded-lg hover:bg-red-50 border border-transparent hover:border-red-100 transition-colors" title="重置">
+              <button onClick={handleReset} className="ui-icon-btn text-red-600 hover:bg-red-50" title="重置">
                 <Trash2 size={18} />
               </button>
             </div>
@@ -146,7 +146,7 @@ export default function ImageToBase64Page() {
                   </span>
                   <button
                     onClick={handleCopy}
-                    className="px-4 py-2 bg-indigo-600 text-white rounded-xl hover:bg-indigo-700 font-medium flex items-center gap-2 text-sm shadow-sm transition-all"
+                    className="ui-btn ui-btn-primary ui-btn-sm"
                   >
                     {copyStatus === "copied" ? (
                       <><Check size={16} /> 已复制</>

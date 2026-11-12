@@ -7,6 +7,7 @@ import {
   FileImage, ShieldCheck, Zap, Info, Lock
 } from "lucide-react";
 import ToolShell from "@/components/ToolShell";
+import { Notice } from "@/components/ui/ToolUI";
 
 // 支持的输出格式
 type OutputFormat = "webp" | "avif" | "jpeg";
@@ -220,7 +221,7 @@ export default function ImageCompressPage() {
           ? "bg-slate-50 border-slate-200 cursor-not-allowed" 
           : checked 
             ? "bg-indigo-50 border-indigo-300 ring-2 ring-indigo-200" 
-            : "bg-white border-slate-200 hover:border-slate-300 cursor-pointer"
+            : "bg-white border-slate-200 hover:border-slate-200 cursor-pointer"
       }`}
       onClick={() => !disabled && onChange?.(!checked)}
     >
@@ -230,7 +231,7 @@ export default function ImageCompressPage() {
             ? "bg-slate-100 border-slate-200" 
             : checked 
               ? "bg-indigo-600 border-indigo-600" 
-              : "border-slate-300 bg-white"
+              : "border-slate-200 bg-white"
         }`}>
           {checked && <svg className="w-3 h-3 text-white" fill="none" viewBox="0 0 12 12"><path d="M10 3L4.5 8.5L2 6" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/></svg>}
           {disabled && <Lock size={12} className="text-slate-400" />}
@@ -264,8 +265,8 @@ export default function ImageCompressPage() {
           value={format}
           onChange={(e) => setFormat(e.target.value as OutputFormat)}
           disabled={!enableCompress}
-          className={`text-sm border rounded-lg px-2 py-1 bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500 ${
-            !enableCompress ? "border-slate-100 text-slate-400 cursor-not-allowed" : "border-slate-200"
+          className={`ui-input w-auto px-2 py-1 ${
+            !enableCompress ? "text-slate-400 opacity-60 cursor-not-allowed" : ""
           }`}
         >
           <option value="webp">WebP 🎯</option>
@@ -282,8 +283,8 @@ export default function ImageCompressPage() {
           value={quality}
           onChange={(e) => setQuality(e.target.value as QualityPreset)}
           disabled={!enableCompress}
-          className={`text-sm border rounded-lg px-2 py-1 bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500 ${
-            !enableCompress ? "border-slate-100 text-slate-400 cursor-not-allowed" : "border-slate-200"
+          className={`ui-input w-auto px-2 py-1 ${
+            !enableCompress ? "text-slate-400 opacity-60 cursor-not-allowed" : ""
           }`}
         >
           <option value="high">高清 (92%)</option>
@@ -297,13 +298,13 @@ export default function ImageCompressPage() {
         {files.length > 0 && (
           <button
             onClick={clearAll}
-            className="p-2 rounded-lg bg-white border border-slate-200 text-red-500 hover:bg-red-50"
+            className="ui-icon-btn text-red-600 hover:bg-red-50"
             title="清空"
           >
             <Trash2 size={18} />
           </button>
         )}
-        <label className="p-2 rounded-lg bg-indigo-600 text-white hover:bg-indigo-700 cursor-pointer shadow-sm">
+        <label className="ui-icon-btn bg-indigo-600 text-white hover:bg-indigo-700 shadow-sm">
           <Upload size={18} />
           <input
             ref={fileInputRef}
@@ -326,7 +327,7 @@ export default function ImageCompressPage() {
           className={`relative border-2 border-dashed rounded-2xl p-8 text-center transition-all ${
             dragActive 
               ? "border-indigo-500 bg-indigo-50/50" 
-              : "border-slate-300 hover:border-slate-400 bg-slate-50/50"
+              : "border-slate-200 hover:border-slate-400 bg-slate-50/50"
           }`}
           onDragEnter={handleDrag}
           onDragLeave={handleDrag}
@@ -394,7 +395,7 @@ export default function ImageCompressPage() {
             {files.map((file, index) => (
               <div 
                 key={index}
-                className="flex gap-4 p-4 bg-white rounded-2xl border border-slate-200 hover:border-slate-300 transition-colors"
+                className="flex gap-4 p-4 bg-white rounded-2xl border border-slate-200 hover:border-slate-200 transition-colors"
               >
                 {/* 预览 */}
                 <div className="w-24 h-24 flex-shrink-0 bg-slate-100 rounded-xl overflow-hidden">
@@ -419,7 +420,7 @@ export default function ImageCompressPage() {
                     </div>
                     <button
                       onClick={() => removeFile(index)}
-                      className="p-1.5 text-slate-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition-colors"
+                      className="ui-icon-btn text-red-600 hover:bg-red-50"
                       title="移除"
                     >
                       <Trash2 size={16} />
@@ -477,23 +478,18 @@ export default function ImageCompressPage() {
         )}
 
         {/* 隐私保护说明 */}
-        <div className="p-4 bg-emerald-50/60 rounded-2xl border border-emerald-200/60 text-sm text-emerald-800">
-          <div className="flex items-start gap-2">
-            <ShieldCheck size={16} className="mt-0.5 flex-shrink-0 text-emerald-600" />
-            <div className="space-y-1">
-              <p><strong>🔐 隐私保护已启用</strong>：所有处理的图片都会自动清除以下敏感信息：</p>
-              <ul className="ml-4 list-disc text-emerald-700/90">
-                <li>📍 GPS 地理位置坐标（防止泄露家庭/公司地址）</li>
-                <li>📱 设备型号、镜头参数（防止设备指纹追踪）</li>
-                <li>🕐 精确拍摄时间（防止时间线分析）</li>
-                <li>👤 作者、版权信息（防止个人信息泄露）</li>
-              </ul>
-              <p className="text-xs text-emerald-600/80 mt-2">
-                💡 这是为了保护您的隐私安全，该选项无法关闭。
-              </p>
-            </div>
-          </div>
-        </div>
+        <Notice tone="success">
+          <p><strong>隐私保护已启用</strong>：所有处理的图片都会自动清除以下敏感信息：</p>
+          <ul className="ml-4 mt-1 list-disc text-emerald-700/90">
+            <li>GPS 地理位置坐标（防止泄露家庭/公司地址）</li>
+            <li>设备型号、镜头参数（防止设备指纹追踪）</li>
+            <li>精确拍摄时间（防止时间线分析）</li>
+            <li>作者、版权信息（防止个人信息泄露）</li>
+          </ul>
+          <p className="text-xs text-emerald-600/80 mt-2">
+            这是为了保护您的隐私安全，该选项无法关闭。
+          </p>
+        </Notice>
       </div>
     </ToolShell>
   );
