@@ -59,27 +59,40 @@ function clean(value: string): string {
 }
 
 function toNumber(value: unknown): number | null {
+  // 0 是合法经纬度（赤道 / 本初子午线），不能当缺失值丢弃
+  if (value === null || value === undefined || value === "") return null;
   const n = Number(value);
-  return Number.isFinite(n) && n !== 0 ? n : null;
+  return Number.isFinite(n) ? n : null;
 }
 
-/** 过滤私有/保留地址；返回 true 表示可用于查询公共 IP 库 */
+/**
+ * 只接受合法的 IPv4 / IPv6 字面量，且排除私有与保留地址。
+ * 请求头来自客户端，不能把任意文本拼进外部查询 URL（防止被当作 IP 查询代理 / 路径注入）。
+ */
 function isPublicIp(ip: string): boolean {
-  if (!ip) return false;
-  if (ip === "::1" || ip.startsWith("fc") || ip.startsWith("fd") || ip.startsWith("fe80")) {
-    return false;
-  }
-  const parts = ip.replace(/^::ffff:/, "").split(".").map(Number);
-  // 非 IPv4（如 IPv6 全局地址）交给下游接口判断
-  if (parts.length !== 4 || parts.some((n) => Number.isNaN(n) || n < 0 || n > 255)) {
+  if (!ip || ip.length > 64) return false;
+  const value = ip.trim().replace(/^\[|\]$/g, "").replace(/^::ffff:/i, "");
+
+  const v4 = value.match(/^(\d{1,3})\.(\d{1,3})\.(\d{1,3})\.(\d{1,3})$/);
+  if (v4) {
+    const parts = v4.slice(1, 5).map(Number);
+    if (parts.some((n) => n > 255)) return false;
+    const [a, b] = parts;
+    if (a === 0 || a === 10 || a === 127 || a >= 224) return false;
+    if (a === 172 && b >= 16 && b <= 31) return false;
+    if (a === 192 && b === 168) return false;
+    if (a === 169 && b === 254) return false;
+    if (a === 100 && b >= 64 && b <= 127) return false; // 运营商 CGNAT
+    if (a === 192 && b === 0 && parts[2] === 0) return false; // 192.0.0.0/24
+    if (a === 198 && (b === 18 || b === 19)) return false; // 基准测试段
     return true;
   }
-  const [a, b] = parts;
-  if (a === 0 || a === 10 || a === 127 || a >= 224) return false;
-  if (a === 172 && b >= 16 && b <= 31) return false;
-  if (a === 192 && b === 168) return false;
-  if (a === 169 && b === 254) return false;
-  if (a === 100 && b >= 64 && b <= 127) return false; // 运营商 CGNAT
+
+  // IPv6：只允许十六进制与冒号（含 %zone 的形式直接拒绝）
+  if (!value.includes(":") || !/^[0-9a-fA-F:.]+$/.test(value)) return false;
+  const lower = value.toLowerCase();
+  if (lower === "::" || lower === "::1" || lower.startsWith("fc") || lower.startsWith("fd")) return false;
+  if (/^fe[89ab]/.test(lower)) return false; // fe80::/10 链路本地
   return true;
 }
 
@@ -93,7 +106,9 @@ function getClientIp(h: Headers): string {
     xff,
   ];
   for (const value of candidates) {
-    const ip = (value || "").trim();
+    let ip = (value || "").trim();
+    // 反代偶尔写成 1.2.3.4:5678，去掉端口（仅 IPv4，避免误伤 IPv6 尾段）
+    if (/^\d{1,3}(?:\.\d{1,3}){3}:\d+$/.test(ip)) ip = ip.slice(0, ip.lastIndexOf(":"));
     if (isPublicIp(ip)) return ip;
   }
   return "";
@@ -185,7 +200,8 @@ type LookupResult = { geo: GeoInfo; ip: string; source: string };
 
 /** ip 为空（本地开发或拿不到访客 IP）时，接口返回的是服务器出口公网 IP */
 async function lookup(ip: string): Promise<LookupResult | null> {
-  const target = isPublicIp(ip) ? ip : "";
+  // target 只可能是通过 isPublicIp 白名单的 IP 字面量；再编码一层彻底杜绝路径注入
+  const target = isPublicIp(ip) ? encodeURIComponent(ip) : "";
 
   // 主数据源：ipwho.is，免费、HTTPS、无需 key
   const a = await fetchJson<IpwhoResponse>(`https://ipwho.is/${target}`);

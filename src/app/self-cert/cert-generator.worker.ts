@@ -100,7 +100,7 @@ function createKeyPair(
         {
           bits,
           workers: 2,
-        } as any,
+        },
         (err, keypair) => {
           if (err) {
             reject(err);
@@ -349,7 +349,7 @@ self.onmessage = async (
       payload:
         response,
     });
-      } catch (err: any) {
+      } catch (err: unknown) {
     self.postMessage({
       type:
         "CERT_ERROR",
@@ -359,7 +359,7 @@ self.onmessage = async (
           request.requestId,
 
         error:
-          err?.message ??
+          (err instanceof Error ? err.message : "") ||
           "证书生成失败",
       },
     });

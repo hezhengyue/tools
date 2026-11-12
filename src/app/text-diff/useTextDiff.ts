@@ -62,8 +62,8 @@ export function useTextDiff(): UseTextDiffReturn {
         setIsComputing(false);
         setError(`Worker 错误: ${err.message || "未知错误"}`);
       };
-    } catch (err) {
-      setError("无法创建 Worker");
+    } catch {
+      queueMicrotask(() => setError("无法创建 Worker"));
     }
 
     return () => {

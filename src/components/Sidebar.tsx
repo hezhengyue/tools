@@ -1,18 +1,26 @@
 // src/components/Sidebar.tsx
 "use client";
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { toolsConfig } from "../config/tools";
-import { Sparkles, Home, Search, ChevronDown, ChevronRight } from "lucide-react";
+import { Home, Search, ChevronDown, ChevronRight } from "lucide-react";
+import { SITE_NAME } from "@/config/site";
 
 interface SidebarProps {
   className?: string;
+  /** 移动端从顶栏搜索按钮打开抽屉时自动聚焦搜索框 */
+  autoFocusSearch?: boolean;
 }
 
-export default function Sidebar({ className = "" }: SidebarProps) {
+export default function Sidebar({ className = "", autoFocusSearch = false }: SidebarProps) {
   const pathname = usePathname();
+  const searchRef = useRef<HTMLInputElement>(null);
   const [searchQuery, setSearchQuery] = useState("");
+
+  useEffect(() => {
+    if (autoFocusSearch) searchRef.current?.focus();
+  }, [autoFocusSearch]);
   const [expandedCategories, setExpandedCategories] = useState<string[]>(
     toolsConfig.map((c) => c.category)
   );
@@ -30,17 +38,19 @@ export default function Sidebar({ className = "" }: SidebarProps) {
       
       {/* Logo 区域 */}
       <div className="h-20 flex items-center px-6 border-b border-slate-100 shrink-0">
-        <img src="/logo.png" alt="Logo" className="w-10 h-10 rounded-lg mr-3 object-contain" />
-        <span className="font-bold text-xl tracking-tight text-slate-800 whitespace-nowrap">月工具箱</span>
+        <img src="/logo.png" alt={`${SITE_NAME} 标志`} className="w-10 h-10 rounded-lg mr-3 object-contain" />
+        <span className="font-bold text-xl tracking-tight text-slate-800 whitespace-nowrap">{SITE_NAME}</span>
       </div>
 
       {/* 搜索框区域 */}
       <div className="p-4 border-b border-slate-100 shrink-0">
         <div className="relative">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 w-4 h-4" />
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500 w-4 h-4" />
           <input
+            ref={searchRef}
             type="text"
-            placeholder="搜索工具..."
+            aria-label="搜索工具"
+            placeholder="搜索工具或功能..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             className="w-full bg-slate-100/50 border border-slate-200 rounded-lg pl-9 pr-4 py-2 text-sm text-slate-700 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all"
@@ -63,8 +73,9 @@ export default function Sidebar({ className = "" }: SidebarProps) {
 
         {/* 动态渲染分类与工具 */}
         {toolsConfig.map((category) => {
+          const q = searchQuery.trim().toLowerCase();
           const filteredTools = category.tools.filter((tool) =>
-            tool.name.toLowerCase().includes(searchQuery.toLowerCase())
+            !q || tool.name.toLowerCase().includes(q) || tool.desc.toLowerCase().includes(q)
           );
 
           if (filteredTools.length === 0) return null;
@@ -76,7 +87,8 @@ export default function Sidebar({ className = "" }: SidebarProps) {
               {/* 分类标题 */}
               <button
                 onClick={() => toggleCategory(category.category)}
-                className="w-full flex items-center justify-between px-4 py-2 text-xs font-bold text-slate-400 uppercase tracking-wider hover:text-slate-600 transition-colors"
+                aria-expanded={isExpanded}
+                className="w-full flex items-center justify-between px-4 py-2 text-xs font-bold text-slate-500 uppercase tracking-wider hover:text-slate-600 transition-colors"
               >
                 <div className="flex items-center min-w-0">
                   <category.icon className="w-3.5 h-3.5 mr-2 shrink-0" />
@@ -102,7 +114,7 @@ export default function Sidebar({ className = "" }: SidebarProps) {
                       >
                         <tool.icon
                           className={`w-4 h-4 mr-3 shrink-0 ${
-                            isActive ? "text-indigo-600" : "text-slate-400 group-hover:text-indigo-500"
+                            isActive ? "text-indigo-600" : "text-slate-500 group-hover:text-indigo-500"
                           }`}
                         />
                         <span className="truncate">{tool.name}</span>

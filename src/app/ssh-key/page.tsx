@@ -3,7 +3,7 @@
 import { useState, useRef, useEffect, useCallback } from "react";
 import { RefreshCw } from "lucide-react";
 import ToolShell from "@/components/ToolShell";
-import { OutputBlock } from "@/components/ui/ToolUI";
+import { Notice, OutputBlock } from "@/components/ui/ToolUI";
 
 type KeySize = 2048 | 4096;
 
@@ -18,24 +18,59 @@ function SshKeyCore() {
   const [keySize, setKeySize] = useState<KeySize>(2048);
   const [keyPair, setKeyPair] = useState<KeyPair | null>(null);
   const [loading, setLoading] = useState(false);
+  const [genError, setGenError] = useState("");
 
   const workerRef = useRef<Worker | null>(null);
+  const timeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const clearTimeoutTimer = () => {
+    if (timeoutRef.current) clearTimeout(timeoutRef.current);
+    timeoutRef.current = null;
+  };
 
   // =========================
-  // worker init
+  // worker init（初始化与超时重建共用同一套消息绑定）
   // =========================
-  useEffect(() => {
-    workerRef.current = new Worker(
-      new URL("./ssh.worker.ts", import.meta.url)
-    );
+  const setupWorker = useCallback(() => {
+    workerRef.current?.terminate();
+    let worker: Worker;
+    try {
+      worker = new Worker(new URL("./ssh.worker.ts", import.meta.url));
+    } catch {
+      // 不在 effect 里同步 setState；generate() 会检查并给出提示
+      workerRef.current = null;
+      return;
+    }
+    workerRef.current = worker;
 
-    workerRef.current.onmessage = (e) => {
-      setKeyPair(e.data);
+    worker.onmessage = (e: MessageEvent<KeyPair & { error?: string }>) => {
+      clearTimeoutTimer();
       setLoading(false);
+      const data = e.data;
+      // Worker 失败时返回 { error }，不能当成成功结果渲染出空密钥
+      if (data?.error || !data?.publicKey || !data?.privateKey) {
+        setGenError(`密钥生成失败：${data?.error || "返回结果不完整"}`);
+        return;
+      }
+      setGenError("");
+      setKeyPair(data);
     };
 
-    return () => workerRef.current?.terminate();
+    worker.onerror = () => {
+      clearTimeoutTimer();
+      setLoading(false);
+      setGenError("密钥生成线程异常，请降低位数后重试");
+    };
   }, []);
+
+  useEffect(() => {
+    setupWorker();
+    return () => {
+      clearTimeoutTimer();
+      workerRef.current?.terminate();
+      workerRef.current = null;
+    };
+  }, [setupWorker]);
 
   // =========================
   // size change
@@ -48,13 +83,22 @@ function SshKeyCore() {
   // generate key
   // =========================
   const generate = useCallback(() => {
+    if (!workerRef.current) {
+      setGenError("浏览器不支持 Web Worker，无法生成密钥");
+      return;
+    }
+    clearTimeoutTimer();
+    setGenError("");
     setLoading(true);
+    workerRef.current.postMessage({ type: "rsa", bits: keySize });
 
-    workerRef.current?.postMessage({
-      type: "rsa",
-      bits: keySize,
-    });
-  }, [keySize]);
+    // 4096 位在慢设备上可能很久，超时兜底避免一直卡在「生成中...」
+    timeoutRef.current = setTimeout(() => {
+      setLoading(false);
+      setGenError("生成超时，已重置生成线程，请重试或改用 2048 位");
+      setupWorker();
+    }, keySize === 4096 ? 120000 : 60000);
+  }, [keySize, setupWorker]);
 
   const authorizedCommand = keyPair
     ? `echo "${keyPair.publicKey}" >> ~/.ssh/authorized_keys`
@@ -110,9 +154,11 @@ function SshKeyCore() {
         {loading ? "生成中..." : "生成 RSA SSH Key"}
       </button>
 
+      {genError && <Notice tone="error" role="alert">{genError}</Notice>}
+
       {/* =========================
           public key
-      ========================= */}
+          ========================= */}
       <OutputBlock
         label="Public Key"
         value={keyPair?.publicKey || ""}

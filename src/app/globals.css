@@ -62,7 +62,7 @@
     @apply bg-slate-50 border border-slate-200 rounded-2xl p-6 text-center shadow-inner;
   }
   .ui-empty {
-    @apply text-slate-400 text-center py-4 text-sm;
+    @apply text-slate-500 text-center py-4 text-sm;
   }
 
   /* ---- 键值信息行 ---- */
@@ -145,7 +145,7 @@
     @apply text-amber-600;
   }
   .ui-output-hint {
-    @apply text-xs text-slate-400 truncate;
+    @apply text-xs text-slate-500 truncate;
   }
   .ui-output-actions {
     @apply flex items-center gap-1 shrink-0;
@@ -193,8 +193,5 @@
   }
   .ui-footer-icon {
     @apply w-4 h-4 mt-0.5 shrink-0 text-amber-500;
-  }
-  .ui-footer-label {
-    @apply font-semibold text-slate-700;
   }
 }

@@ -1,6 +1,6 @@
 #!/bin/sh
 # .githooks/pre-commit
-# 防呆检查：阻止把不应出现在 GitHub 上的内容加入提交。
+# 防呆检查：阻止把不应出现在 GitHub 上的内容加入提交，并对源码执行 ESLint。
 # 启用方式：git config core.hooksPath .githooks
 
 set -u
@@ -9,7 +9,8 @@ files=$(git diff --cached --name-only --diff-filter=ACMR)
 [ -z "$files" ] && exit 0
 
 # 允许随仓库分发的 Markdown 文档（README 是 GitHub 首页说明，必须保留）
-ALLOW_MD="README.md AGENTS.md CLAUDE.md CONTRIBUTING.md CHANGELOG.md LICENSE.md SECURITY.md"
+# 一律小写：路径判断使用 lower，白名单也必须是小写才能匹配
+ALLOW_MD="readme.md agents.md claude.md contributing.md changelog.md license.md security.md"
 bad=""
 
 reject() {
@@ -20,35 +21,38 @@ reject() {
 while IFS= read -r f; do
   [ -z "$f" ] && continue
 
+  # 统一转小写：防止 .ENV / SECRET.MD / NODE_MODULES 这类大小写绕过
+  lower=$(printf '%s' "$f" | tr '[:upper:]' '[:lower:]')
+
   # 环境变量示例模板允许提交
-  [ "$f" = ".env.example" ] && continue
+  [ "$lower" = ".env.example" ] && continue
 
   # 1) 构建产物、工具数据、IDE 配置、临时文件
-  case "$f" in
+  case "$lower" in
     node_modules/*|*/.next/*|.next/*|.vercel/*|out/*|build/*|dist/*|coverage/*|\
-    .workbuddy/*|.codebuddy/*|.vscode/*|.idea/*|tmp/*|.tmp/*|\
-    *.tsbuildinfo|*.log|*.tmp|Thumbs.db|desktop.ini|.DS_Store|.npmrc)
+    .workbuddy/*|.codebuddy/*|.vscode/*|.idea/*|tmp/*|.tmp/*|*.bak|\
+    *.tsbuildinfo|*.log|*.tmp|thumbs.db|desktop.ini|.ds_store|.npmrc)
       reject "$f  -> 构建产物 / 工具数据 / IDE / 临时文件"
       continue
       ;;
   esac
 
-  # 2) 环境变量与密钥证书
-  case "$f" in
-    .env|.env.*|*.env|*.key|*.pem|*.p12|*.pfx|*.crt)
+  # 2) 环境变量与密钥证书（后缀与文件名都判断）
+  case "$lower" in
+    .env|.env.*|*.env|*.key|*.pem|*.p12|*.pfx|*.crt|*.p8|id_rsa|id_ed25519|*secret*.json|*credentials*)
       reject "$f  -> 环境变量 / 密钥证书"
       continue
       ;;
   esac
 
-  # 3) Markdown 白名单（GitHub 模板目录下的文档放行）
-  case "$f" in
+  # 3) Markdown 白名单：.github 下不再无条件放行，仅允许约定的模板文件
+  case "$lower" in
     *.md)
-      case "$f" in
-        .github/*) ;;
+      case "$lower" in
+        .github/issue_template/*.md|.github/pull_request_template.md|.github/issue_template.md) ;;
         *)
           case " $ALLOW_MD " in
-            *" $f "*) ;;
+            *" $lower "*) ;;
             *) reject "$f  -> .md 未在白名单（仅允许 README/AGENTS/CLAUDE 等项目文档）" ;;
           esac
           ;;
@@ -60,8 +64,19 @@ $files
 EOF
 
 # 4) 新增内容中疑似私钥 / token
-if git diff --cached --diff-filter=ACM -U0 -- . | grep -qE '^\+.*(BEGIN (RSA |EC |OPENSSH |)?PRIVATE KEY|ghp_[A-Za-z0-9]{30,}|sk-[A-Za-z0-9]{30,})'; then
+if git diff --cached --diff-filter=ACM -U0 -- . | grep -qiE '^\+.*(BEGIN (RSA |EC |OPENSSH |)?PRIVATE KEY|ghp_[A-Za-z0-9]{30,}|sk-[A-Za-z0-9]{30,}|github_pat_[A-Za-z0-9_]{30,})'; then
   reject "暂存内容中疑似包含私钥或 token（请检查新增行）"
+fi
+
+# 5) 暂存的 TS/TSX 必须通过 ESLint
+lint_targets=$(printf '%s\n' "$files" | grep -Ei '\.(ts|tsx)$' || true)
+if [ -n "$lint_targets" ]; then
+  lint_log="$(git rev-parse --git-dir)/pre-commit-eslint.log"
+  # shellcheck disable=SC2086
+  if ! npx --no-install eslint $lint_targets > "$lint_log" 2>&1; then
+    cat "$lint_log" >&2
+    reject "ESLint 检查未通过（运行 npm run lint 查看完整报错）"
+  fi
 fi
 
 if [ -n "$bad" ]; then

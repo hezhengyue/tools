@@ -23,6 +23,11 @@ type Path = {
   erase: boolean;
 };
 
+/** 鼠标 / 触摸事件的公共形态 */
+type DrawEvent =
+  | React.MouseEvent<HTMLCanvasElement>
+  | React.TouchEvent<HTMLCanvasElement>;
+
 export default function DrawBoardPage() {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
@@ -32,6 +37,7 @@ export default function DrawBoardPage() {
 
   const isDrawingRef = useRef(false);
   const isTouchRef = useRef(false);
+  const rafRef = useRef<number | null>(null);
 
   const dprRef = useRef(1);
 
@@ -114,6 +120,19 @@ export default function DrawBoardPage() {
     }
   }, []);
 
+  /** 把高频 pointermove 的重绘合并到每帧一次 */
+  const scheduleRedraw = useCallback(() => {
+    if (rafRef.current !== null) return;
+    rafRef.current = requestAnimationFrame(() => {
+      rafRef.current = null;
+      redraw();
+    });
+  }, [redraw]);
+
+  useEffect(() => () => {
+    if (rafRef.current !== null) cancelAnimationFrame(rafRef.current);
+  }, []);
+
   /**
    * 初始化画布
    */
@@ -180,7 +199,7 @@ export default function DrawBoardPage() {
   /**
    * 获取坐标
    */
-  const getPos = (e: any): Point => {
+  const getPos = (e: DrawEvent): Point => {
     const canvas = canvasRef.current;
 
     if (!canvas) {
@@ -192,11 +211,8 @@ export default function DrawBoardPage() {
 
     const rect = canvas.getBoundingClientRect();
 
-    const clientX =
-      "touches" in e ? e.touches[0].clientX : e.clientX;
-
-    const clientY =
-      "touches" in e ? e.touches[0].clientY : e.clientY;
+    const clientX = "touches" in e ? (e.touches[0]?.clientX ?? 0) : e.clientX;
+    const clientY = "touches" in e ? (e.touches[0]?.clientY ?? 0) : e.clientY;
 
     return {
       x: clientX - rect.left,
@@ -207,7 +223,7 @@ export default function DrawBoardPage() {
   /**
    * 开始绘制
    */
-  const startDrawing = (e: any) => {
+  const startDrawing = (e: DrawEvent) => {
     if (e.type === "touchstart") {
       e.preventDefault();
     }
@@ -239,7 +255,7 @@ export default function DrawBoardPage() {
   /**
    * 绘制中
    */
-  const draw = (e: any) => {
+  const draw = (e: DrawEvent) => {
     if (!isDrawingRef.current) return;
 
     if (e.type === "mousemove" && isTouchRef.current) {
@@ -254,7 +270,7 @@ export default function DrawBoardPage() {
 
     current.points.push(getPos(e));
 
-    redraw();
+    scheduleRedraw();
   };
 
   /**
@@ -321,11 +337,15 @@ export default function DrawBoardPage() {
 
     ctx.drawImage(canvas, 0, 0);
 
-    const link = document.createElement("a");
-
-    link.download = `draw-${Date.now()}.png`;
-    link.href = exportCanvas.toDataURL("image/png");
-    link.click();
+    exportCanvas.toBlob((blob) => {
+      if (!blob) return;
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.download = `draw-${Date.now()}.png`;
+      link.href = url;
+      link.click();
+      setTimeout(() => URL.revokeObjectURL(url), 0);
+    }, "image/png");
   };
 
   /**
@@ -351,6 +371,7 @@ export default function DrawBoardPage() {
 
         <input
           type="color"
+          aria-label="画笔颜色"
           value={color}
           onChange={(e) => {
             setColor(e.target.value);
@@ -362,6 +383,7 @@ export default function DrawBoardPage() {
 
       <input
         type="range"
+        aria-label="画笔粗细"
         min={1}
         max={20}
         value={brushSize}
@@ -371,6 +393,8 @@ export default function DrawBoardPage() {
       <button
         type="button"
         onClick={() => setIsEraser((v) => !v)}
+        aria-label="橡皮擦"
+        aria-pressed={isEraser}
         className={`p-2 rounded-lg transition ${
           isEraser
             ? "bg-red-500 text-white"
@@ -383,6 +407,7 @@ export default function DrawBoardPage() {
       <button
         type="button"
         onClick={undo}
+        aria-label="撤销"
         className="ui-icon-btn"
       >
         <Undo size={18} />
@@ -391,6 +416,7 @@ export default function DrawBoardPage() {
       <button
         type="button"
         onClick={redo}
+        aria-label="重做"
         className="ui-icon-btn"
       >
         <Redo size={18} />
@@ -399,6 +425,7 @@ export default function DrawBoardPage() {
       <button
         type="button"
         onClick={clear}
+        aria-label="清空"
         className="ui-icon-btn"
       >
         <Trash2 size={18} />
@@ -407,6 +434,7 @@ export default function DrawBoardPage() {
       <button
         type="button"
         onClick={download}
+        aria-label="下载图片"
         className="ui-icon-btn"
       >
         <Download size={18} />
@@ -435,6 +463,7 @@ export default function DrawBoardPage() {
         >
           <canvas
             ref={canvasRef}
+            aria-label="绘图画布，可用鼠标或手指绘制"
             className="absolute inset-0 w-full h-full touch-none"
             onMouseDown={startDrawing}
             onMouseMove={draw}

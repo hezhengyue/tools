@@ -1,26 +1,22 @@
 // src/app/layout.tsx
-import type { Metadata, Viewport } from "next";  // 👈 1. 导入 Viewport 类型
+import type { Metadata, Viewport } from "next";
 import "./globals.css";
 import Sidebar from "../components/Sidebar";
 import MobileHeader from "../components/MobileHeader";
+import { SITE_NAME, SITE_DESCRIPTION } from "@/config/site";
 
-// 2. 单独的 metadata 导出（不要放 viewport）
 export const metadata: Metadata = {
-  title: "正月工具箱",
-  description: "为小白和开发者打造的极简现代在线工具集合站",
-  // ✅ 其他元数据可以放这里
+  title: SITE_NAME,
+  description: SITE_DESCRIPTION,
   icons: {
     icon: "/favicon.ico",
   },
 };
 
-// 3. 单独的 viewport 导出 👈 关键修复
 export const viewport: Viewport = {
   width: "device-width",
   initialScale: 1,
-  maximumScale: 1,
-  userScalable: false,
-  // 可选：适配深色模式
+  // 不设置 maximumScale / userScalable: false —— 允许用户缩放（WCAG 1.4.4）
   themeColor: [
     { media: "(prefers-color-scheme: light)", color: "#f8fafc" },
     { media: "(prefers-color-scheme: dark)", color: "#0f172a" },

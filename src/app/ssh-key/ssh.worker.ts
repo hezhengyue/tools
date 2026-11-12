@@ -22,10 +22,10 @@ self.onmessage = (e: MessageEvent) => {
       privateKey: forge.pki.privateKeyToPem(kp.privateKey),
       generatedAt: Date.now(),
     });
-  } catch (err: any) {
+  } catch (err: unknown) {
     self.postMessage({
       type: "rsa",
-      error: err?.message || "生成失败",
+      error: err instanceof Error ? err.message : "生成失败",
     });
   }
 };

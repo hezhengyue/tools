@@ -14,31 +14,33 @@ function JsonYamlCore() {
   const [yamlOutput, setYamlOutput] = useState("");
   const [error, setError] = useState("");
 
-  // 防抖：输入停止 300ms 后自动解析
+  // 防抖：输入停止 300ms 后自动解析（空值清理放在 onChange，避免 effect 内同步 setState）
   useEffect(() => {
-    if (!jsonInput.trim()) {
-      setYamlOutput("");
-      setError("");
-      return;
-    }
+    if (!jsonInput.trim()) return;
 
     const timer = setTimeout(() => {
       try {
-        const jsonObj = JSON.parse(jsonInput);
-        const yamlStr = yaml.dump(jsonObj, { indent: 2 });
-        setYamlOutput(yamlStr);
+        const jsonObj: unknown = JSON.parse(jsonInput);
+        setYamlOutput(yaml.dump(jsonObj, { indent: 2 }));
         setError("");
-      } catch (err: any) {
-        // 只在输入"看起来像完整对象"时才报错，避免打字中途频繁提示
-        if (jsonInput.trim().startsWith("{") || jsonInput.trim().startsWith("[")) {
-          setError("JSON 格式错误，请检查输入内容！");
-        }
+      } catch {
+        setError("JSON 格式错误，请检查输入内容！");
         setYamlOutput("");
       }
     }, 300);
 
     return () => clearTimeout(timer);
   }, [jsonInput]);
+
+  const handleInputChange = (value: string) => {
+    setJsonInput(value);
+    if (!value.trim()) {
+      setYamlOutput("");
+      setError("");
+    } else if (error) {
+      setError(""); // 用户继续输入时先清除上一次错误，等防抖结束再判定
+    }
+  };
 
   // 清空
   const handleClear = () => {
@@ -50,11 +52,11 @@ function JsonYamlCore() {
   // 格式化 JSON（美化输入）
   const handleFormatJson = () => {
     try {
-      const jsonObj = JSON.parse(jsonInput);
+      const jsonObj: unknown = JSON.parse(jsonInput);
       setJsonInput(JSON.stringify(jsonObj, null, 2));
       setError("");
     } catch {
-      // 不处理格式化错误，留给自动解析时提示
+      setError("JSON 格式错误，无法格式化！请检查输入内容。");
     }
   };
 
@@ -90,7 +92,7 @@ function JsonYamlCore() {
         <div className="flex items-center gap-3">
           {/* 实时统计 */}
           {jsonInput && (
-            <span className="text-xs text-slate-400">
+            <span className="text-xs text-slate-500">
               {stats.lines} 行 · {stats.chars} 字符
             </span>
           )}
@@ -104,14 +106,15 @@ function JsonYamlCore() {
         {/* 左侧输入框 */}
         <div className="flex-1 flex flex-col">
           <div className="flex items-center justify-between mb-3">
-            <label className="ui-label text-sm">JSON 输入</label>
+            <label htmlFor="json-input" className="ui-label text-sm">JSON 输入</label>
             {error && (
               <span className="flex items-center text-xs text-red-500 font-medium animate-pulse">
                 <AlertCircle size={14} className="mr-1" /> {error}
               </span>
             )}
           </div>
-          <textarea 
+          <textarea
+            id="json-input"
             className={`ui-textarea flex-1 resize-none ${
               error ? "border-red-300 bg-red-50/30" : ""
             }`}
@@ -121,19 +124,18 @@ function JsonYamlCore() {
   "tags": ["json", "yaml", "converter"]
 }`}
             value={jsonInput}
-            onChange={(e) => {
-              setJsonInput(e.target.value);
-              if (error) setError(""); // 用户继续输入时清除错误
-            }}
+            onChange={(e) => handleInputChange(e.target.value)}
             spellCheck={false}
             autoComplete="off"
+            aria-label="JSON 输入"
+            aria-invalid={!!error}
           />
         </div>
 
         {/* 右侧输出框 */}
         <div className="flex-1 flex flex-col">
           <div className="flex items-center justify-between mb-3">
-            <label className="ui-label text-sm">YAML 输出</label>
+            <label htmlFor="yaml-output" className="ui-label text-sm">YAML 输出</label>
             <div className="flex items-center gap-2">
               {yamlOutput && (
                 <span className="text-xs text-emerald-600 font-medium flex items-center gap-1">
@@ -143,7 +145,8 @@ function JsonYamlCore() {
               <CopyButton value={yamlOutput} label="复制 YAML" />
             </div>
           </div>
-          <textarea 
+          <textarea
+            id="yaml-output"
             className="ui-textarea flex-1 resize-none"
             readOnly
             value={yamlOutput}
@@ -161,7 +164,7 @@ function JsonYamlCore() {
 
       {/* 加载状态（解析中） */}
       {jsonInput.trim() && !yamlOutput && !error && (
-        <div className="mt-4 flex items-center gap-2 text-sm text-slate-400">
+        <div className="mt-4 flex items-center gap-2 text-sm text-slate-500">
           <div className="w-4 h-4 border-2 border-slate-200 border-t-indigo-600 rounded-full animate-spin" />
           解析中...
         </div>

@@ -75,8 +75,11 @@ export default function SelfCertPage() {
       return null;
     }
 
-    const isIPv4 = /^(\d{1,3}\.){3}\d{1,3}$/.test(value);
-    const isIPv6 = value.includes(":");
+    // 每段必须 ≤255，否则 999.999.999.999 会被当成 IP 写进 SAN 生成错误证书
+    const isIPv4 =
+      /^(\d{1,3}\.){3}\d{1,3}$/.test(value) &&
+      value.split(".").every((part) => Number(part) <= 255);
+    const isIPv6 = value.includes(":") && /^[0-9a-fA-F:.]+$/.test(value);
     const isIP = isIPv4 || isIPv6;
 
     return {
@@ -150,8 +153,9 @@ export default function SelfCertPage() {
         {/* 页面标题与描述由 ToolShell 统一渲染，这里不再重复 */}
         <div className="ui-panel-muted space-y-5">
           <div>
-            <label className="ui-label text-sm">证书名称 (CN)</label>
+            <label htmlFor="cert-cn" className="ui-label text-sm">证书名称 (CN)</label>
             <input
+              id="cert-cn"
               value={commonName}
               onChange={(e) => setCommonName(e.target.value)}
               placeholder="example.com、*.example.com、192.168.1.100"
@@ -161,7 +165,7 @@ export default function SelfCertPage() {
 
           <div>
             <div className="flex items-center justify-between gap-3 mb-3">
-              <label className="ui-label text-sm">SAN 扩展</label>
+              <span className="ui-label text-sm">SAN 扩展</span>
               <Button variant="ghost" size="sm" icon={Plus} onClick={addSan}>
                 添加
               </Button>

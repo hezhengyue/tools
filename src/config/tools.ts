@@ -28,8 +28,6 @@ export interface ToolItem {
   desc: string;
   /** 底部说明：结构化数据，由 ToolShell 统一渲染 */
   footer?: ToolFooter;
-  /** 自定义元数据（供工具内部使用）*/
-  meta?: Record<string, any>;
 }
 
 export interface ToolCategory {
@@ -201,7 +199,3 @@ export const toolsConfig: ToolCategory[] = [
   },
 ];
 
-// 辅助函数：根据 href 获取工具配置
-export function getToolByHref(href: string): ToolItem | undefined {
-  return toolsConfig.flatMap((cat) => cat.tools).find((tool) => tool.href === href);
-}

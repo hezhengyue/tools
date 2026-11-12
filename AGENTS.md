@@ -18,7 +18,8 @@ This version has breaking changes — APIs, conventions, and file structure may 
 
 唯一视觉来源：
 - `src/app/globals.css` → `@layer components` 里的 `.ui-*` 语义类（设计令牌）。
-- `src/components/ui/ToolUI.tsx` → 结构组件：`Panel` / `KeyRow` / `DisplayBox` / `Button` / `IconButton` / `Notice` / `EmptyState` / `Field` / `ToolActions` / `Badge`，以及输出块 `OutputBlock` / `CopyButton` / `DownloadButton`。
+- `src/components/ui/ToolUI.tsx` → 结构组件：`Panel` / `KeyRow` / `DisplayBox` / `Button` / `IconButton` / `Notice` / `EmptyState` / `Field` / `ToolActions` / `Badge`，以及输出块 `OutputBlock` / `CopyButton` / `DownloadButton` 与剪贴板工具 `writeClipboard`。
+- `src/config/site.ts` → 站点名称与描述的唯一来源（metadata / 侧栏 / 移动端顶栏共用）。
 - `src/components/ToolShell.tsx` → 所有工具页统一外壳（标题、图标、描述、内容卡、页脚）。13 个页面全部用它包裹。
 
 新工具页骨架：
@@ -76,6 +77,17 @@ footer: { mode: "local", subject: "文本", extra: "补充说明（可选）" }
 ```
 `mode: "local"` 生成「所有处理在浏览器本地完成，{subject}不会上传到任何服务器。」；`mode: "server"` 用于确实需要服务端查询的工具（目前仅 IP 地理位置），生成「归属地由服务端接口查询…」。ToolShell 统一渲染，**禁止 `dangerouslySetInnerHTML`、禁止页脚写自由 HTML、禁止在页面里自写 `<h1>` 重复标题**。
 
+# 工程与质量约定
+
+- **验证基线**：`npx tsc --noEmit`、`npm run lint` 都必须零错误；涉及路由/构建时再跑 `npm run build`。pre-commit 钩子会对暂存的 TS/TSX 自动执行 ESLint，未通过无法提交。
+- **依赖**：只保留实际 import 的包；`crypto-js` 一律用子路径（如 `crypto-js/sha256`）按需引入，不要从主入口全量导入。
+- **随机与密码**：需要安全随机一律用 `crypto.getRandomValues`，禁止 `Math.random()` 生成密码；洗牌用 Fisher-Yates；抽奖等非安全场景也统一走模块级 `shuffle()`。
+- **剪贴板**：统一用 `writeClipboard()`（内置 `execCommand` 降级），禁止页面里直接 `navigator.clipboard.writeText` 或无条件弹「已复制」。
+- **资源**：图片类页面必须校验文件大小与像素上限、等比缩小超大图；`createObjectURL` 在卸载/替换时 `revokeObjectURL`，`ImageBitmap` 用完 `close()`，所有 `setTimeout` 在卸载时清理；高频绘制用 `requestAnimationFrame` 合并。
+- **可访问性**：允许用户缩放（viewport 不设 `userScalable: false`）；独立 `<label>` 必须用 `htmlFor` 关联控件 id；图标按钮必须有 `aria-label`；上传区支持键盘触发；动态提示用 `Notice`（自带 `role=status/alert`）；小字最低 `text-slate-500`，不要用 `text-slate-400`。
+- **隐私**：新增工具默认在浏览器本地处理；若确实需要服务端请求，必须在 `tools.ts` 的 `footer.mode` 标为 `"server"` 并如实说明，不要套用「不会上传任何服务器」。
+- **待办**：图片压缩与背景虚化的画布计算仍在主线程（已用像素上限 + 异步编码缓解），彻底 Worker 化需单独排期并做浏览器兼容验证。
+
 # 提交前检查
 
 提交到 GitHub 前必须确认 `git status` 中没有 `node_modules/`、`.next/`、`.env*`、`*.key`、`*.pem`、`.workbuddy/` 等内容；只添加源码与必要配置。
@@ -93,4 +105,4 @@ footer: { mode: "local", subject: "文本", extra: "补充说明（可选）" }
 6. 环境注意：本机 `git commit` 偶尔会返回退出码 1 并打印 `git status` 文本，但提交其实已经创建。因此**不要把 commit 和 push 用 `&&` 串成一条命令**；commit 后先用 `git status -sb` / `git log -1` 确认，再单独 push。
 7. push 失败（网络、认证、非快进）时如实报告并停下，**不 force、不跳过 hook**，也不要丢弃本地改动。
 
-防呆：`.githooks/pre-commit` 会检查暂存区，拦截构建产物、环境变量、密钥证书、AI 工具数据，以及白名单以外的 `.md` 文件。首次克隆后执行 `git config core.hooksPath .githooks` 启用。
+防呆：`.githooks/pre-commit` 会检查暂存区（路径大小写不敏感），拦截构建产物、环境变量、密钥证书、AI 工具数据、疑似私钥/token 的新增行，以及白名单以外的 `.md` 文件，并对暂存的 TS/TSX 执行 ESLint。首次克隆后执行 `git config core.hooksPath .githooks` 启用。

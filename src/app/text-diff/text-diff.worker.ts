@@ -97,12 +97,12 @@ self.onmessage = function (e: MessageEvent<DiffRequest>) {
         stats,
       },
     });
-  } catch (err: any) {
+  } catch (err: unknown) {
     self.postMessage({
       type: "DIFF_ERROR",
       payload: {
         requestId,
-        error: err.message || "差异计算失败",
+        error: (err instanceof Error ? err.message : "") || "差异计算失败",
       },
     });
   }

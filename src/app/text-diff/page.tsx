@@ -67,8 +67,9 @@ function TextDiffCore() {
       {/* 模式选择 + 操作按钮 */}
       <div className="flex flex-wrap items-center justify-between gap-3 mb-4">
         <div className="flex items-center gap-2">
-          <label className="text-sm font-medium text-slate-600">对比模式:</label>
+          <label htmlFor="diff-mode" className="text-sm font-medium text-slate-600">对比模式:</label>
           <select
+            id="diff-mode"
             value={mode}
             onChange={(e) => setMode(e.target.value as DiffMode)}
             className="px-3 py-1.5 text-sm bg-slate-50 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500/20"
@@ -102,10 +103,11 @@ function TextDiffCore() {
         {/* 原文本 */}
         <div>
           <div className="flex items-center justify-between mb-2">
-            <label className="font-semibold text-slate-700 text-sm">原文本 (Old)</label>
+            <label htmlFor="diff-old" className="font-semibold text-slate-700 text-sm">原文本 (Old)</label>
             <CopyButton value={oldText} label="复制原文本" />
           </div>
           <textarea
+            id="diff-old"
             value={oldText}
             onChange={(e) => setOldText(e.target.value)}
             placeholder="粘贴或输入原始文本..."
@@ -116,10 +118,11 @@ function TextDiffCore() {
         {/* 新文本 */}
         <div>
           <div className="flex items-center justify-between mb-2">
-            <label className="font-semibold text-slate-700 text-sm">新文本 (New)</label>
+            <label htmlFor="diff-new" className="font-semibold text-slate-700 text-sm">新文本 (New)</label>
             <CopyButton value={newText} label="复制新文本" />
           </div>
           <textarea
+            id="diff-new"
             value={newText}
             onChange={(e) => setNewText(e.target.value)}
             placeholder="粘贴或输入修改后的文本..."
@@ -137,13 +140,13 @@ function TextDiffCore() {
       {(oldText || newText) && (
         <div className="mb-6">
           <div className="flex items-center justify-between mb-3">
-            <label className="font-semibold text-slate-700 flex items-center gap-2">
+            <span className="font-semibold text-slate-700 flex items-center gap-2">
               <FileDiff size={16} />
               差异结果
-            </label>
+            </span>
             <CopyButton
-              value={result ? result.diffs.map((d) => d.value).join("") : ""}
-              label="复制结果"
+              value={result ? result.diffs.filter((d) => !d.removed).map((d) => d.value).join("") : ""}
+              label="复制结果（新文本）"
             />
           </div>
           

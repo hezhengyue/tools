@@ -1,9 +1,19 @@
 // app/hash-text/page.tsx
 "use client";
 
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect, useRef } from "react";
 import { RefreshCw } from "lucide-react";
-import { MD5, RIPEMD160, SHA1, SHA224, SHA256, SHA3, SHA384, SHA512, enc } from "crypto-js";
+// 按需引入子模块：避免 crypto-js 主入口把 30+ 种算法一次性打进首屏 bundle
+import MD5 from "crypto-js/md5";
+import RIPEMD160 from "crypto-js/ripemd160";
+import SHA1 from "crypto-js/sha1";
+import SHA224 from "crypto-js/sha224";
+import SHA256 from "crypto-js/sha256";
+import SHA3 from "crypto-js/sha3";
+import SHA384 from "crypto-js/sha384";
+import SHA512 from "crypto-js/sha512";
+import Hex from "crypto-js/enc-hex";
+import Base64 from "crypto-js/enc-base64";
 import ToolShell from "@/components/ToolShell";
 import { Notice, CopyButton } from "@/components/ui/ToolUI";
 
@@ -11,6 +21,7 @@ import { Notice, CopyButton } from "@/components/ui/ToolUI";
 
 type HashAlgorithm = "MD5" | "SHA1" | "SHA256" | "SHA224" | "SHA512" | "SHA384" | "SHA3" | "RIPEMD160";
 type Encoding = "Hex" | "Base64" | "Base64url" | "Bin";
+type WordArray = CryptoJS.lib.WordArray;
 
 const ALGORITHMS: { label: string; value: HashAlgorithm; color: string }[] = [
   { label: "MD5", value: "MD5", color: "indigo" },
@@ -23,7 +34,7 @@ const ALGORITHMS: { label: string; value: HashAlgorithm; color: string }[] = [
   { label: "RIPEMD160", value: "RIPEMD160", color: "pink" },
 ];
 
-const ENCodings: { label: string; value: Encoding }[] = [
+const ENCODINGS: { label: string; value: Encoding }[] = [
   { label: "Hexadecimal (base 16)", value: "Hex" },
   { label: "Base64 (base 64)", value: "Base64" },
   { label: "Base64url (URL safe)", value: "Base64url" },
@@ -36,51 +47,65 @@ function convertHexToBin(hex: string): string {
   return hex.trim().split("").map((byte) => parseInt(byte, 16).toString(2).padStart(4, "0")).join("");
 }
 
-function formatWithEncoding(wordArray: CryptoJS.lib.WordArray, encoding: Encoding): string {
+function formatWithEncoding(wordArray: WordArray, encoding: Encoding): string {
   switch (encoding) {
-    case "Bin": return convertHexToBin(wordArray.toString(enc.Hex));
-    case "Base64url": return wordArray.toString(enc.Base64).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
-    case "Base64": return wordArray.toString(enc.Base64);
-    default: return wordArray.toString(enc.Hex);
+    case "Bin": return convertHexToBin(wordArray.toString(Hex));
+    case "Base64url": return wordArray.toString(Base64).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
+    case "Base64": return wordArray.toString(Base64);
+    default: return wordArray.toString(Hex);
   }
 }
 
 function hashText(algorithm: HashAlgorithm, text: string, encoding: Encoding = "Hex"): string {
-  const algorithms: Record<HashAlgorithm, (text: string) => CryptoJS.lib.WordArray> = {
+  const algorithms: Record<HashAlgorithm, (text: string) => WordArray> = {
     MD5, SHA1, SHA256, SHA224, SHA512, SHA384, SHA3, RIPEMD160,
   };
-  const wordArray = algorithms[algorithm](text);
-  return formatWithEncoding(wordArray, encoding);
+  return formatWithEncoding(algorithms[algorithm](text), encoding);
 }
 
 // ============ 核心功能组件 ============
 
 function HashTextCore() {
   const [inputText, setInputText] = useState("");
+  // 防抖后的文本：连续输入时不再每敲一个字符就同步算 8 种哈希
+  const [debouncedText, setDebouncedText] = useState("");
   const [encoding, setEncoding] = useState<Encoding>("Hex");
   const [isGenerating, setIsGenerating] = useState(false);
+  const flashTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  // ✅ 修复：始终返回正确类型的对象
+  useEffect(() => {
+    const timer = setTimeout(() => setDebouncedText(inputText), 250);
+    return () => clearTimeout(timer);
+  }, [inputText]);
+
+  useEffect(() => () => {
+    if (flashTimer.current) clearTimeout(flashTimer.current);
+  }, []);
+
   const hashes = useMemo(() => {
     return ALGORITHMS.reduce((acc, { value }) => {
-      acc[value] = inputText ? hashText(value, inputText, encoding) : "";
+      acc[value] = debouncedText ? hashText(value, debouncedText, encoding) : "";
       return acc;
     }, {} as Record<HashAlgorithm, string>);
-  }, [inputText, encoding]);
+  }, [debouncedText, encoding]);
 
   const handleRegenerate = () => {
     setIsGenerating(true);
-    setTimeout(() => setIsGenerating(false), 300);
+    if (flashTimer.current) clearTimeout(flashTimer.current);
+    flashTimer.current = setTimeout(() => setIsGenerating(false), 300);
   };
 
-  const handleClear = () => setInputText("");
+  const handleClear = () => {
+    setInputText("");
+    setDebouncedText("");
+  };
 
   return (
     <>
       {/* 输入区域 */}
       <div className="mb-6">
         <div className="flex justify-between items-center mb-3">
-          <label className="font-semibold text-slate-700">哈希文本</label>
+          <label htmlFor="hash-input" className="font-semibold text-slate-700">哈希文本</label>
           {inputText && (
             <button onClick={handleClear} className="text-sm text-slate-500 hover:text-indigo-600 transition-colors">
               清空
@@ -88,23 +113,25 @@ function HashTextCore() {
           )}
         </div>
         <textarea
+          id="hash-input"
           value={inputText}
           onChange={(e) => { setInputText(e.target.value); handleRegenerate(); }}
           placeholder="输入任意文本进行哈希计算..."
           className="ui-textarea min-h-[120px]"
           autoFocus
         />
-        <div className="text-right text-xs text-slate-400 mt-2">{inputText.length} 个字符</div>
+        <div className="text-right text-xs text-slate-500 mt-2">{inputText.length} 个字符</div>
       </div>
 
       {/* 编码选择 */}
       <div className="mb-6">
-        <label className="font-semibold text-slate-700 block mb-3">输出编码格式</label>
+        <span className="font-semibold text-slate-700 block mb-3">输出编码格式</span>
         <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-          {ENCodings.map((opt) => (
+          {ENCODINGS.map((opt) => (
             <button
               key={opt.value}
               onClick={() => { setEncoding(opt.value); handleRegenerate(); }}
+              aria-pressed={encoding === opt.value}
               className={`px-4 py-2.5 rounded-xl text-sm font-medium transition-all border ${
                 encoding === opt.value
                   ? "bg-indigo-600 text-white border-indigo-600 shadow-md shadow-indigo-600/20"
@@ -120,7 +147,6 @@ function HashTextCore() {
       {/* 哈希结果列表 */}
       <div className="space-y-3">
         {ALGORITHMS.map(({ label, value, color }) => {
-          // ✅ 现在 TypeScript 知道 hashes 有 HashAlgorithm 键
           const hashValue = hashes[value] || "";
           const colorClasses: Record<string, string> = {
             indigo: "text-indigo-600 bg-indigo-50 border-indigo-200",
@@ -137,17 +163,18 @@ function HashTextCore() {
             <div
               key={value}
               className={`flex items-center gap-3 p-4 rounded-2xl border transition-all ${
-                hashValue ? colorClasses[color] : "bg-slate-50 border-slate-200 text-slate-400"
+                hashValue ? colorClasses[color] : "bg-slate-50 border-slate-200 text-slate-500"
               } ${isGenerating ? "animate-pulse" : ""}`}
             >
               <span className="font-mono font-bold w-24 text-sm shrink-0">{label}</span>
               <input
                 readOnly
                 value={hashValue || "—"}
+                aria-label={`${label} 哈希值`}
                 className="flex-1 bg-transparent border-0 font-mono text-sm truncate focus:outline-none"
                 placeholder="等待输入..."
               />
-              <CopyButton value={hashValue} label="复制哈希值" />
+              <CopyButton value={hashValue} label={`复制 ${label} 哈希值`} />
             </div>
           );
         })}
@@ -173,7 +200,7 @@ function HashTextCore() {
   );
 }
 
-// ============ 页面导出 ============
+// ============ 页面导出（用 ToolShell 包裹） ============
 
 export default function HashTextPage() {
   return (

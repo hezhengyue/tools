@@ -56,7 +56,10 @@ interface WorkerMessage {
     | "CERT_GENERATED"
     | "CERT_ERROR";
 
-  payload: any;
+  payload: CertResult & {
+    requestId?: string;
+    error?: string;
+  };
 }
 
 export function useCertGenerator() {
@@ -156,8 +159,10 @@ export function useCertGenerator() {
     } catch (err) {
       console.error(err);
 
-      setError(
-        "Worker初始化失败"
+      queueMicrotask(() =>
+        setError(
+          "Worker初始化失败"
+        )
       );
     }
 

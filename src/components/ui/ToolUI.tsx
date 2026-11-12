@@ -8,7 +8,6 @@
 import { useEffect, useRef, useState } from "react";
 import type { ReactNode, ButtonHTMLAttributes, HTMLAttributes, ElementType } from "react";
 import {
-  AlertCircle,
   Check,
   CheckCircle2,
   Copy,
@@ -146,14 +145,19 @@ export function Notice({
   tone = "info",
   children,
   className = "",
-}: {
+  ...rest
+}: HTMLAttributes<HTMLDivElement> & {
   tone?: NoticeTone;
   children: ReactNode;
   className?: string;
 }) {
   const Icon = NOTICE_ICON[tone];
   return (
-    <div className={`ui-notice ui-notice-${tone} ${className}`}>
+    <div
+      className={`ui-notice ui-notice-${tone} ${className}`}
+      role={tone === "error" ? "alert" : "status"}
+      {...rest}
+    >
       <Icon size={16} className="shrink-0 mt-0.5" strokeWidth={1.75} />
       <div className="min-w-0 leading-relaxed">{children}</div>
     </div>
@@ -226,7 +230,33 @@ export function Badge({
    单独需要某个动作时用 CopyButton / DownloadButton。
    ================================================================ */
 
-/** 复制图标按钮：内置剪贴板写入与「已复制」成功态 */
+/** 统一的剪贴板写入：Clipboard API 失败（非 HTTPS / 权限被拒）时降级到 execCommand */
+export async function writeClipboard(text: string): Promise<boolean> {
+  try {
+    if (navigator.clipboard?.writeText) {
+      await navigator.clipboard.writeText(text);
+      return true;
+    }
+  } catch {
+    // 继续走降级方案
+  }
+  try {
+    const ta = document.createElement("textarea");
+    ta.value = text;
+    ta.setAttribute("readonly", "");
+    ta.style.position = "fixed";
+    ta.style.opacity = "0";
+    document.body.appendChild(ta);
+    ta.select();
+    const ok = document.execCommand("copy");
+    document.body.removeChild(ta);
+    return ok;
+  } catch {
+    return false;
+  }
+}
+
+/** 复制图标按钮：内置剪贴板写入、失败兜底与「已复制」成功态 */
 export function CopyButton({
   value,
   label = "复制",
@@ -242,7 +272,7 @@ export function CopyButton({
   size?: number;
   onCopied?: () => void;
 }) {
-  const [copied, setCopied] = useState(false);
+  const [status, setStatus] = useState<"idle" | "copied" | "failed">("idle");
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => () => {
@@ -251,27 +281,26 @@ export function CopyButton({
 
   const handleCopy = async () => {
     if (!value || disabled) return;
-    try {
-      await navigator.clipboard.writeText(value);
-      setCopied(true);
-      onCopied?.();
-      if (timer.current) clearTimeout(timer.current);
-      timer.current = setTimeout(() => setCopied(false), 1500);
-    } catch {
-      // 浏览器禁用剪贴板时静默失败，不阻断页面
-    }
+    const ok = await writeClipboard(value);
+    setStatus(ok ? "copied" : "failed");
+    if (ok) onCopied?.();
+    if (timer.current) clearTimeout(timer.current);
+    timer.current = setTimeout(() => setStatus("idle"), 1500);
   };
 
+  const title = status === "copied" ? "已复制" : status === "failed" ? "复制失败，请检查剪贴板权限" : label;
   return (
     <button
       type="button"
       onClick={handleCopy}
       disabled={disabled || !value}
-      title={copied ? "已复制" : label}
-      aria-label={copied ? "已复制" : label}
-      className={`ui-icon-btn ${copied ? "ui-icon-btn-success" : ""} ${className}`}
+      title={title}
+      aria-label={title}
+      className={`ui-icon-btn ${status === "copied" ? "ui-icon-btn-success" : ""} ${
+        status === "failed" ? "text-red-600 bg-red-50" : ""
+      } ${className}`}
     >
-      {copied ? <Check size={size} /> : <Copy size={size} />}
+      {status === "copied" ? <Check size={size} /> : status === "failed" ? <XCircle size={size} /> : <Copy size={size} />}
     </button>
   );
 }
@@ -381,6 +410,3 @@ export function OutputBlock({
     </div>
   );
 }
-
-/** 页脚说明里的警示图标（供 ToolShell 使用） */
-export const FooterIcon = AlertCircle;

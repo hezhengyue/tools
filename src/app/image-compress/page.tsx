@@ -1,10 +1,11 @@
 // app/image-compress/page.tsx
 "use client";
 
-import { useState, useRef, useCallback } from "react";
-import { 
-  Upload, Download, Trash2, Settings, Image as ImageIcon, 
-  FileImage, ShieldCheck, Zap, Info, Lock
+import { useState, useRef, useCallback, useEffect } from "react";
+import type { ElementType } from "react";
+import {
+  Download, Trash2, Image as ImageIcon,
+  FileImage, ShieldCheck, Zap, Lock
 } from "lucide-react";
 import ToolShell from "@/components/ToolShell";
 import { Notice } from "@/components/ui/ToolUI";
@@ -33,114 +34,200 @@ const QUALITY_CONFIG: Record<QualityPreset, { quality: number; maxSize?: number 
   small: { quality: 0.55, maxSize: 1920 },
 };
 
+// 资源上限：避免超大图导致内存溢出 / 主线程长时间阻塞
+const MAX_FILE_BYTES = 40 * 1024 * 1024;
+const MAX_PIXELS = 24_000_000;
+const MAX_DIMENSION = 6000;
+
+/** 选项卡片：模块级组件，避免每次渲染都重建 */
+function OptionCard({
+  checked, onChange, disabled, title, desc, icon: Icon, badge
+}: {
+  checked: boolean;
+  onChange?: (v: boolean) => void;
+  disabled?: boolean;
+  title: string;
+  desc: string;
+  icon: ElementType;
+  badge?: string;
+}) {
+  const toggle = () => { if (!disabled) onChange?.(!checked); };
+  return (
+    <div
+      className={`flex items-start gap-3 p-3 rounded-xl border transition-all ${
+        disabled
+          ? "bg-slate-50 border-slate-200 cursor-not-allowed"
+          : checked
+            ? "bg-indigo-50 border-indigo-300 ring-2 ring-indigo-200 cursor-pointer"
+            : "bg-white border-slate-200 hover:border-slate-400 cursor-pointer"
+      }`}
+      onClick={toggle}
+      onKeyDown={(e) => {
+        if (!disabled && (e.key === "Enter" || e.key === " ")) {
+          e.preventDefault();
+          toggle();
+        }
+      }}
+      role="checkbox"
+      aria-checked={checked}
+      aria-disabled={disabled}
+      aria-label={title}
+      tabIndex={disabled ? -1 : 0}
+    >
+      <div className="relative mt-0.5">
+        <div className={`w-5 h-5 rounded border flex items-center justify-center transition-colors ${
+          disabled
+            ? "bg-slate-100 border-slate-200"
+            : checked
+              ? "bg-indigo-600 border-indigo-600"
+              : "border-slate-200 bg-white"
+        }`}>
+          {checked && <svg className="w-3 h-3 text-white" fill="none" viewBox="0 0 12 12" aria-hidden="true"><path d="M10 3L4.5 8.5L2 6" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/></svg>}
+          {disabled && <Lock size={12} className="text-slate-500" />}
+        </div>
+      </div>
+      <div className="flex-1 min-w-0">
+        <div className="flex items-center gap-2">
+          <Icon size={16} className={disabled ? "text-slate-300" : checked ? "text-indigo-600" : "text-slate-500"} />
+          <span className={`font-medium ${disabled ? "text-slate-500" : checked ? "text-slate-800" : "text-slate-600"}`}>
+            {title}
+          </span>
+          {badge && (
+            <span className="text-[10px] px-1.5 py-0.5 bg-emerald-100 text-emerald-700 rounded-full font-medium">
+              {badge}
+            </span>
+          )}
+        </div>
+        <p className="text-xs text-slate-500 mt-0.5">{desc}</p>
+      </div>
+    </div>
+  );
+}
+
 export default function ImageCompressPage() {
   const [files, setFiles] = useState<ProcessedFile[]>([]);
   const [format, setFormat] = useState<OutputFormat>("webp");
   const [quality, setQuality] = useState<QualityPreset>("medium");
-  
+
   // 🔧 隐私保护：默认开启且不可关闭
   const [enableCompress, setEnableCompress] = useState(true);
-  const enableRemoveExif = true; // ✅ 强制开启，保护用户隐私
-  
+
   const [isProcessing, setIsProcessing] = useState(false);
+  const [processError, setProcessError] = useState("");
   const [dragActive, setDragActive] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const filesRef = useRef<ProcessedFile[]>([]);
+
+  useEffect(() => { filesRef.current = files; }, [files]);
+  // 离开页面时释放全部预览 URL，切页不再堆积 Blob
+  useEffect(() => () => {
+    filesRef.current.forEach((f) => URL.revokeObjectURL(f.preview));
+  }, []);
 
   // 🔧 核心：图片处理函数
   const processImage = useCallback(async (file: File): Promise<ProcessedFile | null> => {
-    if (!file.type.startsWith("image/")) return null;
+    if (!file.type.startsWith("image/") || file.size > MAX_FILE_BYTES) return null;
 
     const changes: string[] = ["🔒 已清除隐私"];
-    
-    // 🎯 情况：不压缩 → 仅清除EXIF（Canvas重绘）
-    if (!enableCompress) {
-      const img = await createImageBitmap(file);
-      const { width, height } = img;
-      
-      // Canvas重绘自动剥离EXIF
+    let img: ImageBitmap | null = null;
+    try {
+      img = await createImageBitmap(file);
+      let { width, height } = img;
+
+      // 超大图等比缩小，避免 canvas 分配过大内存
+      const scale = Math.min(
+        1,
+        MAX_DIMENSION / Math.max(width, height),
+        Math.sqrt(MAX_PIXELS / (width * height))
+      );
+      if (scale < 1) {
+        width = Math.max(1, Math.floor(width * scale));
+        height = Math.max(1, Math.floor(height * scale));
+        changes.push("📐 已等比缩小");
+      }
+
+      if (enableCompress) {
+        const { maxSize } = QUALITY_CONFIG[quality];
+        if (maxSize && Math.max(width, height) > maxSize) {
+          const ratio = maxSize / Math.max(width, height);
+          width = Math.max(1, Math.floor(width * ratio));
+          height = Math.max(1, Math.floor(height * ratio));
+        }
+      }
+
       const canvas = new OffscreenCanvas(width, height);
       const ctx = canvas.getContext("2d");
       if (!ctx) return null;
-      
-      ctx.fillStyle = "#ffffff";
-      ctx.fillRect(0, 0, width, height);
+
+      const requestedType = enableCompress ? `image/${format}` : (file.type || "image/png");
+      // 只有不支持 alpha 的 JPEG 需要铺白底；PNG/WebP/AVIF 保留透明通道
+      if (requestedType === "image/jpeg") {
+        ctx.fillStyle = "#ffffff";
+        ctx.fillRect(0, 0, width, height);
+      }
       ctx.drawImage(img, 0, 0, width, height);
-      
-      // 保持原格式导出
-      const mimeType = file.type || "image/jpeg";
-      const blob = await canvas.convertToBlob({ type: mimeType });
-      
+
+      const blob = await canvas.convertToBlob({
+        type: requestedType,
+        quality: enableCompress ? QUALITY_CONFIG[quality].quality : undefined,
+      });
+      // 浏览器不支持目标编码时会静默回退（常见 AVIF → PNG），按实际类型修正文件后缀
+      const actualType = blob.type || requestedType;
+      if (actualType !== requestedType) {
+        changes.push(`⚠️ 不支持 ${format.toUpperCase()}，已回退 ${actualType.split("/")[1]?.toUpperCase() || "PNG"}`);
+      }
+      if (enableCompress) changes.push(`🗜️ 压缩(${QUALITY_CONFIG[quality].quality * 100}%)`);
+
       return {
         original: file,
         processed: blob,
         preview: URL.createObjectURL(blob),
         originalSize: file.size,
         processedSize: blob.size,
-        format: mimeType,
+        format: actualType,
         width,
         height,
         changes,
       };
+    } finally {
+      img?.close();
     }
-
-    // 🎯 情况：压缩 + 清除EXIF
-    const img = await createImageBitmap(file);
-    let { width, height } = img;
-
-    // 应用尺寸限制
-    const { maxSize } = QUALITY_CONFIG[quality];
-    if (maxSize && Math.max(width, height) > maxSize) {
-      const ratio = maxSize / Math.max(width, height);
-      width = Math.floor(width * ratio);
-      height = Math.floor(height * ratio);
-    }
-
-    // Canvas重绘 + 压缩
-    const canvas = new OffscreenCanvas(width, height);
-    const ctx = canvas.getContext("2d");
-    if (!ctx) return null;
-
-    ctx.fillStyle = "#ffffff";
-    ctx.fillRect(0, 0, width, height);
-    ctx.drawImage(img, 0, 0, width, height);
-
-    const mimeType = `image/${format}`;
-    const blob = await canvas.convertToBlob({ 
-      type: mimeType, 
-      quality: QUALITY_CONFIG[quality].quality 
-    });
-
-    changes.push(`🗜️ 压缩(${QUALITY_CONFIG[quality].quality * 100}%)`);
-
-    return {
-      original: file,
-      processed: blob,
-      preview: URL.createObjectURL(blob),
-      originalSize: file.size,
-      processedSize: blob.size,
-      format: mimeType,
-      width,
-      height,
-      changes,
-    };
   }, [enableCompress, format, quality]);
 
-  // 📥 文件选择
+  // 📥 文件选择：单张失败不中断整批，finally 保证结束「处理中」状态
   const handleFiles = useCallback(async (fileList: FileList | null) => {
     if (!fileList?.length) return;
-    
+
     setIsProcessing(true);
     const newFiles: ProcessedFile[] = [];
-
-    for (const file of Array.from(fileList)) {
-      if (file.type.startsWith("image/")) {
-        const result = await processImage(file);
-        if (result) newFiles.push(result);
+    const failed: string[] = [];
+    try {
+      for (const file of Array.from(fileList)) {
+        if (!file.type.startsWith("image/")) {
+          failed.push(`${file.name}（非图片）`);
+          continue;
+        }
+        if (file.size > MAX_FILE_BYTES) {
+          failed.push(`${file.name}（超过 40MB）`);
+          continue;
+        }
+        try {
+          const result = await processImage(file);
+          if (result) newFiles.push(result);
+          else failed.push(`${file.name}（无法解码）`);
+        } catch {
+          failed.push(`${file.name}（格式不支持或文件损坏）`);
+        }
       }
+      if (newFiles.length) setFiles((prev) => [...prev, ...newFiles]);
+      setProcessError(
+        failed.length
+          ? `以下文件处理失败：${failed.slice(0, 5).join("、")}${failed.length > 5 ? ` 等 ${failed.length} 个` : ""}`
+          : ""
+      );
+    } finally {
+      setIsProcessing(false);
     }
-
-    setFiles(prev => [...prev, ...newFiles]);
-    setIsProcessing(false);
   }, [processImage]);
 
   // 🖱️ 拖拽
@@ -185,139 +272,19 @@ export default function ImageCompressPage() {
 
   // 📐 格式化
   const formatSize = (bytes: number) => {
-    if (bytes === 0) return "0 B";
+    if (!Number.isFinite(bytes) || bytes <= 0) return "0 B";
     const k = 1024;
     const sizes = ["B", "KB", "MB", "GB"];
-    const i = Math.floor(Math.log(bytes) / Math.log(k));
+    const i = Math.min(sizes.length - 1, Math.floor(Math.log(bytes) / Math.log(k)));
     return `${(bytes / Math.pow(k, i)).toFixed(1)} ${sizes[i]}`;
   };
+
+  const totalSaved = files.reduce((sum, f) => sum + Math.max(0, f.originalSize - f.processedSize), 0);
 
   // 📊 压缩率
   const calcRatio = (original: number, processed: number) => {
     return Math.round((1 - processed / original) * 100);
   };
-
-  // 🧩 选项卡片组件
-  const OptionCard = ({ 
-    checked, 
-    onChange, 
-    disabled,
-    title, 
-    desc, 
-    icon: Icon,
-    badge 
-  }: { 
-    checked: boolean; 
-    onChange?: (v: boolean) => void; 
-    disabled?: boolean;
-    title: string; 
-    desc: string; 
-    icon: React.ElementType;
-    badge?: string;
-  }) => (
-    <div 
-      className={`flex items-start gap-3 p-3 rounded-xl border transition-all ${
-        disabled 
-          ? "bg-slate-50 border-slate-200 cursor-not-allowed" 
-          : checked 
-            ? "bg-indigo-50 border-indigo-300 ring-2 ring-indigo-200" 
-            : "bg-white border-slate-200 hover:border-slate-200 cursor-pointer"
-      }`}
-      onClick={() => !disabled && onChange?.(!checked)}
-    >
-      <div className="relative mt-0.5">
-        <div className={`w-5 h-5 rounded border flex items-center justify-center transition-colors ${
-          disabled 
-            ? "bg-slate-100 border-slate-200" 
-            : checked 
-              ? "bg-indigo-600 border-indigo-600" 
-              : "border-slate-200 bg-white"
-        }`}>
-          {checked && <svg className="w-3 h-3 text-white" fill="none" viewBox="0 0 12 12"><path d="M10 3L4.5 8.5L2 6" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/></svg>}
-          {disabled && <Lock size={12} className="text-slate-400" />}
-        </div>
-      </div>
-      <div className="flex-1 min-w-0">
-        <div className="flex items-center gap-2">
-          <Icon size={16} className={disabled ? "text-slate-300" : checked ? "text-indigo-600" : "text-slate-400"} />
-          <span className={`font-medium ${disabled ? "text-slate-400" : checked ? "text-slate-800" : "text-slate-600"}`}>
-            {title}
-          </span>
-          {badge && (
-            <span className="text-[10px] px-1.5 py-0.5 bg-emerald-100 text-emerald-700 rounded-full font-medium">
-              {badge}
-            </span>
-          )}
-        </div>
-        <p className="text-xs text-slate-500 mt-0.5">{desc}</p>
-      </div>
-    </div>
-  );
-
-  // 🧩 工具栏
-  const renderToolbar = () => (
-    <div className="flex flex-wrap items-center gap-3 p-3 bg-white/90 backdrop-blur-sm border-b border-slate-200 rounded-xl border">
-      {/* 格式选择 */}
-      <div className="flex items-center gap-2">
-        <FileImage size={16} className="text-slate-500" />
-        <span className="text-xs text-slate-500 hidden sm:inline">格式</span>
-        <select
-          value={format}
-          onChange={(e) => setFormat(e.target.value as OutputFormat)}
-          disabled={!enableCompress}
-          className={`ui-input w-auto px-2 py-1 ${
-            !enableCompress ? "text-slate-400 opacity-60 cursor-not-allowed" : ""
-          }`}
-        >
-          <option value="webp">WebP 🎯</option>
-          <option value="avif">AVIF ✨</option>
-          <option value="jpeg">JPEG 🔒</option>
-        </select>
-      </div>
-
-      {/* 质量预设 */}
-      <div className="flex items-center gap-2">
-        <Zap size={16} className="text-slate-500" />
-        <span className="text-xs text-slate-500 hidden sm:inline">压缩</span>
-        <select
-          value={quality}
-          onChange={(e) => setQuality(e.target.value as QualityPreset)}
-          disabled={!enableCompress}
-          className={`ui-input w-auto px-2 py-1 ${
-            !enableCompress ? "text-slate-400 opacity-60 cursor-not-allowed" : ""
-          }`}
-        >
-          <option value="high">高清 (92%)</option>
-          <option value="medium">平衡 (75%)</option>
-          <option value="small">极小 (55%)</option>
-        </select>
-      </div>
-
-      {/* 操作按钮 */}
-      <div className="flex items-center gap-2 ml-auto">
-        {files.length > 0 && (
-          <button
-            onClick={clearAll}
-            className="ui-icon-btn text-red-600 hover:bg-red-50"
-            title="清空"
-          >
-            <Trash2 size={18} />
-          </button>
-        )}
-        <label className="ui-icon-btn bg-indigo-600 text-white hover:bg-indigo-700 shadow-sm">
-          <Upload size={18} />
-          <input
-            ref={fileInputRef}
-            type="file"
-            accept="image/*"
-            multiple
-            className="hidden"
-            onChange={(e) => handleFiles(e.target.files)}
-          />
-        </label>
-      </div>
-    </div>
-  );
 
   return (
     <ToolShell>
@@ -334,6 +301,15 @@ export default function ImageCompressPage() {
           onDragOver={handleDrag}
           onDrop={handleDrop}
           onClick={() => fileInputRef.current?.click()}
+          onKeyDown={(e) => {
+            if (e.key === "Enter" || e.key === " ") {
+              e.preventDefault();
+              fileInputRef.current?.click();
+            }
+          }}
+          role="button"
+          tabIndex={0}
+          aria-label="上传图片"
         >
           <input
             ref={fileInputRef}
@@ -359,6 +335,49 @@ export default function ImageCompressPage() {
           </div>
         </div>
 
+        {/* 输出设置（格式 / 质量）：设置仅对之后上传的图片生效 */}
+        <div className="flex flex-wrap items-center gap-3 p-3 bg-white border border-slate-200 rounded-xl">
+          <div className="flex items-center gap-2">
+            <FileImage size={16} className="text-slate-500" />
+            <label htmlFor="compress-format" className="text-xs text-slate-500">格式</label>
+            <select
+              id="compress-format"
+              value={format}
+              onChange={(e) => setFormat(e.target.value as OutputFormat)}
+              disabled={!enableCompress}
+              className="ui-select w-auto py-1.5 disabled:opacity-60"
+            >
+              <option value="webp">WebP</option>
+              <option value="avif">AVIF</option>
+              <option value="jpeg">JPEG</option>
+            </select>
+          </div>
+          <div className="flex items-center gap-2">
+            <Zap size={16} className="text-slate-500" />
+            <label htmlFor="compress-quality" className="text-xs text-slate-500">质量</label>
+            <select
+              id="compress-quality"
+              value={quality}
+              onChange={(e) => setQuality(e.target.value as QualityPreset)}
+              disabled={!enableCompress}
+              className="ui-select w-auto py-1.5 disabled:opacity-60"
+            >
+              <option value="high">高清 (92%)</option>
+              <option value="medium">平衡 (75%)</option>
+              <option value="small">极小 (55%)</option>
+            </select>
+          </div>
+          <span className="text-xs text-slate-500">设置仅对新上传的图片生效</span>
+          {files.length > 0 && (
+            <button
+              onClick={clearAll}
+              className="ui-btn ui-btn-ghost ui-btn-sm ml-auto hover:text-red-600"
+            >
+              <Trash2 size={14} /> 清空
+            </button>
+          )}
+        </div>
+
         {/* 🔧 功能选项 */}
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
           {/* 压缩选项 - 可选 */}
@@ -380,6 +399,8 @@ export default function ImageCompressPage() {
           />
         </div>
 
+        {processError && <Notice tone="error">{processError}</Notice>}
+
         {/* 处理结果 */}
         {files.length > 0 && (
           <div className="space-y-3">
@@ -388,7 +409,7 @@ export default function ImageCompressPage() {
                 已处理 {files.length} 张图片
               </h3>
               <span className="text-xs text-slate-500 bg-slate-100 px-2 py-1 rounded">
-                总计节省 {formatSize(files.reduce((sum, f) => sum + f.originalSize - f.processedSize, 0))}
+                {totalSaved > 0 ? `总计节省 ${formatSize(totalSaved)}` : "体积未减小"}
               </span>
             </div>
 
@@ -401,7 +422,7 @@ export default function ImageCompressPage() {
                 <div className="w-24 h-24 flex-shrink-0 bg-slate-100 rounded-xl overflow-hidden">
                   <img 
                     src={file.preview} 
-                    alt="preview"
+                    alt={`${file.original.name} 的压缩预览`}
                     className="w-full h-full object-cover"
                   />
                 </div>
@@ -447,11 +468,11 @@ export default function ImageCompressPage() {
                   {enableCompress && (
                     <div className="mt-2 flex items-center gap-4 text-xs">
                       <div className="flex items-center gap-1">
-                        <span className="text-slate-400">原:</span>
+                        <span className="text-slate-500">原:</span>
                         <span className="font-medium text-slate-600">{formatSize(file.originalSize)}</span>
                       </div>
                       <div className="flex items-center gap-1">
-                        <span className="text-slate-400">后:</span>
+                        <span className="text-slate-500">后:</span>
                         <span className="font-medium text-emerald-600">{formatSize(file.processedSize)}</span>
                       </div>
                       {file.processedSize < file.originalSize && (
@@ -469,6 +490,7 @@ export default function ImageCompressPage() {
                   onClick={() => downloadFile(file)}
                   className="ui-icon-btn bg-indigo-600 text-white hover:bg-indigo-700 shadow-sm"
                   title="下载"
+                  aria-label={`下载 ${file.original.name}`}
                 >
                   <Download size={18} />
                 </button>

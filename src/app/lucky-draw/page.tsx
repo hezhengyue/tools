@@ -2,12 +2,12 @@
 "use client";
 
 import { useState, useRef, useEffect } from "react";
-import { 
-  Plus, Trash2, RefreshCw, Copy, Download, Sparkles, 
-  Users, Settings, Play, Pause, Check, X 
+import {
+  Plus, Trash2, RefreshCw, Copy, Download,
+  Users, Settings, Play, Pause, Check, X
 } from "lucide-react";
 import ToolShell from "@/components/ToolShell";
-import { Notice } from "@/components/ui/ToolUI";
+import { Notice, writeClipboard } from "@/components/ui/ToolUI";
 
 // 定义粒子数据的类型
 interface Particle {
@@ -15,6 +15,24 @@ interface Particle {
   top: number;
   delay: number;
   duration: number;
+}
+
+/** 背景粒子：确定性数据，避免水合不一致与挂载后 setState */
+const PARTICLES: Particle[] = Array.from({ length: 20 }, (_, i) => ({
+  left: (i * 37 + 11) % 100,
+  top: (i * 61 + 7) % 100,
+  delay: (i % 5) * 0.4,
+  duration: 2 + (i % 4) * 0.7,
+}));
+
+/** 无偏洗牌（Fisher-Yates），打乱名单与抽奖共用 */
+function shuffle<T>(list: T[]): T[] {
+  const out = [...list];
+  for (let i = out.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [out[i], out[j]] = [out[j], out[i]];
+  }
+  return out;
 }
 
 export default function LuckyDrawPage() {
@@ -34,29 +52,29 @@ export default function LuckyDrawPage() {
   const [winners, setWinners] = useState<string[]>([]);
   const [showResult, setShowResult] = useState(false);
   
-  // 🔥 修复：粒子动画数据（初始为空数组，保证 SSR 和客户端首次渲染一致，避免水合错误）
-  const [particles, setParticles] = useState<Particle[]>([]);
-
   // 动画控制
-  const animationRef = useRef<NodeJS.Timeout | null>(null);
+  const animationRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const resultTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const drawIdRef = useRef(0);
   const namesRef = useRef<string[]>([]);
-  
+
   // 同步 ref（避免动画闭包问题）
-  useEffect(() => { 
-    namesRef.current = participants; 
+  useEffect(() => {
+    namesRef.current = participants;
   }, [participants]);
 
-  // 🔥 修复：仅在客户端挂载后生成随机粒子数据
-  useEffect(() => {
-    setParticles(
-      Array.from({ length: 20 }, () => ({
-        left: Math.random() * 100,
-        top: Math.random() * 100,
-        delay: Math.random() * 2,
-        duration: 2 + Math.random() * 3,
-      }))
-    );
+  // 卸载时清理所有定时器，避免离开页面后仍 setState
+  useEffect(() => () => {
+    if (animationRef.current) clearTimeout(animationRef.current);
+    if (resultTimerRef.current) clearTimeout(resultTimerRef.current);
   }, []);
+
+  const stopTimers = () => {
+    if (animationRef.current) clearTimeout(animationRef.current);
+    if (resultTimerRef.current) clearTimeout(resultTimerRef.current);
+    animationRef.current = null;
+    resultTimerRef.current = null;
+  };
 
   // 添加参与者
   const addParticipant = () => {
@@ -113,55 +131,54 @@ export default function LuckyDrawPage() {
 
   // 🔥 核心：抽奖动画 + 逻辑
   const startDraw = () => {
-    if (participants.length === 0) return;
+    if (participants.length === 0 || isDrawing) return;
     if (!allowRepeat && drawCount > participants.length) {
-      alert(`❌ 最多只能抽 ${participants.length} 人（不重复模式）`);
+      alert(`最多只能抽 ${participants.length} 人（不重复模式）；如需更多名额请勾选「允许重复中奖」`);
       return;
     }
 
+    stopTimers();
+    const drawId = ++drawIdRef.current;
     setIsDrawing(true);
     setShowResult(false);
     setWinners([]);
-    
-    const available = [...participants];
-    const results: string[] = [];
-    let drawn = 0;
 
     // 动画：快速滚动名字
     const animate = () => {
-      const randomName = participants[Math.floor(Math.random() * participants.length)];
-      setCurrentDisplay(randomName);
+      if (drawIdRef.current !== drawId) return;
+      const list = namesRef.current.length ? namesRef.current : participants;
+      setCurrentDisplay(list[Math.floor(Math.random() * list.length)]);
       animationRef.current = setTimeout(animate, 50 + Math.random() * 50);
     };
     animate();
 
     // 实际抽奖逻辑（延迟执行，制造悬念）
-    setTimeout(() => {
-      // 停止动画
-      if (animationRef.current) clearTimeout(animationRef.current);
-      
-      // 执行抽奖
-      while (drawn < drawCount && available.length > 0) {
-        const index = Math.floor(Math.random() * available.length);
-        const winner = available.splice(index, 1)[0];
-        results.push(winner);
-        if (!allowRepeat) {
-          // 不重复：从原名单也移除（避免同一轮重复）
+    resultTimerRef.current = setTimeout(() => {
+      if (drawIdRef.current !== drawId) return; // 已被停止 / 重新开奖
+      stopTimers();
+
+      // 允许重复：每次都从完整名单抽；不重复：抽中即移出候选池
+      const results: string[] = [];
+      if (allowRepeat) {
+        const pool = namesRef.current.length ? namesRef.current : participants;
+        for (let i = 0; i < drawCount && pool.length; i++) {
+          results.push(pool[Math.floor(Math.random() * pool.length)]);
         }
-        drawn++;
+      } else {
+        results.push(...shuffle(namesRef.current.length ? namesRef.current : participants).slice(0, drawCount));
       }
 
-      // 显示结果
       setCurrentDisplay("🎉 抽奖完成！");
       setWinners(results);
       setShowResult(true);
       setIsDrawing(false);
-    }, 2000 + drawCount * 300); // 动画时长随抽奖数量增加
+    }, 2000 + Math.min(drawCount, 10) * 300);
   };
 
-  // 重置抽奖
+  // 重置 / 停止抽奖：让旧结果定时器彻底失效
   const resetDraw = () => {
-    if (animationRef.current) clearTimeout(animationRef.current);
+    drawIdRef.current += 1;
+    stopTimers();
     setIsDrawing(false);
     setCurrentDisplay("准备抽奖...");
     setWinners([]);
@@ -172,8 +189,8 @@ export default function LuckyDrawPage() {
   const copyResults = async () => {
     if (winners.length === 0) return;
     const text = `🎁 抽奖结果：\n${winners.map((w, i) => `${i + 1}. ${w}`).join("\n")}`;
-    await navigator.clipboard.writeText(text);
-    alert("✅ 结果已复制到剪贴板");
+    const ok = await writeClipboard(text);
+    alert(ok ? "结果已复制到剪贴板" : "复制失败，请检查浏览器剪贴板权限");
   };
 
   // 下载结果
@@ -194,8 +211,7 @@ export default function LuckyDrawPage() {
 
   // 随机打乱名单（用于预览）
   const shuffleList = () => {
-    const shuffled = [...participants].sort(() => Math.random() - 0.5);
-    setParticipants(shuffled);
+    setParticipants(shuffle(participants));
   };
 
   return (
@@ -203,9 +219,9 @@ export default function LuckyDrawPage() {
       <div className="space-y-6">
         {/* 顶部：抽奖显示区 */}
         <div className="relative p-8 bg-gradient-to-br from-indigo-500 via-purple-500 to-pink-500 rounded-2xl text-white text-center overflow-hidden">
-          {/* 🔥 修复：动态背景粒子（使用 state 渲染，避免 SSR 和客户端 Math.random() 不一致） */}
+          {/* 背景粒子使用模块级确定性数据，SSR 与客户端渲染一致 */}
           <div className="absolute inset-0 opacity-20">
-            {particles.map((p, i) => (
+            {PARTICLES.map((p, i) => (
               <div
                 key={i}
                 className="absolute w-2 h-2 bg-white rounded-full animate-pulse"
@@ -289,8 +305,9 @@ export default function LuckyDrawPage() {
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4 p-4 bg-slate-50 rounded-2xl border border-slate-200">
           <div className="flex items-center gap-3">
             <Settings size={18} className="text-slate-500" />
-            <label className="text-sm font-medium text-slate-700">抽取人数：</label>
+            <label htmlFor="draw-count" className="text-sm font-medium text-slate-700">抽取人数：</label>
             <input
+              id="draw-count"
               type="number"
               min={1}
               max={100}
@@ -354,7 +371,7 @@ export default function LuckyDrawPage() {
           {/* 批量导入 */}
           <details className="group">
             <summary className="flex items-center gap-2 text-sm text-slate-500 cursor-pointer hover:text-indigo-600">
-              <span>📋 批量导入（支持换行/逗号分隔）</span>
+              <span>批量导入（支持换行/逗号分隔）</span>
               <span className="transition-transform group-open:rotate-180">▼</span>
             </summary>
             <textarea
@@ -372,7 +389,7 @@ export default function LuckyDrawPage() {
           {/* 名单列表 */}
           <div className="max-h-80 overflow-y-auto space-y-2 pr-2 custom-scrollbar">
             {participants.length === 0 ? (
-              <div className="p-6 text-center text-slate-400 text-sm bg-slate-50 rounded-xl border border-dashed border-slate-200">
+              <div className="p-6 text-center text-slate-500 text-sm bg-slate-50 rounded-xl border border-dashed border-slate-200">
                 暂无参与者，添加姓名开始抽奖 🎁
               </div>
             ) : (
@@ -457,8 +474,8 @@ export default function LuckyDrawPage() {
         <Notice tone="info">
           <strong>使用提示：</strong>
           <ul className="mt-2 space-y-1 list-disc list-inside">
-            <li>添加参与者后，设置抽取人数，点击"开始抽奖"</li>
-            <li>勾选"允许重复"可让同一人中多次奖</li>
+            <li>添加参与者后，设置抽取人数，点击「开始抽奖」</li>
+            <li>勾选「允许重复」可让同一人中多次奖</li>
             <li>抽奖结果支持复制和下载保存</li>
             <li>纯前端运行，所有数据仅保存在本地，刷新页面会重置</li>
           </ul>

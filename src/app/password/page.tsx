@@ -1,112 +1,150 @@
 // app/password/page.tsx
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { Check, RefreshCw } from "lucide-react";
 import ToolShell from "@/components/ToolShell";
 import { CopyButton } from "@/components/ui/ToolUI";
+
+// ============ 模块级纯函数：密码学安全随机，不依赖 Math.random ============
+
+const CHAR_SETS = {
+  upper: "ABCDEFGHIJKLMNOPQRSTUVWXYZ",
+  lower: "abcdefghijklmnopqrstuvwxyz",
+  num: "0123456789",
+  sym: "!@#$%^&*()_+~`|}{[]:;?><,./-=",
+} as const;
+
+/** 用 crypto.getRandomValues + 拒绝采样，生成 [0, max) 的无偏整数 */
+function secureRandomInt(max: number): number {
+  if (max <= 0) return 0;
+  const limit = Math.floor(0xffffffff / max) * max;
+  const buf = new Uint32Array(1);
+  do {
+    crypto.getRandomValues(buf);
+  } while (buf[0] >= limit);
+  return buf[0] % max;
+}
+
+function pick(chars: string): string {
+  return chars[secureRandomInt(chars.length)];
+}
+
+interface PasswordOptions {
+  uppercase: boolean;
+  lowercase: boolean;
+  numbers: boolean;
+  symbols: boolean;
+}
+
+/** 生成密码：每个勾选类型至少 1 个字符，Fisher-Yates 洗牌 */
+function createPassword(length: number, options: PasswordOptions): string {
+  const enabled: string[] = [];
+  if (options.uppercase) enabled.push(CHAR_SETS.upper);
+  if (options.lowercase) enabled.push(CHAR_SETS.lower);
+  if (options.numbers) enabled.push(CHAR_SETS.num);
+  if (options.symbols) enabled.push(CHAR_SETS.sym);
+  if (enabled.length === 0) return "";
+
+  const allChars = enabled.join("");
+  const chars = enabled.map(pick);
+  // 长度小于勾选类型数时，仍保证每个类型至少一个字符（结果会比设定长度长）
+  while (chars.length < length) chars.push(pick(allChars));
+
+  for (let i = chars.length - 1; i > 0; i--) {
+    const j = secureRandomInt(i + 1);
+    [chars[i], chars[j]] = [chars[j], chars[i]];
+  }
+  return chars.join("");
+}
+
+function evaluateStrength(pwd: string): { label: string; level: number; color: string } {
+  let score = 0;
+  if (pwd.length >= 8) score++;
+  if (pwd.length >= 12) score++;
+  if (pwd.length >= 16) score++;
+  if (/[a-z]/.test(pwd)) score++;
+  if (/[A-Z]/.test(pwd)) score++;
+  if (/[0-9]/.test(pwd)) score++;
+  if (/[^a-zA-Z0-9]/.test(pwd)) score++;
+
+  if (!pwd) return { label: "无效", level: 0, color: "gray" };
+  if (score <= 2) return { label: "弱", level: 1, color: "red" };
+  if (score <= 4) return { label: "中", level: 2, color: "orange" };
+  if (score <= 6) return { label: "强", level: 3, color: "blue" };
+  return { label: "极高", level: 4, color: "green" };
+}
+
+function clampLength(value: number): number {
+  return Number.isFinite(value) ? Math.min(64, Math.max(8, Math.round(value))) : 16;
+}
 
 // ============ 核心功能组件（只写业务逻辑） ============
 
 function PasswordGeneratorCore() {
   const [password, setPassword] = useState("");
   const [length, setLength] = useState(16);
+  // 数字输入框允许中间态（比如输入 20 时的 "2"），失焦时才规范化
+  const [lengthDraft, setLengthDraft] = useState("16");
   const [copied, setCopied] = useState(false);
+  const copyTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  const [options, setOptions] = useState({
+  const [options, setOptions] = useState<PasswordOptions>({
     uppercase: true,
     lowercase: true,
     numbers: true,
     symbols: true,
   });
 
-  const [strength, setStrength] = useState<{
-    label: string;
-    level: number;
-    color: string;
-  }>({ label: "极高", level: 4, color: "green" });
+  const [strength, setStrength] = useState(evaluateStrength(""));
 
-  // 生成密码（确保每种勾选类型至少出现1个）
-  const generatePassword = () => {
-    const { uppercase, lowercase, numbers, symbols } = options;
-    const selectedTypes = [uppercase, lowercase, numbers, symbols].filter(Boolean);
-
-    if (selectedTypes.length === 0) {
-      setPassword("");
-      setStrength({ label: "无效", level: 0, color: "gray" });
-      return;
-    }
-
-    const charSets = {
-      upper: "ABCDEFGHIJKLMNOPQRSTUVWXYZ",
-      lower: "abcdefghijklmnopqrstuvwxyz",
-      num: "0123456789",
-      sym: "!@#$%^&*()_+~`|}{[]:;?><,./-=",
-    };
-
-    const requiredChars: string[] = [];
-    if (uppercase) requiredChars.push(charSets.upper[Math.floor(Math.random() * charSets.upper.length)]);
-    if (lowercase) requiredChars.push(charSets.lower[Math.floor(Math.random() * charSets.lower.length)]);
-    if (numbers) requiredChars.push(charSets.num[Math.floor(Math.random() * charSets.num.length)]);
-    if (symbols) requiredChars.push(charSets.sym[Math.floor(Math.random() * charSets.sym.length)]);
-
-    let allChars = "";
-    if (uppercase) allChars += charSets.upper;
-    if (lowercase) allChars += charSets.lower;
-    if (numbers) allChars += charSets.num;
-    if (symbols) allChars += charSets.sym;
-
-    const remainingLength = Math.max(0, length - requiredChars.length);
-    let remainingChars = "";
-    for (let i = 0; i < remainingLength; i++) {
-      remainingChars += allChars.charAt(Math.floor(Math.random() * allChars.length));
-    }
-
-    const fullPassword = [...requiredChars, ...remainingChars].sort(() => Math.random() - 0.5).join("");
-
-    setPassword(fullPassword);
+  const generatePassword = useCallback(() => {
+    const next = createPassword(length, options);
+    setPassword(next);
     setCopied(false);
-    checkStrength(fullPassword);
-  };
-
-  // 密码强度检测
-  const checkStrength = (pwd: string) => {
-    let score = 0;
-    if (pwd.length >= 8) score++;
-    if (pwd.length >= 12) score++;
-    if (pwd.length >= 16) score++;
-    if (/[a-z]/.test(pwd)) score++;
-    if (/[A-Z]/.test(pwd)) score++;
-    if (/[0-9]/.test(pwd)) score++;
-    if (/[^a-zA-Z0-9]/.test(pwd)) score++;
-
-    if (score <= 2) {
-      setStrength({ label: "弱", level: 1, color: "red" });
-    } else if (score <= 4) {
-      setStrength({ label: "中", level: 2, color: "orange" });
-    } else if (score <= 6) {
-      setStrength({ label: "强", level: 3, color: "blue" });
-    } else {
-      setStrength({ label: "极高", level: 4, color: "green" });
-    }
-  };
-
-  // 自动生成
-  useEffect(() => {
-    generatePassword();
+    setStrength(evaluateStrength(next));
   }, [length, options]);
 
-  // 复制
+  // 参数变化后自动生成
+  useEffect(() => {
+    // 放到微任务里生成，避免 effect 内同步 setState 造成级联渲染
+    queueMicrotask(generatePassword);
+  }, [generatePassword]);
+
+  // 卸载时清理复制提示定时器
+  useEffect(() => () => {
+    if (copyTimer.current) clearTimeout(copyTimer.current);
+  }, []);
+
   const flashCopied = () => {
     setCopied(true);
-    setTimeout(() => setCopied(false), 1500);
+    if (copyTimer.current) clearTimeout(copyTimer.current);
+    copyTimer.current = setTimeout(() => setCopied(false), 1500);
   };
 
-  // 长度输入限制
   const handleLengthChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    let val = Number(e.target.value);
-    val = Math.min(64, Math.max(8, val));
-    setLength(val);
+    setLengthDraft(e.target.value);
+    const parsed = Number(e.target.value);
+    // 只有完整合法的两位数才即时生效，避免 "2" 被 clamp 成 8 导致输不进 20
+    if (e.target.value !== "" && parsed >= 8 && parsed <= 64) {
+      setLength(Math.round(parsed));
+    }
+  };
+
+  const commitLength = () => {
+    const next = clampLength(Number(lengthDraft));
+    setLength(next);
+    setLengthDraft(String(next));
+  };
+
+  const setLengthFromRange = (value: number) => {
+    const next = clampLength(value);
+    setLength(next);
+    setLengthDraft(String(next));
+  };
+
+  const toggle = (key: keyof PasswordOptions) => {
+    setOptions((prev) => ({ ...prev, [key]: !prev[key] }));
   };
 
   const selectedCount = Object.values(options).filter(Boolean).length;
@@ -148,9 +186,10 @@ function PasswordGeneratorCore() {
                 : strength.color === "blue"
                 ? "text-blue-600"
                 : strength.color === "gray"
-                ? "text-slate-400"
+                ? "text-slate-500"
                 : "text-emerald-700"
             }`}
+            aria-live="polite"
           >
             {strength.label}
           </span>
@@ -166,14 +205,17 @@ function PasswordGeneratorCore() {
       {/* 密码长度 */}
       <div className="mb-6">
         <div className="flex justify-between items-center mb-3">
-          <label className="font-semibold text-slate-700">密码长度</label>
+          <label htmlFor="password-length" className="font-semibold text-slate-700">密码长度</label>
           <div className="flex items-center gap-2">
             <input
+              id="password-length"
               type="number"
               min={8}
               max={64}
-              value={length}
+              value={lengthDraft}
               onChange={handleLengthChange}
+              onBlur={commitLength}
+              onKeyDown={(e) => e.key === "Enter" && commitLength()}
               className="w-16 px-2 py-1 border border-slate-200 rounded-lg text-center text-sm"
             />
             <span className="text-sm text-slate-500">位</span>
@@ -184,10 +226,8 @@ function PasswordGeneratorCore() {
           min="8"
           max="64"
           value={length}
-          onChange={(e) => {
-            const val = Number(e.target.value);
-            setLength(Math.min(64, Math.max(8, val)));
-          }}
+          onChange={(e) => setLengthFromRange(Number(e.target.value))}
+          aria-label="密码长度滑块"
           className="w-full h-2 bg-slate-200 rounded-lg appearance-none cursor-pointer accent-indigo-600"
         />
       </div>
@@ -198,8 +238,8 @@ function PasswordGeneratorCore() {
           <input
             type="checkbox"
             checked={options.uppercase}
-            onChange={() => setOptions((p) => ({ ...p, uppercase: !p.uppercase }))}
-            className="w-4 h-4 text-indigo-600 rounded"
+            onChange={() => toggle("uppercase")}
+            className="ui-checkbox"
           />
           <span className="text-sm text-slate-700">大写字母 A-Z</span>
         </label>
@@ -207,8 +247,8 @@ function PasswordGeneratorCore() {
           <input
             type="checkbox"
             checked={options.lowercase}
-            onChange={() => setOptions((p) => ({ ...p, lowercase: !p.lowercase }))}
-            className="w-4 h-4 text-indigo-600 rounded"
+            onChange={() => toggle("lowercase")}
+            className="ui-checkbox"
           />
           <span className="text-sm text-slate-700">小写字母 a-z</span>
         </label>
@@ -216,8 +256,8 @@ function PasswordGeneratorCore() {
           <input
             type="checkbox"
             checked={options.numbers}
-            onChange={() => setOptions((p) => ({ ...p, numbers: !p.numbers }))}
-            className="w-4 h-4 text-indigo-600 rounded"
+            onChange={() => toggle("numbers")}
+            className="ui-checkbox"
           />
           <span className="text-sm text-slate-700">数字 0-9</span>
         </label>
@@ -225,8 +265,8 @@ function PasswordGeneratorCore() {
           <input
             type="checkbox"
             checked={options.symbols}
-            onChange={() => setOptions((p) => ({ ...p, symbols: !p.symbols }))}
-            className="w-4 h-4 text-indigo-600 rounded"
+            onChange={() => toggle("symbols")}
+            className="ui-checkbox"
           />
           <span className="text-sm text-slate-700">特殊符号 !@#$</span>
         </label>

@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import {
   MapPin,
   Radio,
@@ -10,7 +10,7 @@ import {
 } from "lucide-react";
 import ToolShell from "@/components/ToolShell";
 import {
-  Panel, KeyRow, Button, DisplayBox, EmptyState, ToolActions,
+  Panel, KeyRow, Button, DisplayBox, EmptyState, ToolActions, writeClipboard,
 } from "@/components/ui/ToolUI";
 
 interface GeoInfo {
@@ -45,7 +45,13 @@ function IpGeoCore() {
   const [data, setData] = useState<IpGeoData | null>(null);
   const [loading, setLoading] = useState(false);
   const [copied, setCopied] = useState(false);
+  const [copyError, setCopyError] = useState("");
   const [fetchError, setFetchError] = useState<string | null>(null);
+  const copyTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  useEffect(() => () => {
+    if (copyTimer.current) clearTimeout(copyTimer.current);
+  }, []);
 
   async function loadData() {
     setLoading(true);
@@ -70,7 +76,7 @@ function IpGeoCore() {
     loadData();
   }, []);
 
-  function copyAll() {
+  async function copyAll() {
     if (!data) return;
 
     const geo = data.geo;
@@ -89,9 +95,15 @@ function IpGeoCore() {
       text += `\n地理位置信息：暂无\n`;
     }
 
-    navigator.clipboard.writeText(text);
+    const ok = await writeClipboard(text);
+    if (!ok) {
+      setCopyError("复制失败，请检查浏览器剪贴板权限");
+      return;
+    }
+    setCopyError("");
     setCopied(true);
-    setTimeout(() => setCopied(false), 1500);
+    if (copyTimer.current) clearTimeout(copyTimer.current);
+    copyTimer.current = setTimeout(() => setCopied(false), 1500);
   }
 
   const geo = data?.geo;
@@ -149,6 +161,8 @@ function IpGeoCore() {
           )}
         </div>
       </Panel>
+
+      {copyError && <p className="mb-3 text-sm text-red-600" role="alert">{copyError}</p>}
 
       {/* 操作按钮 */}
       <ToolActions>
