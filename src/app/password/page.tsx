@@ -42,6 +42,7 @@ type SymbolPreset = keyof typeof SYMBOL_PRESETS;
 
 /** 视觉易混淆字符：手抄、口述、投屏时最容易认错的一批 */
 const AMBIGUOUS = "Il1O0o|";
+const AMBIGUOUS_LIST = Array.from(AMBIGUOUS);
 
 /** 用 crypto.getRandomValues + 拒绝采样，生成 [0, max) 的无偏整数 */
 function secureRandomInt(max: number): number {
@@ -161,16 +162,32 @@ function PasswordGeneratorCore() {
 
   // 默认「兼容」档：绝大多数系统都能直接接受，避免生成后到处被拒
   const [symbolPreset, setSymbolPreset] = useState<SymbolPreset>("safe");
-  const [excludeAmbiguous, setExcludeAmbiguous] = useState(false);
+  // 排除字符只维护输入框这一个字符串，所见即所得：
+  // 勾选「排除易混淆字符」= 自动把 Il1O0o| 写进输入框，取消勾选 = 自动移除。
   const [extraExclude, setExtraExclude] = useState("");
 
   const [strength, setStrength] = useState(evaluateStrength(""));
 
-  const excluded = (excludeAmbiguous ? AMBIGUOUS : "") + extraExclude;
+  // 输入框里已经包含全部易混淆字符时，复选框即为勾选态
+  const excludeAmbiguous = AMBIGUOUS_LIST.every((c) => extraExclude.includes(c));
+
+  const toggleAmbiguous = (checked: boolean) => {
+    setExtraExclude((prev) => {
+      if (checked) {
+        const next = new Set(Array.from(prev));
+        for (const c of AMBIGUOUS_LIST) next.add(c);
+        return Array.from(next).join("");
+      }
+      const drop = new Set(AMBIGUOUS_LIST);
+      return Array.from(prev)
+        .filter((c) => !drop.has(c))
+        .join("");
+    });
+  };
 
   const classes = useMemo(
-    () => buildCharClasses(options, symbolPreset, excluded),
-    [options, symbolPreset, excluded]
+    () => buildCharClasses(options, symbolPreset, extraExclude),
+    [options, symbolPreset, extraExclude]
   );
 
   // 勾选了却被排除干净的字符类型，用于给出明确提示
@@ -415,7 +432,7 @@ function PasswordGeneratorCore() {
             type="text"
             value={extraExclude}
             onChange={(e) => setExtraExclude(e.target.value)}
-            placeholder="输入不想出现的字符，例如 Il1O0o"
+            placeholder="例如 & % #，留空则不额外排除"
             maxLength={40}
             spellCheck={false}
             autoComplete="off"
@@ -425,14 +442,14 @@ function PasswordGeneratorCore() {
             <input
               type="checkbox"
               checked={excludeAmbiguous}
-              onChange={(e) => setExcludeAmbiguous(e.target.checked)}
+              onChange={(e) => toggleAmbiguous(e.target.checked)}
               className="ui-checkbox"
             />
             <span className="text-sm text-slate-700 whitespace-nowrap">排除易混淆字符</span>
           </label>
         </div>
         <p className="text-xs text-slate-500 mt-2 leading-relaxed">
-          易混淆字符指 <span className="font-mono">I l 1 O 0 o |</span>，手抄或投屏念读时最容易认错。输入框可再排除任意字符，例如某后台不允许 <span className="font-mono">&amp;</span> 或 <span className="font-mono">%</span>，填进去即可。
+          勾选「排除易混淆字符」会直接把 <span className="font-mono">I l 1 O 0 o |</span> 填入输入框，无需手动输入；反过来在输入框里删掉它们，勾选也会自动取消。输入框还可以再排除任意字符，例如某后台不允许 <span className="font-mono">&amp;</span> 或 <span className="font-mono">%</span>，填进去即可。
         </p>
       </div>
 
