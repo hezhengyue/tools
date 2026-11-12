@@ -2,16 +2,15 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { Copy, Check, RefreshCw, ArrowRightLeft, FileDiff } from "lucide-react";
+import { RefreshCw, ArrowRightLeft, FileDiff } from "lucide-react";
 import ToolShell from "@/components/ToolShell";
-import { Notice } from "@/components/ui/ToolUI";
+import { Notice, CopyButton } from "@/components/ui/ToolUI";
 import { useTextDiff, type DiffMode } from "./useTextDiff";
 
 function TextDiffCore() {
   const [oldText, setOldText] = useState("");
   const [newText, setNewText] = useState("");
   const [mode, setMode] = useState<DiffMode>("lines");
-  const [copied, setCopied] = useState<"old" | "new" | "diff" | null>(null);
   
   const { result, isComputing, error, computeDiff } = useTextDiff();
 
@@ -25,17 +24,6 @@ function TextDiffCore() {
     
     return () => clearTimeout(timer);
   }, [oldText, newText, mode, computeDiff]);
-
-  const copyToClipboard = async (text: string, type: "old" | "new" | "diff") => {
-    if (!text) return;
-    try {
-      await navigator.clipboard.writeText(text);
-      setCopied(type);
-      setTimeout(() => setCopied(null), 1500);
-    } catch (err) {
-      console.error("复制失败:", err);
-    }
-  };
 
   const swapTexts = () => {
     setOldText(newText);
@@ -115,17 +103,7 @@ function TextDiffCore() {
         <div>
           <div className="flex items-center justify-between mb-2">
             <label className="font-semibold text-slate-700 text-sm">原文本 (Old)</label>
-            {oldText && (
-              <button
-                onClick={() => copyToClipboard(oldText, "old")}
-                className={`p-1.5 rounded transition-all ${
-                  copied === "old" ? "text-emerald-700" : "text-slate-400 hover:text-indigo-600"
-                }`}
-                title="复制"
-              >
-                {copied === "old" ? <Check size={14} /> : <Copy size={14} />}
-              </button>
-            )}
+            <CopyButton value={oldText} label="复制原文本" />
           </div>
           <textarea
             value={oldText}
@@ -139,17 +117,7 @@ function TextDiffCore() {
         <div>
           <div className="flex items-center justify-between mb-2">
             <label className="font-semibold text-slate-700 text-sm">新文本 (New)</label>
-            {newText && (
-              <button
-                onClick={() => copyToClipboard(newText, "new")}
-                className={`p-1.5 rounded transition-all ${
-                  copied === "new" ? "text-emerald-700" : "text-slate-400 hover:text-indigo-600"
-                }`}
-                title="复制"
-              >
-                {copied === "new" ? <Check size={14} /> : <Copy size={14} />}
-              </button>
-            )}
+            <CopyButton value={newText} label="复制新文本" />
           </div>
           <textarea
             value={newText}
@@ -173,22 +141,10 @@ function TextDiffCore() {
               <FileDiff size={16} />
               差异结果
             </label>
-            {result && (
-              <button
-                onClick={() => {
-                  const text = result.diffs.map(d => d.value).join("");
-                  copyToClipboard(text, "diff");
-                }}
-                className={`flex items-center gap-1.5 px-3 py-1.5 text-sm rounded-lg transition-all ${
-                  copied === "diff"
-                    ? "bg-emerald-100 text-emerald-700"
-                    : "bg-indigo-600 text-white hover:bg-indigo-700"
-                }`}
-              >
-                {copied === "diff" ? <Check size={14} /> : <Copy size={14} />}
-                {copied === "diff" ? "已复制" : "复制结果"}
-              </button>
-            )}
+            <CopyButton
+              value={result ? result.diffs.map((d) => d.value).join("") : ""}
+              label="复制结果"
+            />
           </div>
           
           {isComputing ? (

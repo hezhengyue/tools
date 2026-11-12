@@ -467,7 +467,7 @@ export default function ImageCompressPage() {
                 {/* 下载 */}
                 <button
                   onClick={() => downloadFile(file)}
-                  className="flex-shrink-0 p-3 bg-indigo-600 text-white rounded-xl hover:bg-indigo-700 transition-colors shadow-sm"
+                  className="ui-icon-btn bg-indigo-600 text-white hover:bg-indigo-700 shadow-sm"
                   title="下载"
                 >
                   <Download size={18} />

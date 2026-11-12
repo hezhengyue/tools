@@ -2,8 +2,9 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { Copy, Check, RefreshCw } from "lucide-react";
+import { Check, RefreshCw } from "lucide-react";
 import ToolShell from "@/components/ToolShell";
+import { CopyButton } from "@/components/ui/ToolUI";
 
 // ============ 核心功能组件（只写业务逻辑） ============
 
@@ -96,9 +97,7 @@ function PasswordGeneratorCore() {
   }, [length, options]);
 
   // 复制
-  const copyToClipboard = () => {
-    if (!password) return;
-    navigator.clipboard.writeText(password);
+  const flashCopied = () => {
     setCopied(true);
     setTimeout(() => setCopied(false), 1500);
   };
@@ -127,14 +126,13 @@ function PasswordGeneratorCore() {
           )}
         </div>
 
-        <button
-          onClick={copyToClipboard}
-          className="absolute right-4 top-1/2 -translate-y-1/2 p-3 bg-white border border-slate-200 rounded-xl text-slate-500 hover:text-indigo-600 hover:border-indigo-200 hover:bg-indigo-50 shadow-sm transition-all"
-          title="复制密码"
-          disabled={!password}
-        >
-          <Copy size={20} />
-        </button>
+        <CopyButton
+          value={password}
+          label="复制密码"
+          onCopied={flashCopied}
+          size={20}
+          className="absolute right-4 top-1/2 -translate-y-1/2 p-3 bg-white border border-slate-200 shadow-sm hover:border-indigo-200 hover:bg-indigo-50 hover:text-indigo-600"
+        />
       </div>
 
       {/* 密码强度 */}

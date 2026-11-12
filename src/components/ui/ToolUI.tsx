@@ -1,12 +1,18 @@
+"use client";
+
 // src/components/ui/ToolUI.tsx
 // 全站工具页的界面模板组件。视觉样式统一取自 globals.css 的 .ui-* 语义类，
 // 新增工具页时请优先复用这里的结构，不要在页面里另写一套颜色/圆角/边框。
 // 规范见 AGENTS.md「界面模板规范」。
 
+import { useEffect, useRef, useState } from "react";
 import type { ReactNode, ButtonHTMLAttributes, HTMLAttributes, ElementType } from "react";
 import {
   AlertCircle,
+  Check,
   CheckCircle2,
+  Copy,
+  Download,
   Info,
   Lightbulb,
   XCircle,
@@ -209,6 +215,170 @@ export function Badge({
     <span className={`ui-badge ${className}`} {...rest}>
       {children}
     </span>
+  );
+}
+
+/* ================================================================
+   输出块：复制 / 下载的统一交互
+   ----------------------------------------------------------------
+   凡是「一段文本结果 + 复制 / 下载」，一律用 OutputBlock：
+   标题行右侧放图标按钮，内容直接展示，操作按钮不再堆在结果下方。
+   单独需要某个动作时用 CopyButton / DownloadButton。
+   ================================================================ */
+
+/** 复制图标按钮：内置剪贴板写入与「已复制」成功态 */
+export function CopyButton({
+  value,
+  label = "复制",
+  className = "",
+  disabled = false,
+  size = 16,
+  onCopied,
+}: {
+  value: string;
+  label?: string;
+  className?: string;
+  disabled?: boolean;
+  size?: number;
+  onCopied?: () => void;
+}) {
+  const [copied, setCopied] = useState(false);
+  const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  useEffect(() => () => {
+    if (timer.current) clearTimeout(timer.current);
+  }, []);
+
+  const handleCopy = async () => {
+    if (!value || disabled) return;
+    try {
+      await navigator.clipboard.writeText(value);
+      setCopied(true);
+      onCopied?.();
+      if (timer.current) clearTimeout(timer.current);
+      timer.current = setTimeout(() => setCopied(false), 1500);
+    } catch {
+      // 浏览器禁用剪贴板时静默失败，不阻断页面
+    }
+  };
+
+  return (
+    <button
+      type="button"
+      onClick={handleCopy}
+      disabled={disabled || !value}
+      title={copied ? "已复制" : label}
+      aria-label={copied ? "已复制" : label}
+      className={`ui-icon-btn ${copied ? "ui-icon-btn-success" : ""} ${className}`}
+    >
+      {copied ? <Check size={size} /> : <Copy size={size} />}
+    </button>
+  );
+}
+
+/** 下载图标按钮：把文本内容保存为指定文件名的文件 */
+export function DownloadButton({
+  value,
+  filename,
+  label,
+  mimeType = "text/plain;charset=utf-8",
+  className = "",
+  disabled = false,
+  size = 16,
+}: {
+  value: string;
+  filename: string;
+  label?: string;
+  mimeType?: string;
+  className?: string;
+  disabled?: boolean;
+  size?: number;
+}) {
+  const handleDownload = () => {
+    if (!value || disabled) return;
+    const url = URL.createObjectURL(new Blob([value], { type: mimeType }));
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = filename;
+    a.click();
+    setTimeout(() => URL.revokeObjectURL(url), 0);
+  };
+
+  const title = label ?? `下载 ${filename}`;
+  return (
+    <button
+      type="button"
+      onClick={handleDownload}
+      disabled={disabled || !value}
+      title={title}
+      aria-label={title}
+      className={`ui-icon-btn ${className}`}
+    >
+      <Download size={size} />
+    </button>
+  );
+}
+
+/**
+ * 统一输出块：标题行（标签 + 说明）右侧是复制 / 下载图标按钮，下方是内容区。
+ * 传 filename 即出现下载按钮；传 children 可自定义内容区（如代码块），复制仍取 value。
+ */
+export function OutputBlock({
+  label,
+  hint,
+  value,
+  filename,
+  mimeType,
+  copyLabel = "复制",
+  tone = "default",
+  placeholder,
+  minHeight = "min-h-[120px]",
+  textareaClassName = "",
+  children,
+  actions,
+  className = "",
+}: {
+  label: ReactNode;
+  hint?: ReactNode;
+  value: string;
+  filename?: string;
+  mimeType?: string;
+  copyLabel?: string;
+  tone?: "default" | "warning";
+  placeholder?: string;
+  minHeight?: string;
+  textareaClassName?: string;
+  children?: ReactNode;
+  actions?: ReactNode;
+  className?: string;
+}) {
+  const warning = tone === "warning";
+  return (
+    <div className={`ui-output ${className}`}>
+      <div className="ui-output-head">
+        <div className="ui-output-label-group">
+          <span className={`ui-output-label ${warning ? "ui-output-label-warning" : ""}`}>
+            {label}
+          </span>
+          {hint && <span className="ui-output-hint">{hint}</span>}
+        </div>
+        <div className="ui-output-actions">
+          {actions}
+          <CopyButton value={value} label={copyLabel} />
+          {filename && (
+            <DownloadButton value={value} filename={filename} mimeType={mimeType} />
+          )}
+        </div>
+      </div>
+      {children ?? (
+        <textarea
+          readOnly
+          value={value}
+          placeholder={placeholder}
+          className={`ui-textarea ${minHeight} ${warning ? "ui-output-warning" : ""} ${textareaClassName}`}
+        />
+      )}
+    </div>
   );
 }
 

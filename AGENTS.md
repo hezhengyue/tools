@@ -18,7 +18,7 @@ This version has breaking changes — APIs, conventions, and file structure may 
 
 唯一视觉来源：
 - `src/app/globals.css` → `@layer components` 里的 `.ui-*` 语义类（设计令牌）。
-- `src/components/ui/ToolUI.tsx` → 结构组件：`Panel` / `KeyRow` / `DisplayBox` / `Button` / `IconButton` / `Notice` / `EmptyState` / `Field` / `ToolActions` / `Badge`。
+- `src/components/ui/ToolUI.tsx` → 结构组件：`Panel` / `KeyRow` / `DisplayBox` / `Button` / `IconButton` / `Notice` / `EmptyState` / `Field` / `ToolActions` / `Badge`，以及输出块 `OutputBlock` / `CopyButton` / `DownloadButton`。
 - `src/components/ToolShell.tsx` → 所有工具页统一外壳（标题、图标、描述、内容卡、页脚）。13 个页面全部用它包裹。
 
 新工具页骨架：
@@ -46,6 +46,27 @@ export default function XxxPage() {
 }
 ```
 然后在 `src/config/tools.ts` 注册工具（名称、图标、描述、分类）并填 `footer`。
+
+## 输出块：复制 / 下载统一交互（强制）
+
+凡是「一段文本结果 + 复制 / 下载」，一律用 `OutputBlock`：**标题行**左侧是标签，右侧是复制 / 下载图标按钮，下方直接展示内容。标杆页面 `src/app/ssh-key/page.tsx` 与 `src/app/self-cert/page.tsx`。
+
+```tsx
+<OutputBlock
+  label="private-key.pem"
+  hint="请妥善保管，遗失不可恢复"
+  tone="warning"              // 私钥等敏感内容用琥珀色
+  value={privateKey}
+  filename="private-key.pem"  // 传了才出现下载按钮
+  copyLabel="复制私钥"
+  minHeight="min-h-[250px]"
+/>
+```
+
+- `children` 可自定义内容区（如代码块），复制仍取 `value`；复制/下载按钮在 `value` 为空时自动禁用。
+- 只需单个动作用 `CopyButton`（自带「已复制」成功态）或 `DownloadButton`，**不要在页面里再写 `navigator.clipboard` / `Blob` 下载逻辑**。
+- 禁止：把复制/下载做成结果下方一排大按钮、用 `<details>` 折叠藏结果、每个输出块各写一套按钮样式。
+- 例外：整页级主操作按钮组（如「复制全部 / 重新检测」）与图片 / 画板文件导出不属于文本输出块，继续用 `Button` / `ToolActions`。
 
 设计约定：主色 `indigo-600`；成功 `emerald`；提示 `amber`；错误 `red`；卡片 `rounded-2xl`，按钮 `rounded-xl`，小控件 `rounded-lg`；边框统一 `border-slate-200`；次级底色 `bg-slate-50`。语义色（哈希算法标签、密码强度、增删高亮、私钥警示）可保留。
 

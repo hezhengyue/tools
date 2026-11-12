@@ -2,9 +2,10 @@
 
 import { useState, useRef, useCallback } from "react";
 import { 
-  Trash2, Copy, Check, Image as ImageIcon, Info, FileImage, FileCode
+  Trash2, Image as ImageIcon, FileImage, FileCode
 } from "lucide-react";
 import ToolShell from "@/components/ToolShell";
+import { CopyButton } from "@/components/ui/ToolUI";
 
 export default function ImageToBase64Page() {
   const [file, setFile] = useState<File | null>(null);
@@ -13,7 +14,6 @@ export default function ImageToBase64Page() {
   const [previewUrl, setPreviewUrl] = useState("");
   const [dragActive, setDragActive] = useState(false);
   const [includePrefix, setIncludePrefix] = useState(true);
-  const [copyStatus, setCopyStatus] = useState<"idle" | "copied" | "error">("idle");
 
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -41,18 +41,6 @@ export default function ImageToBase64Page() {
     };
     reader.readAsDataURL(f);
   }, []);
-
-  const handleCopy = async () => {
-    const textToCopy = includePrefix ? base64 : rawBase64;
-    try {
-      await navigator.clipboard.writeText(textToCopy);
-      setCopyStatus("copied");
-      setTimeout(() => setCopyStatus("idle"), 2000);
-    } catch (err) {
-      setCopyStatus("error");
-      setTimeout(() => setCopyStatus("idle"), 2000);
-    }
-  };
 
   const handleReset = () => {
     if (previewUrl) URL.revokeObjectURL(previewUrl); // 释放内存
@@ -125,15 +113,21 @@ export default function ImageToBase64Page() {
                     <FileCode size={16} className="text-slate-500" />
                     <span className="text-sm font-medium text-slate-700">Base64 编码结果</span>
                   </div>
-                  <label className="flex items-center gap-2 cursor-pointer select-none">
-                    <span className="text-xs text-slate-500">包含前缀 (Data URI)</span>
-                    <input 
-                      type="checkbox" 
-                      checked={includePrefix} 
-                      onChange={(e) => setIncludePrefix(e.target.checked)}
-                      className="w-4 h-4 accent-indigo-600 rounded"
+                  <div className="flex items-center gap-3">
+                    <label className="flex items-center gap-2 cursor-pointer select-none">
+                      <span className="text-xs text-slate-500">包含前缀 (Data URI)</span>
+                      <input 
+                        type="checkbox" 
+                        checked={includePrefix} 
+                        onChange={(e) => setIncludePrefix(e.target.checked)}
+                        className="ui-checkbox"
+                      />
+                    </label>
+                    <CopyButton
+                      value={includePrefix ? base64 : rawBase64}
+                      label="复制 Base64"
                     />
-                  </label>
+                  </div>
                 </div>
                 <textarea
                   readOnly
@@ -144,18 +138,6 @@ export default function ImageToBase64Page() {
                   <span className="text-xs text-slate-400 hidden sm:block">
                     字符数: {(includePrefix ? base64 : rawBase64).length.toLocaleString()}
                   </span>
-                  <button
-                    onClick={handleCopy}
-                    className="ui-btn ui-btn-primary ui-btn-sm"
-                  >
-                    {copyStatus === "copied" ? (
-                      <><Check size={16} /> 已复制</>
-                    ) : copyStatus === "error" ? (
-                      "复制失败"
-                    ) : (
-                      <><Copy size={16} /> 复制代码</>
-                    )}
-                  </button>
                 </div>
               </div>
             </div>

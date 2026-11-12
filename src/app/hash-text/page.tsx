@@ -2,10 +2,10 @@
 "use client";
 
 import { useState, useMemo } from "react";
-import { Copy, Check, RefreshCw } from "lucide-react";
+import { RefreshCw } from "lucide-react";
 import { MD5, RIPEMD160, SHA1, SHA224, SHA256, SHA3, SHA384, SHA512, enc } from "crypto-js";
 import ToolShell from "@/components/ToolShell";
-import { Notice } from "@/components/ui/ToolUI";
+import { Notice, CopyButton } from "@/components/ui/ToolUI";
 
 // ============ 类型定义 ============
 
@@ -58,7 +58,6 @@ function hashText(algorithm: HashAlgorithm, text: string, encoding: Encoding = "
 function HashTextCore() {
   const [inputText, setInputText] = useState("");
   const [encoding, setEncoding] = useState<Encoding>("Hex");
-  const [copiedHash, setCopiedHash] = useState<string | null>(null);
   const [isGenerating, setIsGenerating] = useState(false);
 
   // ✅ 修复：始终返回正确类型的对象
@@ -68,15 +67,6 @@ function HashTextCore() {
       return acc;
     }, {} as Record<HashAlgorithm, string>);
   }, [inputText, encoding]);
-
-  const copyToClipboard = async (text: string, algo: string) => {
-    if (!text) return;
-    try {
-      await navigator.clipboard.writeText(text);
-      setCopiedHash(algo);
-      setTimeout(() => setCopiedHash(null), 1500);
-    } catch (err) { console.error("复制失败:", err); }
-  };
 
   const handleRegenerate = () => {
     setIsGenerating(true);
@@ -132,7 +122,6 @@ function HashTextCore() {
         {ALGORITHMS.map(({ label, value, color }) => {
           // ✅ 现在 TypeScript 知道 hashes 有 HashAlgorithm 键
           const hashValue = hashes[value] || "";
-          const isCopied = copiedHash === label;
           const colorClasses: Record<string, string> = {
             indigo: "text-indigo-600 bg-indigo-50 border-indigo-200",
             blue: "text-blue-600 bg-blue-50 border-blue-200",
@@ -158,16 +147,7 @@ function HashTextCore() {
                 className="flex-1 bg-transparent border-0 font-mono text-sm truncate focus:outline-none"
                 placeholder="等待输入..."
               />
-              <button
-                onClick={() => copyToClipboard(hashValue, label)}
-                disabled={!hashValue}
-                className={`p-2.5 rounded-xl transition-all shrink-0 ${
-                  isCopied ? "bg-emerald-100 text-emerald-700" : "bg-white border border-slate-200 text-slate-500 hover:text-indigo-600 hover:border-indigo-200 hover:bg-indigo-50"
-                } disabled:opacity-50 disabled:cursor-not-allowed`}
-                title={isCopied ? "已复制" : "复制哈希值"}
-              >
-                {isCopied ? <Check size={18} /> : <Copy size={18} />}
-              </button>
+              <CopyButton value={hashValue} label="复制哈希值" />
             </div>
           );
         })}

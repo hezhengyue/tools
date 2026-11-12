@@ -3,9 +3,9 @@
 
 import { useState, useEffect, useMemo } from "react";
 import yaml from "js-yaml";
-import { AlertCircle, Copy, Check } from "lucide-react";
+import { AlertCircle, Check } from "lucide-react";
 import ToolShell from "@/components/ToolShell";
-import { Notice } from "@/components/ui/ToolUI";
+import { Notice, CopyButton } from "@/components/ui/ToolUI";
 
 // ============ 核心功能组件（只写业务逻辑） ============
 
@@ -13,7 +13,6 @@ function JsonYamlCore() {
   const [jsonInput, setJsonInput] = useState("");
   const [yamlOutput, setYamlOutput] = useState("");
   const [error, setError] = useState("");
-  const [copied, setCopied] = useState(false);
 
   // 防抖：输入停止 300ms 后自动解析
   useEffect(() => {
@@ -40,18 +39,6 @@ function JsonYamlCore() {
 
     return () => clearTimeout(timer);
   }, [jsonInput]);
-
-  // 复制功能
-  const copyToClipboard = async () => {
-    if (!yamlOutput) return;
-    try {
-      await navigator.clipboard.writeText(yamlOutput);
-      setCopied(true);
-      setTimeout(() => setCopied(false), 1500);
-    } catch (err) {
-      console.error("复制失败:", err);
-    }
-  };
 
   // 清空
   const handleClear = () => {
@@ -108,18 +95,6 @@ function JsonYamlCore() {
             </span>
           )}
           
-          {/* 复制按钮 */}
-          {yamlOutput && (
-            <button
-              onClick={copyToClipboard}
-              className={`ui-btn ui-btn-sm ${
-                copied ? "bg-emerald-100 text-emerald-700" : "ui-btn-primary"
-              }`}
-            >
-              {copied ? <Check size={14} /> : <Copy size={14} />}
-              {copied ? "已复制" : "复制"}
-            </button>
-          )}
         </div>
       </div>
 
@@ -159,11 +134,14 @@ function JsonYamlCore() {
         <div className="flex-1 flex flex-col">
           <div className="flex items-center justify-between mb-3">
             <label className="ui-label text-sm">YAML 输出</label>
-            {yamlOutput && (
-              <span className="text-xs text-emerald-600 font-medium flex items-center gap-1">
-                <Check size={12} /> 已转换
-              </span>
-            )}
+            <div className="flex items-center gap-2">
+              {yamlOutput && (
+                <span className="text-xs text-emerald-600 font-medium flex items-center gap-1">
+                  <Check size={12} /> 已转换
+                </span>
+              )}
+              <CopyButton value={yamlOutput} label="复制 YAML" />
+            </div>
           </div>
           <textarea 
             className="ui-textarea flex-1 resize-none"
