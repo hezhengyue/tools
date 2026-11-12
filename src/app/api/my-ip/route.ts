@@ -52,6 +52,12 @@ function countryName(name: string, code: string): string {
   return COUNTRY_CN[code] || name || code || "-";
 }
 
+/** 平台请求头 / IP 库里的占位值（Unknown、N/A 等）统一视为空 */
+function clean(value: string): string {
+  const v = (value || "").trim();
+  return /^(unknown|null|n\/a|none|-)$/i.test(v) ? "" : v;
+}
+
 function toNumber(value: unknown): number | null {
   const n = Number(value);
   return Number.isFinite(n) && n !== 0 ? n : null;
@@ -122,14 +128,14 @@ function parseGeoHeader(h: Headers): GeoInfo | null {
 
   return {
     asn: toNumber(kv.asn),
-    countryName: countryName(name, code),
+    countryName: countryName(clean(name), code),
     countryCodeAlpha2: code || "-",
-    regionName: kv.region_name || kv.region || "",
-    cityName: kv.city_name || kv.city || "",
+    regionName: clean(kv.region_name || kv.region || ""),
+    cityName: clean(kv.city_name || kv.city || ""),
     latitude: toNumber(kv.latitude ?? kv.lat),
     longitude: toNumber(kv.longitude ?? kv.lon),
-    cisp: kv.network_operator || kv.isp || kv.org || "",
-    timezone: kv.timezone || "",
+    cisp: clean(kv.network_operator || kv.isp || kv.org || ""),
+    timezone: clean(kv.timezone || ""),
   };
 }
 

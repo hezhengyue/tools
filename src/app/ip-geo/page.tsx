@@ -19,7 +19,6 @@ interface GeoInfo {
   latitude: number | null;
   longitude: number | null;
   cisp: string;
-  timezone: string;
 }
 
 interface IpGeoData {
@@ -28,18 +27,15 @@ interface IpGeoData {
   clientIp?: string;
   asn?: number | null;
   geo: GeoInfo | null;
-  source?: string | null;
   error?: string | null;
 }
 
-const SOURCE_LABEL: Record<string, string> = {
-  cdn: "CDN 边缘节点",
-  "ipwho.is": "ipwho.is 公共 IP 库",
-  "ipapi.co": "ipapi.co 公共 IP 库",
-};
-
 function fmt(value: string | number | null | undefined): string {
-  return value === null || value === undefined || value === "" ? "-" : String(value);
+  if (value === null || value === undefined || value === "") return "-";
+  const text = String(value).trim();
+  // 平台头 / IP 库偶尔会回传占位字符串，统一按空值处理
+  if (text === "" || /^(unknown|null|n\/a|none)$/i.test(text)) return "-";
+  return text;
 }
 
 function IpGeoCore() {
@@ -83,16 +79,11 @@ function IpGeoCore() {
       text += `省份/州：${fmt(geo.regionName)}\n`;
       text += `城市：${fmt(geo.cityName)}\n`;
       text += `经纬度：${fmt(geo.latitude)}, ${fmt(geo.longitude)}\n`;
-      text += `时区：${fmt(geo.timezone)}\n`;
       text += `\n【网络信息】\n`;
       text += `ASN：${geo.asn ? `AS${geo.asn}` : "-"}\n`;
       text += `运营商/ISP：${fmt(geo.cisp)}\n`;
     } else {
       text += `\n地理位置信息：暂无\n`;
-    }
-
-    if (data.source) {
-      text += `\n数据来源：${SOURCE_LABEL[data.source] || data.source}\n`;
     }
 
     navigator.clipboard.writeText(text);
@@ -153,10 +144,6 @@ function IpGeoCore() {
                 <span className="text-slate-500">经纬度</span>
                 <span className="font-mono">{fmt(geo.latitude)}, {fmt(geo.longitude)}</span>
               </div>
-              <div className="flex justify-between">
-                <span className="text-slate-500">时区</span>
-                <span className="font-mono">{fmt(geo.timezone)}</span>
-              </div>
             </>
           ) : (
             <div className="text-slate-400 text-center py-4">
@@ -191,12 +178,6 @@ function IpGeoCore() {
           )}
         </div>
       </div>
-
-      {data?.source && (
-        <div className="text-xs text-slate-400 text-center -mt-2 mb-4">
-          数据来源：{SOURCE_LABEL[data.source] || data.source}
-        </div>
-      )}
 
       {/* 操作按钮 */}
       <div className="grid grid-cols-2 gap-4">
