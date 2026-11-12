@@ -105,6 +105,8 @@ export default function ScreenshotPage() {
   const shotUrlRef = useRef<string | null>(null);
   const dragStartRef = useRef<{ x: number; y: number } | null>(null);
   const selRef = useRef<Rect | null>(null);
+  /** 防连点：一次框选只允许提交一次，避免重复生成与重复写剪贴板 */
+  const committingRef = useRef(false);
   const delayTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const copiedTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -261,6 +263,7 @@ export default function ScreenshotPage() {
     }
     if (frameUrlRef.current) URL.revokeObjectURL(frameUrlRef.current);
     frameCanvasRef.current = canvas;
+    committingRef.current = false;
     const url = URL.createObjectURL(blob);
     frameUrlRef.current = url;
     setFrameUrl(url);
@@ -318,8 +321,10 @@ export default function ScreenshotPage() {
 
   const commitRect = useCallback(
     async (rect: Rect) => {
+      if (committingRef.current) return;
       const canvas = frameCanvasRef.current;
       if (!canvas) return;
+      committingRef.current = true;
       const sx = Math.max(0, Math.round(rect.x));
       const sy = Math.max(0, Math.round(rect.y));
       const sw = Math.max(1, Math.min(canvas.width - sx, Math.round(rect.w)));
@@ -333,6 +338,7 @@ export default function ScreenshotPage() {
         out.toBlob(resolve, "image/png")
       );
       if (!blob) {
+        committingRef.current = false;
         setError("生成图片失败，请重试");
         return;
       }
@@ -351,6 +357,12 @@ export default function ScreenshotPage() {
     },
     [applyBlob, autoCopy, copyBlob, exitSelection, markCopied]
   );
+
+  /** 不框选，直接保存整张冻结帧（对应「只想截全图」的用法） */
+  const commitFullFrame = useCallback(() => {
+    if (frameSize.width <= 0 || frameSize.height <= 0) return;
+    void commitRect({ x: 0, y: 0, w: frameSize.width, h: frameSize.height });
+  }, [commitRect, frameSize.height, frameSize.width]);
 
   const handleSelectDown = (e: ReactPointerEvent<HTMLDivElement>) => {
     e.currentTarget.setPointerCapture(e.pointerId);
@@ -387,12 +399,22 @@ export default function ScreenshotPage() {
     void commitRect(rect);
   };
 
-  // 页面内快捷键：Ctrl/⌘ + Shift + X 开始截图，Esc 取消框选
+  // 页面内快捷键：Ctrl/⌘ + Shift + X 开始截图，Enter 保存整张，Esc 取消框选
   useEffect(() => {
     const onKeyDown = (event: KeyboardEvent) => {
       if (event.key === "Escape" && selecting) {
         event.preventDefault();
         exitSelection();
+        return;
+      }
+      if (event.key === "Enter" && selecting) {
+        event.preventDefault();
+        const rect = selRef.current;
+        if (rect && rect.w >= MIN_CROP && rect.h >= MIN_CROP) {
+          void commitRect(rect);
+        } else {
+          commitFullFrame();
+        }
         return;
       }
       const withModifier = (event.ctrlKey || event.metaKey) && event.shiftKey;
@@ -403,7 +425,7 @@ export default function ScreenshotPage() {
     };
     window.addEventListener("keydown", onKeyDown);
     return () => window.removeEventListener("keydown", onKeyDown);
-  }, [beginCapture, exitSelection, selecting]);
+  }, [beginCapture, commitFullFrame, commitRect, exitSelection, selecting]);
 
   const copyImage = useCallback(async () => {
     if (!shot) return;
@@ -511,6 +533,11 @@ export default function ScreenshotPage() {
             </li>
             <li>画面会冻结成一张全屏图，直接拖动框选要保留的区域。</li>
             <li>松开鼠标即完成：只截选中的那部分，默认自动复制到剪贴板。</li>
+            <li>
+              只想要整张画面就<b className="text-slate-800">不用拖</b>，点「截取整张画面」或按{" "}
+              <span className="font-mono text-slate-800">Enter</span>；按{" "}
+              <span className="font-mono text-slate-800">Esc</span> 是放弃本次截图，不会保存。
+            </li>
           </ol>
 
           <div className="mb-4">
@@ -704,7 +731,8 @@ export default function ScreenshotPage() {
           </span>
           网页只能注册「页面内」快捷键：本页处于焦点时按{" "}
           <span className="font-mono">{HOTKEY_LABEL}</span> 即可截图，框选时按{" "}
-          <span className="font-mono">Esc</span> 取消。系统级全局热键（在任何窗口都能触发）需要浏览器扩展才能实现。要截其它程序，请在共享弹窗里直接选那个窗口，或选「整个屏幕」并设 3 秒延迟后切过去。
+          <span className="font-mono">Enter</span> 保存整张、按{" "}
+          <span className="font-mono">Esc</span> 取消。要截其它程序，请在共享弹窗里直接选那个窗口，或选「整个屏幕」并设 3 秒延迟后切过去。
         </Notice>
       </div>
 
@@ -721,7 +749,7 @@ export default function ScreenshotPage() {
             <span className="font-mono text-xs text-white/50">
               {selRect && selRect.w >= MIN_CROP && selRect.h >= MIN_CROP
                 ? `${Math.round(selRect.w)} × ${Math.round(selRect.h)}`
-                : "Esc 取消"}
+                : `${frameSize.width} × ${frameSize.height}`}
             </span>
           </div>
 
@@ -737,7 +765,7 @@ export default function ScreenshotPage() {
             <img
               src={frameUrl}
               alt="当前屏幕画面"
-              className="block max-h-[calc(100vh-140px)] max-w-[calc(100vw-64px)] object-contain"
+              className="block max-h-[calc(100vh-200px)] max-w-[calc(100vw-64px)] object-contain"
               draggable={false}
             />
             {selRect && selRect.w > 0 && selRect.h > 0 && frameSize.width > 0 && (
@@ -754,9 +782,17 @@ export default function ScreenshotPage() {
             )}
           </div>
 
-          <Button variant="secondary" size="sm" icon={X} onClick={exitSelection}>
-            取消（Esc）
-          </Button>
+          <div className="flex flex-wrap items-center justify-center gap-2">
+            <Button icon={Check} onClick={commitFullFrame}>
+              截取整张画面
+            </Button>
+            <Button variant="secondary" icon={X} onClick={exitSelection}>
+              取消（Esc）
+            </Button>
+          </div>
+          <p className="text-xs text-white/55 text-center">
+            不想裁剪就点「截取整张画面」，或直接按 Enter；按 Esc 会放弃本次截图。
+          </p>
         </div>
       )}
     </ToolShell>
