@@ -25,7 +25,8 @@ This version has breaking changes — APIs, conventions, and file structure may 
 2. `git status --short` 确认改动范围。
 3. `git add <具体文件>`；禁止 `git add -A` / `git add .`。
 4. `git commit -m "修复:xxx"`，中文短句，沿用仓库风格（修复 / 新增 / 更新）。
-5. `git push origin main`。
-6. push 失败（网络、认证、非快进）时如实报告并停下，**不 force、不跳过 hook**，也不要丢弃本地改动。
+5. **单独执行** `git push origin main`。
+6. 环境注意：本机 `git commit` 偶尔会返回退出码 1 并打印 `git status` 文本，但提交其实已经创建。因此**不要把 commit 和 push 用 `&&` 串成一条命令**；commit 后先用 `git status -sb` / `git log -1` 确认，再单独 push。
+7. push 失败（网络、认证、非快进）时如实报告并停下，**不 force、不跳过 hook**，也不要丢弃本地改动。
 
 防呆：`.githooks/pre-commit` 会检查暂存区，拦截构建产物、环境变量、密钥证书、AI 工具数据，以及白名单以外的 `.md` 文件。首次克隆后执行 `git config core.hooksPath .githooks` 启用。
