@@ -3,7 +3,7 @@ import {
   Key, FileJson, Shield, Code,
   Hash, KeyRound, FileBadge, FileDiff, Type, Palette, Gamepad, Gift,
   Image, FileImage, Sparkles, Globe, MonitorSmartphone, MapPin, FileCode,
-  Camera, ScreenShare, Video
+  Camera, ScreenShare, Video, Braces, Clock, Binary
 } from "lucide-react";
 
 /**
@@ -89,6 +89,17 @@ export const toolsConfig: ToolCategory[] = [
     icon: Code,
     tools: [
       {
+        name: "JSON 格式化",
+        href: "/json-format",
+        icon: Braces,
+        desc: "校验并格式化 JSON，错误精确到行列，支持树形浏览、压缩与一键转 TypeScript 接口。",
+        footer: {
+          mode: "local",
+          subject: "JSON 数据",
+          extra: "错误提示会精确到行号与列号，处理过程不记录任何内容。"
+        }
+      },
+      {
         name: "JSON 转 YAML",
         href: "/json-yaml",
         icon: FileJson,
@@ -97,6 +108,28 @@ export const toolsConfig: ToolCategory[] = [
           mode: "local",
           subject: "JSON 数据",
           extra: "输入后实时自动转换，无需点击按钮。"
+        }
+      },
+      {
+        name: "时间戳转换",
+        href: "/timestamp",
+        icon: Clock,
+        desc: "Unix 时间戳与日期时间互转，自动识别秒/毫秒，同时给出本地时间、UTC、ISO 8601 与相对时间。",
+        footer: {
+          mode: "local",
+          subject: "时间数据",
+          extra: "按浏览器所在时区换算，不发起任何网络请求。"
+        }
+      },
+      {
+        name: "Base64 编解码",
+        href: "/base64",
+        icon: Binary,
+        desc: "文本与文件双模式 Base64 编解码，UTF-8 中文不乱码，支持 URL-safe 变体与 Data URL 前缀。",
+        footer: {
+          mode: "local",
+          subject: "文本与文件",
+          extra: "Base64 只是编码不是加密，任何人都能还原，不要用它保存密码。"
         }
       },
     ]
