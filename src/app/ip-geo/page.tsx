@@ -10,46 +10,58 @@ import {
 } from "lucide-react";
 import ToolShell from "@/components/ToolShell";
 
-// 定义 EdgeOne 返回的地理位置数据结构
 interface GeoInfo {
-  asn: number;
+  asn: number | null;
   countryName: string;
   countryCodeAlpha2: string;
   regionName: string;
   cityName: string;
-  latitude: number;
-  longitude: number;
+  latitude: number | null;
+  longitude: number | null;
   cisp: string;
+  timezone: string;
 }
 
 interface IpGeoData {
   ip: string;
   local: boolean;
   clientIp?: string;
-  asn?: number;
+  asn?: number | null;
   geo: GeoInfo | null;
+  source?: string | null;
+  error?: string | null;
+}
+
+const SOURCE_LABEL: Record<string, string> = {
+  cdn: "CDN 边缘节点",
+  "ipwho.is": "ipwho.is 公共 IP 库",
+  "ipapi.co": "ipapi.co 公共 IP 库",
+};
+
+function fmt(value: string | number | null | undefined): string {
+  return value === null || value === undefined || value === "" ? "-" : String(value);
 }
 
 function IpGeoCore() {
   const [data, setData] = useState<IpGeoData | null>(null);
   const [loading, setLoading] = useState(false);
   const [copied, setCopied] = useState(false);
+  const [fetchError, setFetchError] = useState<string | null>(null);
 
   async function loadData() {
     setLoading(true);
+    setFetchError(null);
     try {
-      // 👇 修改这里：将 /api/my-ip 改为 /edge-geo
       const res = await fetch("/api/my-ip", { cache: "no-store" });
-      
       if (res.ok) {
-        const json = await res.json();
-        setData(json);
+        setData(await res.json());
       } else {
-        console.error("API Error", res.status);
+        setFetchError(`接口返回 ${res.status}，请稍后重试`);
+        setData(null);
       }
-    } catch (e) {
-      console.error("Fetch Error", e);
-      setData({ ip: "127.0.0.1", local: true, geo: null });
+    } catch {
+      setFetchError("网络请求失败，请检查网络后重试");
+      setData(null);
     } finally {
       setLoading(false);
     }
@@ -63,26 +75,33 @@ function IpGeoCore() {
     if (!data) return;
 
     const geo = data.geo;
-    let text = `公网IP：${data.ip}\n`;
-    
+    let text = `公网IP：${fmt(data.ip)}\n`;
+
     if (geo) {
       text += `\n【地理位置】\n`;
       text += `国家/地区：${geo.countryName} (${geo.countryCodeAlpha2})\n`;
-      text += `省份/州：${geo.regionName || "-"}\n`;
-      text += `城市：${geo.cityName || "-"}\n`;
-      text += `经纬度：${geo.latitude}, ${geo.longitude}\n`;
-      
+      text += `省份/州：${fmt(geo.regionName)}\n`;
+      text += `城市：${fmt(geo.cityName)}\n`;
+      text += `经纬度：${fmt(geo.latitude)}, ${fmt(geo.longitude)}\n`;
+      text += `时区：${fmt(geo.timezone)}\n`;
       text += `\n【网络信息】\n`;
-      text += `ASN：AS${geo.asn || data.asn || "-"}\n`;
-      text += `运营商/ISP：${geo.cisp || "-"}\n`;
+      text += `ASN：${geo.asn ? `AS${geo.asn}` : "-"}\n`;
+      text += `运营商/ISP：${fmt(geo.cisp)}\n`;
     } else {
-      text += `\n地理位置信息：暂无 (本地开发或未部署至 EdgeOne)\n`;
+      text += `\n地理位置信息：暂无\n`;
+    }
+
+    if (data.source) {
+      text += `\n数据来源：${SOURCE_LABEL[data.source] || data.source}\n`;
     }
 
     navigator.clipboard.writeText(text);
     setCopied(true);
     setTimeout(() => setCopied(false), 1500);
   }
+
+  const geo = data?.geo;
+  const hint = fetchError || data?.error;
 
   return (
     <>
@@ -93,8 +112,13 @@ function IpGeoCore() {
             🌍 当前公网IP
           </div>
           <div className="text-3xl md:text-4xl font-mono font-bold text-slate-800 break-all">
-            {loading ? "检测中..." : data?.ip}
+            {loading ? "检测中..." : fmt(data?.ip)}
           </div>
+          {data?.local && !loading && (
+            <div className="text-xs text-amber-600 mt-2">
+              本地开发环境：显示的是当前网络的出网公网 IP
+            </div>
+          )}
           {copied && (
             <div className="absolute inset-0 bg-green-50 flex items-center justify-center text-green-600 font-medium rounded-2xl">
               <Check className="w-5 h-5 mr-2" />
@@ -111,28 +135,32 @@ function IpGeoCore() {
           📍 地理位置
         </h3>
         <div className="space-y-3 text-sm">
-          {data?.geo ? (
+          {geo ? (
             <>
               <div className="flex justify-between">
                 <span className="text-slate-500">国家/地区</span>
-                <span>{data.geo.countryName} ({data.geo.countryCodeAlpha2})</span>
+                <span>{geo.countryName} ({geo.countryCodeAlpha2})</span>
               </div>
               <div className="flex justify-between">
                 <span className="text-slate-500">省份/州</span>
-                <span>{data.geo.regionName || "-"}</span>
+                <span>{fmt(geo.regionName)}</span>
               </div>
               <div className="flex justify-between">
                 <span className="text-slate-500">城市</span>
-                <span>{data.geo.cityName || "-"}</span>
+                <span>{fmt(geo.cityName)}</span>
               </div>
               <div className="flex justify-between">
                 <span className="text-slate-500">经纬度</span>
-                <span className="font-mono">{data.geo.latitude}, {data.geo.longitude}</span>
+                <span className="font-mono">{fmt(geo.latitude)}, {fmt(geo.longitude)}</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-slate-500">时区</span>
+                <span className="font-mono">{fmt(geo.timezone)}</span>
               </div>
             </>
           ) : (
             <div className="text-slate-400 text-center py-4">
-              {loading ? "正在获取..." : "暂无数据 (请确保已部署至 EdgeOne Pages)"}
+              {loading ? "正在获取..." : hint || "暂无数据"}
             </div>
           )}
         </div>
@@ -145,15 +173,15 @@ function IpGeoCore() {
           📡 网络信息
         </h3>
         <div className="space-y-3 text-sm">
-          {data?.geo ? (
+          {geo ? (
             <>
               <div className="flex justify-between">
                 <span className="text-slate-500">ASN</span>
-                <span className="font-mono">AS{data.geo.asn || data?.asn || "-"}</span>
+                <span className="font-mono">{geo.asn ? `AS${geo.asn}` : "-"}</span>
               </div>
               <div className="flex justify-between">
                 <span className="text-slate-500">运营商/ISP</span>
-                <span>{data.geo.cisp || "-"}</span>
+                <span>{fmt(geo.cisp)}</span>
               </div>
             </>
           ) : (
@@ -164,11 +192,17 @@ function IpGeoCore() {
         </div>
       </div>
 
+      {data?.source && (
+        <div className="text-xs text-slate-400 text-center -mt-2 mb-4">
+          数据来源：{SOURCE_LABEL[data.source] || data.source}
+        </div>
+      )}
+
       {/* 操作按钮 */}
       <div className="grid grid-cols-2 gap-4">
         <button
           onClick={copyAll}
-          disabled={!data?.geo}
+          disabled={!data}
           className="flex items-center justify-center py-3 bg-white border border-slate-200 rounded-xl font-semibold hover:bg-slate-50 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
         >
           <Copy size={18} className="mr-2" />
@@ -176,7 +210,8 @@ function IpGeoCore() {
         </button>
         <button
           onClick={loadData}
-          className="flex items-center justify-center py-3 bg-indigo-600 text-white rounded-xl font-semibold hover:bg-indigo-700 transition-all shadow-md shadow-indigo-600/20"
+          disabled={loading}
+          className="flex items-center justify-center py-3 bg-indigo-600 text-white rounded-xl font-semibold hover:bg-indigo-700 transition-all shadow-md shadow-indigo-600/20 disabled:opacity-70"
         >
           <RefreshCw
             size={18}

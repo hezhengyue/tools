@@ -91,7 +91,7 @@ export const toolsConfig: ToolCategory[] = [
         icon: MapPin,
         desc: "查询当前公网 IP 及详细的国家、城市、经纬度、运营商等归属地信息。",
         footerNote:
-          "地理位置数据由 <strong>EdgeOne 边缘节点</strong> 自动解析提供，无需调用第三方 API，精准且快速。"
+          "由服务端解析真实公网 IP 并查询归属地，<strong>兼容任意部署环境</strong>（本地开发 / Vercel / EdgeOne / 自有服务器），主备数据源自动切换。"
       }
     ]
   },

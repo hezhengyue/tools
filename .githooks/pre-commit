@@ -1,0 +1,76 @@
+#!/bin/sh
+# .githooks/pre-commit
+# 防呆检查：阻止把不应出现在 GitHub 上的内容加入提交。
+# 启用方式：git config core.hooksPath .githooks
+
+set -u
+
+files=$(git diff --cached --name-only --diff-filter=ACMR)
+[ -z "$files" ] && exit 0
+
+# 允许随仓库分发的 Markdown 文档（README 是 GitHub 首页说明，必须保留）
+ALLOW_MD="README.md AGENTS.md CLAUDE.md CONTRIBUTING.md CHANGELOG.md LICENSE.md SECURITY.md"
+bad=""
+
+reject() {
+  bad="${bad}
+  x  $1"
+}
+
+while IFS= read -r f; do
+  [ -z "$f" ] && continue
+
+  # 环境变量示例模板允许提交
+  [ "$f" = ".env.example" ] && continue
+
+  # 1) 构建产物、工具数据、IDE 配置、临时文件
+  case "$f" in
+    node_modules/*|*/.next/*|.next/*|.vercel/*|out/*|build/*|dist/*|coverage/*|\
+    .workbuddy/*|.codebuddy/*|.vscode/*|.idea/*|tmp/*|.tmp/*|\
+    *.tsbuildinfo|*.log|*.tmp|Thumbs.db|desktop.ini|.DS_Store|.npmrc)
+      reject "$f  -> 构建产物 / 工具数据 / IDE / 临时文件"
+      continue
+      ;;
+  esac
+
+  # 2) 环境变量与密钥证书
+  case "$f" in
+    .env|.env.*|*.env|*.key|*.pem|*.p12|*.pfx|*.crt)
+      reject "$f  -> 环境变量 / 密钥证书"
+      continue
+      ;;
+  esac
+
+  # 3) Markdown 白名单（GitHub 模板目录下的文档放行）
+  case "$f" in
+    *.md)
+      case "$f" in
+        .github/*) ;;
+        *)
+          case " $ALLOW_MD " in
+            *" $f "*) ;;
+            *) reject "$f  -> .md 未在白名单（仅允许 README/AGENTS/CLAUDE 等项目文档）" ;;
+          esac
+          ;;
+      esac
+      ;;
+  esac
+done <<EOF
+$files
+EOF
+
+# 4) 新增内容中疑似私钥 / token
+if git diff --cached --diff-filter=ACM -U0 -- . | grep -qE '^\+.*(BEGIN (RSA |EC |OPENSSH |)?PRIVATE KEY|ghp_[A-Za-z0-9]{30,}|sk-[A-Za-z0-9]{30,})'; then
+  reject "暂存内容中疑似包含私钥或 token（请检查新增行）"
+fi
+
+if [ -n "$bad" ]; then
+  printf '\n[pre-commit] 以下内容不允许提交到 GitHub：\n' >&2
+  printf '%s\n' "$bad" >&2
+  printf '\n用 git restore --staged <文件> 取消暂存后再提交。\n' >&2
+  exit 1
+fi
+
+count=$(printf '%s\n' "$files" | wc -l | tr -d ' ')
+printf '[pre-commit] 检查通过，共 %s 个文件\n' "$count"
+exit 0
