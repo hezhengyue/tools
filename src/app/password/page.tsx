@@ -42,7 +42,6 @@ type SymbolPreset = keyof typeof SYMBOL_PRESETS;
 
 /** 视觉易混淆字符：手抄、口述、投屏时最容易认错的一批 */
 const AMBIGUOUS = "Il1O0o|";
-const AMBIGUOUS_LIST = Array.from(AMBIGUOUS);
 
 /** 用 crypto.getRandomValues + 拒绝采样，生成 [0, max) 的无偏整数 */
 function secureRandomInt(max: number): number {
@@ -162,32 +161,19 @@ function PasswordGeneratorCore() {
 
   // 默认「兼容」档：绝大多数系统都能直接接受，避免生成后到处被拒
   const [symbolPreset, setSymbolPreset] = useState<SymbolPreset>("safe");
-  // 排除字符只维护输入框这一个字符串，所见即所得：
-  // 勾选「排除易混淆字符」= 自动把 Il1O0o| 写进输入框，取消勾选 = 自动移除。
-  const [extraExclude, setExtraExclude] = useState("");
+  // 排除列表预填好最容易认错的 7 个字符，但默认不启用；
+  // 勾选才生效 —— 勾上即用，不用手打，也不会改变默认生成结果。
+  const [extraExclude, setExtraExclude] = useState(AMBIGUOUS);
+  const [excludeEnabled, setExcludeEnabled] = useState(false);
 
   const [strength, setStrength] = useState(evaluateStrength(""));
 
-  // 输入框里已经包含全部易混淆字符时，复选框即为勾选态
-  const excludeAmbiguous = AMBIGUOUS_LIST.every((c) => extraExclude.includes(c));
-
-  const toggleAmbiguous = (checked: boolean) => {
-    setExtraExclude((prev) => {
-      if (checked) {
-        const next = new Set(Array.from(prev));
-        for (const c of AMBIGUOUS_LIST) next.add(c);
-        return Array.from(next).join("");
-      }
-      const drop = new Set(AMBIGUOUS_LIST);
-      return Array.from(prev)
-        .filter((c) => !drop.has(c))
-        .join("");
-    });
-  };
+  // 未勾选时整份排除列表都不参与，避免「填了字却没生效」的错觉
+  const excluded = excludeEnabled ? extraExclude : "";
 
   const classes = useMemo(
-    () => buildCharClasses(options, symbolPreset, extraExclude),
-    [options, symbolPreset, extraExclude]
+    () => buildCharClasses(options, symbolPreset, excluded),
+    [options, symbolPreset, excluded]
   );
 
   // 勾选了却被排除干净的字符类型，用于给出明确提示
@@ -422,34 +408,43 @@ function PasswordGeneratorCore() {
 
       {/* 排除字符：应对个别系统仍然拒绝某个符号的情况 */}
       <div className="mb-6">
-        <label htmlFor="exclude-chars" className="ui-label block mb-2">
-          排除字符
-          <span className="font-normal text-slate-500">（可选）</span>
-        </label>
+        <div className="flex items-center justify-between mb-2">
+          <label htmlFor="exclude-chars" className="ui-label block">
+            排除字符
+            <span className="font-normal text-slate-500">（可选）</span>
+          </label>
+          <span className={`text-xs ${excludeEnabled ? "text-emerald-700" : "text-slate-500"}`}>
+            {excludeEnabled
+              ? extraExclude.trim()
+                ? "已启用"
+                : "已启用（列表为空）"
+              : "未启用，不生效"}
+          </span>
+        </div>
         <div className="flex flex-col sm:flex-row gap-2">
+          <label className="flex items-center justify-center gap-2 cursor-pointer shrink-0 px-3 py-3 bg-white border border-slate-200 rounded-xl">
+            <input
+              type="checkbox"
+              checked={excludeEnabled}
+              onChange={(e) => setExcludeEnabled(e.target.checked)}
+              className="ui-checkbox"
+            />
+            <span className="text-sm text-slate-700 whitespace-nowrap">排除易混淆字符</span>
+          </label>
           <input
             id="exclude-chars"
             type="text"
             value={extraExclude}
             onChange={(e) => setExtraExclude(e.target.value)}
-            placeholder="例如 & % #，留空则不额外排除"
+            placeholder="例如 & % #"
             maxLength={40}
             spellCheck={false}
             autoComplete="off"
-            className="ui-input font-mono flex-1"
+            className={`ui-input font-mono flex-1 ${excludeEnabled ? "" : "bg-slate-50 text-slate-500"}`}
           />
-          <label className="flex items-center justify-center gap-2 cursor-pointer shrink-0 px-3 py-3 bg-white border border-slate-200 rounded-xl">
-            <input
-              type="checkbox"
-              checked={excludeAmbiguous}
-              onChange={(e) => toggleAmbiguous(e.target.checked)}
-              className="ui-checkbox"
-            />
-            <span className="text-sm text-slate-700 whitespace-nowrap">排除易混淆字符</span>
-          </label>
         </div>
         <p className="text-xs text-slate-500 mt-2 leading-relaxed">
-          勾选「排除易混淆字符」会直接把 <span className="font-mono">I l 1 O 0 o |</span> 填入输入框，无需手动输入；反过来在输入框里删掉它们，勾选也会自动取消。输入框还可以再排除任意字符，例如某后台不允许 <span className="font-mono">&amp;</span> 或 <span className="font-mono">%</span>，填进去即可。
+          列表已预填手抄最易认错的 <span className="font-mono">I l 1 O 0 o |</span>，<span className="text-slate-700">勾选后即刻生效</span>，无需手动输入；也可以按需增删，例如某后台不允许 <span className="font-mono">&amp;</span> 或 <span className="font-mono">%</span>，加进去即可。未勾选时整份列表都不参与生成。
         </p>
       </div>
 
