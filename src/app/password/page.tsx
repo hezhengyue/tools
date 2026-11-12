@@ -1,19 +1,47 @@
 // app/password/page.tsx
 "use client";
 
-import { useState, useEffect, useCallback, useRef } from "react";
-import { Check, RefreshCw } from "lucide-react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { Check, RefreshCw, ShieldCheck } from "lucide-react";
 import ToolShell from "@/components/ToolShell";
 import { CopyButton } from "@/components/ui/ToolUI";
 
 // ============ 模块级纯函数：密码学安全随机，不依赖 Math.random ============
 
-const CHAR_SETS = {
+const BASE_SETS = {
   upper: "ABCDEFGHIJKLMNOPQRSTUVWXYZ",
   lower: "abcdefghijklmnopqrstuvwxyz",
   num: "0123456789",
-  sym: "!@#$%^&*()_+~`|}{[]:;?><,./-=",
 } as const;
+
+/**
+ * 特殊符号分三档，后一档是前一档的超集。
+ * 兼容档剔除的是各系统最容易拒绝的一批字符：
+ * 引号 / 反斜杠（转义）、尖括号（重定向、HTML）、反引号（shell 命令替换）、
+ * 竖线分号与或（shell 元字符）、方括号花括号（glob、正则、JSON 结构）。
+ */
+const SYMBOL_PRESETS = {
+  safe: {
+    label: "兼容",
+    chars: "!#$%&*+-=?@^_",
+    hint: "不含引号、反斜杠、尖括号、反引号、括号和竖线。主流网站、数据库、命令行、配置文件（YAML/INI）都能直接接受，是默认推荐档。",
+  },
+  standard: {
+    label: "标准",
+    chars: "!#$%&()*+,-./:;=?@[]^_{|}~",
+    hint: "额外包含括号、逗号、冒号、分号、斜杠和竖线。多数系统支持，但写进命令行或 CSV 时需要加引号转义。",
+  },
+  all: {
+    label: "全部",
+    chars: "!#$%&()*+,-./:;<=>?@[]^_{|}~`",
+    hint: "再加尖括号与反引号。反引号在 shell 中是命令替换、尖括号是重定向，个别老系统会直接拒绝，仅在确认目标系统支持时使用。",
+  },
+} as const;
+
+type SymbolPreset = keyof typeof SYMBOL_PRESETS;
+
+/** 视觉易混淆字符：手抄、口述、投屏时最容易认错的一批 */
+const AMBIGUOUS = "Il1O0o|";
 
 /** 用 crypto.getRandomValues + 拒绝采样，生成 [0, max) 的无偏整数 */
 function secureRandomInt(max: number): number {
@@ -37,18 +65,52 @@ interface PasswordOptions {
   symbols: boolean;
 }
 
-/** 生成密码：每个勾选类型至少 1 个字符，Fisher-Yates 洗牌 */
-function createPassword(length: number, options: PasswordOptions): string {
-  const enabled: string[] = [];
-  if (options.uppercase) enabled.push(CHAR_SETS.upper);
-  if (options.lowercase) enabled.push(CHAR_SETS.lower);
-  if (options.numbers) enabled.push(CHAR_SETS.num);
-  if (options.symbols) enabled.push(CHAR_SETS.sym);
-  if (enabled.length === 0) return "";
+const CLASS_LABEL: Record<keyof PasswordOptions, string> = {
+  uppercase: "大写字母",
+  lowercase: "小写字母",
+  numbers: "数字",
+  symbols: "特殊符号",
+};
 
-  const allChars = enabled.join("");
-  const chars = enabled.map(pick);
-  // 长度小于勾选类型数时，仍保证每个类型至少一个字符（结果会比设定长度长）
+interface CharClass {
+  key: keyof PasswordOptions;
+  chars: string;
+}
+
+/**
+ * 按当前配置构建可用字符类。
+ * 被排除的字符会从对应集合里剔除；剔除后为空的类直接丢弃，
+ * 避免生成出「勾了符号但一个符号都没有」的密码。
+ */
+function buildCharClasses(
+  options: PasswordOptions,
+  symbolPreset: SymbolPreset,
+  excluded: string
+): CharClass[] {
+  const ex = new Set(excluded);
+  const keep = (s: string) =>
+    Array.from(s)
+      .filter((c) => !ex.has(c))
+      .join("");
+
+  const raw: CharClass[] = [];
+  if (options.uppercase) raw.push({ key: "uppercase", chars: BASE_SETS.upper });
+  if (options.lowercase) raw.push({ key: "lowercase", chars: BASE_SETS.lower });
+  if (options.numbers) raw.push({ key: "numbers", chars: BASE_SETS.num });
+  if (options.symbols) raw.push({ key: "symbols", chars: SYMBOL_PRESETS[symbolPreset].chars });
+
+  return raw
+    .map((c) => ({ key: c.key, chars: keep(c.chars) }))
+    .filter((c) => c.chars.length > 0);
+}
+
+/** 生成密码：每个可用字符类至少 1 个字符，再 Fisher-Yates 洗牌 */
+function createPassword(length: number, classes: CharClass[]): string {
+  if (classes.length === 0) return "";
+
+  const allChars = classes.map((c) => c.chars).join("");
+  const chars = classes.map((c) => pick(c.chars));
+  // 长度小于字符类数量时，仍保证每类至少一个（结果会比设定长度长）
   while (chars.length < length) chars.push(pick(allChars));
 
   for (let i = chars.length - 1; i > 0; i--) {
@@ -58,6 +120,7 @@ function createPassword(length: number, options: PasswordOptions): string {
   return chars.join("");
 }
 
+/** 粗略强度评估：长度 + 字符种类 */
 function evaluateStrength(pwd: string): { label: string; level: number; color: string } {
   let score = 0;
   if (pwd.length >= 8) score++;
@@ -96,14 +159,31 @@ function PasswordGeneratorCore() {
     symbols: true,
   });
 
+  // 默认「兼容」档：绝大多数系统都能直接接受，避免生成后到处被拒
+  const [symbolPreset, setSymbolPreset] = useState<SymbolPreset>("safe");
+  const [excludeAmbiguous, setExcludeAmbiguous] = useState(false);
+  const [extraExclude, setExtraExclude] = useState("");
+
   const [strength, setStrength] = useState(evaluateStrength(""));
 
+  const excluded = (excludeAmbiguous ? AMBIGUOUS : "") + extraExclude;
+
+  const classes = useMemo(
+    () => buildCharClasses(options, symbolPreset, excluded),
+    [options, symbolPreset, excluded]
+  );
+
+  // 勾选了却被排除干净的字符类型，用于给出明确提示
+  const emptiedClasses = (Object.keys(options) as Array<keyof PasswordOptions>)
+    .filter((key) => options[key] && !classes.some((c) => c.key === key))
+    .map((key) => CLASS_LABEL[key]);
+
   const generatePassword = useCallback(() => {
-    const next = createPassword(length, options);
+    const next = createPassword(length, classes);
     setPassword(next);
     setCopied(false);
     setStrength(evaluateStrength(next));
-  }, [length, options]);
+  }, [length, classes]);
 
   // 参数变化后自动生成
   useEffect(() => {
@@ -112,9 +192,12 @@ function PasswordGeneratorCore() {
   }, [generatePassword]);
 
   // 卸载时清理复制提示定时器
-  useEffect(() => () => {
-    if (copyTimer.current) clearTimeout(copyTimer.current);
-  }, []);
+  useEffect(
+    () => () => {
+      if (copyTimer.current) clearTimeout(copyTimer.current);
+    },
+    []
+  );
 
   const flashCopied = () => {
     setCopied(true);
@@ -147,14 +230,14 @@ function PasswordGeneratorCore() {
     setOptions((prev) => ({ ...prev, [key]: !prev[key] }));
   };
 
-  const selectedCount = Object.values(options).filter(Boolean).length;
+  const activeCount = classes.length;
 
   return (
     <>
       {/* 密码展示 */}
       <div className="relative mb-6 group">
         <div className="w-full bg-slate-50 border border-slate-200 rounded-2xl p-6 text-center break-all text-2xl md:text-3xl font-mono text-slate-800 min-h-[100px] flex items-center justify-center shadow-inner relative overflow-hidden">
-          {password || "请选择字符类型"}
+          {password || "请至少选择一种字符类型"}
 
           {copied && (
             <div className="absolute inset-0 bg-emerald-50 text-emerald-700 flex items-center justify-center rounded-2xl animate-fade-in-up text-lg font-medium">
@@ -182,12 +265,12 @@ function PasswordGeneratorCore() {
               strength.color === "red"
                 ? "text-red-600"
                 : strength.color === "orange"
-                ? "text-orange-600"
-                : strength.color === "blue"
-                ? "text-blue-600"
-                : strength.color === "gray"
-                ? "text-slate-500"
-                : "text-emerald-700"
+                  ? "text-orange-600"
+                  : strength.color === "blue"
+                    ? "text-blue-600"
+                    : strength.color === "gray"
+                      ? "text-slate-500"
+                      : "text-emerald-700"
             }`}
             aria-live="polite"
           >
@@ -205,7 +288,9 @@ function PasswordGeneratorCore() {
       {/* 密码长度 */}
       <div className="mb-6">
         <div className="flex justify-between items-center mb-3">
-          <label htmlFor="password-length" className="font-semibold text-slate-700">密码长度</label>
+          <label htmlFor="password-length" className="font-semibold text-slate-700">
+            密码长度
+          </label>
           <div className="flex items-center gap-2">
             <input
               id="password-length"
@@ -232,7 +317,7 @@ function PasswordGeneratorCore() {
         />
       </div>
 
-      {/* 选项 */}
+      {/* 字符类型 */}
       <div className="grid grid-cols-2 gap-4 mb-4">
         <label className="flex items-center gap-2 cursor-pointer">
           <input
@@ -268,25 +353,118 @@ function PasswordGeneratorCore() {
             onChange={() => toggle("symbols")}
             className="ui-checkbox"
           />
-          <span className="text-sm text-slate-700">特殊符号 !@#$</span>
+          <span className="text-sm text-slate-700">特殊符号</span>
         </label>
       </div>
 
-      {/* 安全提示 */}
-      {length < selectedCount && selectedCount > 0 && (
-        <p className="text-amber-600 text-sm mb-6">
-          ⚠️ 建议长度 ≥ 已选项数量，保证密码强度
+      {/* 符号范围：解决「某些系统不接受某些特殊字符」 */}
+      {options.symbols && (
+        <div className="mb-6">
+          <div className="flex items-center justify-between mb-2">
+            <span className="text-sm font-medium text-slate-600">符号范围</span>
+            <span className="text-xs text-slate-500">
+              共 {SYMBOL_PRESETS[symbolPreset].chars.length} 个符号
+            </span>
+          </div>
+
+          <div
+            className="grid grid-cols-3 gap-1 p-1 bg-slate-100 rounded-xl"
+            role="radiogroup"
+            aria-label="符号范围"
+          >
+            {(Object.keys(SYMBOL_PRESETS) as SymbolPreset[]).map((key) => {
+              const active = symbolPreset === key;
+              return (
+                <button
+                  key={key}
+                  type="button"
+                  role="radio"
+                  aria-checked={active}
+                  onClick={() => setSymbolPreset(key)}
+                  className={`py-1.5 text-sm rounded-lg transition-all ${
+                    active
+                      ? "bg-white text-indigo-600 font-semibold shadow-sm"
+                      : "text-slate-600 hover:text-slate-800"
+                  }`}
+                >
+                  {SYMBOL_PRESETS[key].label}
+                </button>
+              );
+            })}
+          </div>
+
+          <div className="mt-2 px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl font-mono text-xs text-slate-600 break-all leading-relaxed">
+            {SYMBOL_PRESETS[symbolPreset].chars.split("").join(" ")}
+          </div>
+
+          <p className="text-xs text-slate-500 mt-2 leading-relaxed">
+            {SYMBOL_PRESETS[symbolPreset].hint}
+          </p>
+        </div>
+      )}
+
+      {/* 排除字符：应对个别系统仍然拒绝某个符号的情况 */}
+      <div className="mb-6">
+        <label htmlFor="exclude-chars" className="ui-label block mb-2">
+          排除字符
+          <span className="font-normal text-slate-500">（可选）</span>
+        </label>
+        <div className="flex flex-col sm:flex-row gap-2">
+          <input
+            id="exclude-chars"
+            type="text"
+            value={extraExclude}
+            onChange={(e) => setExtraExclude(e.target.value)}
+            placeholder="输入不想出现的字符，例如 Il1O0o"
+            maxLength={40}
+            spellCheck={false}
+            autoComplete="off"
+            className="ui-input font-mono flex-1"
+          />
+          <label className="flex items-center justify-center gap-2 cursor-pointer shrink-0 px-3 py-3 bg-white border border-slate-200 rounded-xl">
+            <input
+              type="checkbox"
+              checked={excludeAmbiguous}
+              onChange={(e) => setExcludeAmbiguous(e.target.checked)}
+              className="ui-checkbox"
+            />
+            <span className="text-sm text-slate-700 whitespace-nowrap">排除易混淆字符</span>
+          </label>
+        </div>
+        <p className="text-xs text-slate-500 mt-2 leading-relaxed">
+          易混淆字符指 <span className="font-mono">I l 1 O 0 o |</span>，手抄或投屏念读时最容易认错。输入框可再排除任意字符，例如某后台不允许 <span className="font-mono">&amp;</span> 或 <span className="font-mono">%</span>，填进去即可。
+        </p>
+      </div>
+
+      {/* 提示 */}
+      {emptiedClasses.length > 0 && (
+        <p className="text-amber-600 text-sm mb-4">
+          已排除全部「{emptiedClasses.join("、")}」字符，当前密码不会包含该类型。
+        </p>
+      )}
+
+      {activeCount === 0 && (
+        <p className="text-red-600 text-sm mb-4">
+          所有字符类型都被排除了，请至少保留一种，或清空排除条件。
+        </p>
+      )}
+
+      {length < activeCount && activeCount > 0 && (
+        <p className="text-amber-600 text-sm mb-4">
+          建议长度 ≥ 已选字符类型数量，保证每类都能出现
         </p>
       )}
 
       {/* 生成按钮 */}
-      <button
-        onClick={generatePassword}
-        className="ui-btn ui-btn-primary ui-btn-block"
-      >
+      <button onClick={generatePassword} className="ui-btn ui-btn-primary ui-btn-block">
         <RefreshCw size={18} className="mr-2" />
         重新生成密码
       </button>
+
+      <p className="flex items-start gap-2 text-xs text-slate-500 mt-4 leading-relaxed">
+        <ShieldCheck size={14} className="shrink-0 mt-0.5 text-emerald-600" />
+        使用浏览器 crypto.getRandomValues 生成，随机性来自系统熵源，且完全在本地计算，密码不会离开这台设备。
+      </p>
     </>
   );
 }
