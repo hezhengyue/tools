@@ -186,7 +186,7 @@ export const toolsConfig: ToolCategory[] = [
         name: "在线截图",
         href: "/screenshot",
         icon: Camera,
-        desc: "捕获屏幕、窗口或标签页画面，支持延迟截取、拖动裁剪、复制到剪贴板与导出 PNG。",
+        desc: "按快捷键或点一下，直接拖动框选屏幕/窗口的任意区域，松开即完成并自动复制到剪贴板。",
         footer: {
           mode: "local",
           subject: "截图内容",
