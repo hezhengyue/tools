@@ -194,6 +194,91 @@
   .ui-footer-icon {
     @apply w-4 h-4 mt-0.5 shrink-0 text-amber-500;
   }
+
+  /* ---- Markdown 预览排版（未引入 typography 插件，样式集中在此） ---- */
+  .md-preview {
+    @apply text-slate-700 text-sm leading-7 break-words;
+  }
+  .md-preview > :first-child {
+    @apply mt-0;
+  }
+  .md-preview h1,
+  .md-preview h2,
+  .md-preview h3,
+  .md-preview h4 {
+    @apply font-bold text-slate-900 mt-6 mb-3 scroll-mt-4;
+  }
+  .md-preview h1 {
+    @apply text-2xl pb-2 border-b border-slate-200;
+  }
+  .md-preview h2 {
+    @apply text-xl pb-1.5 border-b border-slate-200;
+  }
+  .md-preview h3 {
+    @apply text-base;
+  }
+  .md-preview p {
+    @apply my-3;
+  }
+  .md-preview a {
+    @apply text-indigo-600 underline underline-offset-2 hover:text-indigo-700;
+  }
+  .md-preview ul {
+    @apply list-disc pl-6 my-3 space-y-1;
+  }
+  .md-preview ol {
+    @apply list-decimal pl-6 my-3 space-y-1;
+  }
+  .md-preview blockquote {
+    @apply border-l-4 border-indigo-200 bg-indigo-50/40 pl-4 pr-3 py-2 my-4 text-slate-600 rounded-r-lg;
+  }
+  .md-preview code {
+    @apply px-1.5 py-0.5 bg-slate-100 border border-slate-200 rounded text-[0.85em] font-mono text-slate-800;
+  }
+  .md-preview pre {
+    @apply bg-slate-900 text-slate-100 rounded-xl p-4 my-4 overflow-x-auto text-xs leading-6;
+  }
+  .md-preview pre code {
+    @apply bg-transparent border-0 p-0 text-inherit;
+  }
+  .md-preview table {
+    @apply w-full border-collapse my-4 text-sm;
+  }
+  .md-preview th,
+  .md-preview td {
+    @apply border border-slate-200 px-3 py-2 text-left;
+  }
+  .md-preview th {
+    @apply bg-slate-50 font-semibold text-slate-700;
+  }
+  .md-preview img {
+    @apply max-w-full h-auto rounded-lg my-3;
+  }
+  .md-preview hr {
+    @apply my-6 border-slate-200;
+  }
+  .md-preview input[type="checkbox"] {
+    @apply mr-1 accent-indigo-600;
+  }
+}
+
+/* 打印时只保留 Markdown 预览内容，用于「存为 PDF」 */
+@media print {
+  body:has(.md-print-root) * {
+    visibility: hidden;
+  }
+  .md-print-root,
+  .md-print-root * {
+    visibility: visible;
+  }
+  .md-print-root {
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: 100%;
+    padding: 0;
+    border: 0;
+  }
 }
 
 /* ================================================================

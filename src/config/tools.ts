@@ -5,7 +5,8 @@ import {
   Image, FileImage, Sparkles, Globe, MonitorSmartphone, MapPin, FileCode,
   Camera, ScreenShare, Video, Braces, Clock, Binary,
   Bomb, Grid2x2, Worm, CircleDot,
-  Regex, QrCode, Fingerprint, KeySquare, Palette, IdCard, Shapes
+  Regex, QrCode, Fingerprint, KeySquare, Palette, IdCard, Shapes,
+  FileText, FileCode2, CalendarClock, ImagePlus, Network, Ruler
 } from "lucide-react";
 
 /**
@@ -167,6 +168,17 @@ export const toolsConfig: ToolCategory[] = [
           extra: "随机源为浏览器密码学安全的 crypto.getRandomValues；最近 5 批记录只保存在本机浏览器。"
         }
       },
+      {
+        name: "Cron 表达式生成器",
+        href: "/cron",
+        icon: CalendarClock,
+        desc: "可视化配置分/时/日/月/周，中文语义解释与未来 5 次执行时间预览，附常用模板，也支持手填解析。",
+        footer: {
+          mode: "local",
+          subject: "表达式",
+          extra: "采用标准 5 段 Linux cron 语法，执行时间按浏览器本地时区计算。"
+        }
+      },
     ]
   },
   {
@@ -191,6 +203,17 @@ export const toolsConfig: ToolCategory[] = [
           subject: "公网 IP",
           extra: "查询过程不收集或存储个人信息；主备数据源自动切换，兼容各类部署环境。"
         }
+      },
+      {
+        name: "IP 与子网计算",
+        href: "/ip-subnet",
+        icon: Network,
+        desc: "IPv4 CIDR 计算：网络/广播地址、掩码、可用主机范围、二进制视图、子网划分与 IP 整数互转。",
+        footer: {
+          mode: "local",
+          subject: "IP 地址",
+          extra: "只做 IPv4 数值计算，页面里的地址是计算样本，不会查询你的真实公网 IP。"
+        }
       }
     ]
   },
@@ -214,6 +237,28 @@ export const toolsConfig: ToolCategory[] = [
           mode: "local",
           subject: "表达式与文本",
           extra: "匹配在独立线程执行并设 1.5 秒超时，避免灾难性回溯锁死页面。"
+        }
+      },
+      {
+        name: "文本工具箱",
+        href: "/text-tools",
+        icon: FileText,
+        desc: "URL / HTML / Unicode / Base64 / 十六进制编解码，大小写与命名风格、全半角、行去重排序、字数统计，39 种转换一页搞定。",
+        footer: {
+          mode: "local",
+          subject: "文本",
+          extra: "转换结果可一键写回输入框连续处理，所有统计也只在本机计算。"
+        }
+      },
+      {
+        name: "Markdown 预览与互转",
+        href: "/markdown",
+        icon: FileCode2,
+        desc: "双栏实时预览、文档大纲、GFM 表格与任务列表；导出 HTML / 打印 PDF，并支持 HTML 反向转 Markdown。",
+        footer: {
+          mode: "local",
+          subject: "文档内容",
+          extra: "预览 HTML 会先经 DOMPurify 净化，默认不执行文档内嵌的 HTML。"
         }
       },
     ]
@@ -253,6 +298,17 @@ export const toolsConfig: ToolCategory[] = [
           mode: "local",
           subject: "图片",
           extra: "支持复制带前缀或纯 Base64 数据。"
+        }
+      },
+      {
+        name: "图片工具套件",
+        href: "/image-tools",
+        icon: ImagePlus,
+        desc: "文字水印、圆角裁剪、九宫格切图、ICO / favicon 生成、SVG 转 PNG，五个功能一页切换，结果可直接下载。",
+        footer: {
+          mode: "local",
+          subject: "图片",
+          extra: "绘制全部在 canvas 完成，ZIP 与 ICO 文件也在本机生成；单张图片限制 20 MB / 1600 万像素。"
         }
       },
     ]
@@ -309,6 +365,17 @@ export const toolsConfig: ToolCategory[] = [
           mode: "local",
           subject: "颜色与图片",
           extra: "屏幕取色需要浏览器支持 EyeDropper API（Chrome / Edge），Safari 与 Firefox 可手动输入色值。"
+        }
+      },
+      {
+        name: "单位与进制换算",
+        href: "/unit-converter",
+        icon: Ruler,
+        desc: "长度、重量、温度、面积、体积、时间、数据、速度、压强九类单位换算，外加任意 2~36 进制互转（含小数）。",
+        footer: {
+          mode: "local",
+          subject: "数值",
+          extra: "月 / 年按平均长度估算；超出 JavaScript 安全整数范围的数值会明确报错，不给出近似答案。"
         }
       },
     ]
