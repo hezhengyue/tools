@@ -1,0 +1,68 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>当前离线 · 正月工具箱</title>
+  <style>
+    :root { color-scheme: light dark; }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 24px;
+      background: #f8fafc;
+      color: #0f172a;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Microsoft YaHei", sans-serif;
+    }
+    .card {
+      width: 100%;
+      max-width: 420px;
+      padding: 32px;
+      border: 1px solid #e2e8f0;
+      border-radius: 20px;
+      background: #ffffff;
+      box-shadow: 0 12px 40px rgba(15, 23, 42, 0.06);
+      text-align: center;
+    }
+    .icon {
+      width: 56px; height: 56px; margin: 0 auto 20px;
+      border-radius: 16px; background: #eef2ff; color: #4f46e5;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 26px;
+    }
+    h1 { margin: 0 0 10px; font-size: 20px; }
+    p { margin: 0 0 8px; font-size: 14px; line-height: 1.8; color: #475569; }
+    .actions { display: flex; gap: 10px; margin-top: 24px; }
+    button {
+      flex: 1; padding: 11px 14px; border-radius: 12px;
+      font-size: 14px; font-weight: 600; cursor: pointer;
+      border: 1px solid #e2e8f0; background: #ffffff; color: #334155;
+    }
+    button.primary { background: #4f46e5; border-color: #4f46e5; color: #ffffff; }
+    @media (prefers-color-scheme: dark) {
+      body { background: #0b1120; color: #f8fafc; }
+      .card { background: #111827; border-color: #263449; box-shadow: none; }
+      .icon { background: #1e1b4b; color: #a5b4fc; }
+      p { color: #94a3b8; }
+      button { background: #111827; border-color: #263449; color: #cbd5e1; }
+      button.primary { background: #4f46e5; border-color: #4f46e5; color: #ffffff; }
+    }
+  </style>
+</head>
+<body>
+  <div class="card">
+    <div class="icon" aria-hidden="true">⌁</div>
+    <h1>当前处于离线状态</h1>
+    <p>这个页面还没被缓存下来。之前访问过的工具仍可离线使用，所有计算本来就不需要联网。</p>
+    <p>恢复网络后再试一次即可。</p>
+    <div class="actions">
+      <button type="button" onclick="history.back()">返回上一页</button>
+      <button type="button" class="primary" onclick="location.reload()">重新加载</button>
+    </div>
+  </div>
+</body>
+</html>

@@ -1,0 +1,22 @@
+{
+  "id": "/",
+  "name": "正月工具箱",
+  "short_name": "正月工具",
+  "description": "为小白和开发者打造的极简现代在线工具集合站，32 个工具全部在浏览器本地运行",
+  "lang": "zh-CN",
+  "dir": "ltr",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "display_override": ["standalone", "minimal-ui"],
+  "orientation": "any",
+  "background_color": "#f8fafc",
+  "theme_color": "#4f46e5",
+  "categories": ["utilities", "developer tools", "productivity"],
+  "icons": [
+    { "src": "/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "/icon-maskable-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" },
+    { "src": "/logo.png", "sizes": "500x500", "type": "image/png" }
+  ]
+}

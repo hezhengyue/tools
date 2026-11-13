@@ -6,7 +6,8 @@
 import { ReactNode } from "react";
 import { usePathname } from "next/navigation";
 import { toolsConfig, type ToolFooter } from "@/config/tools";
-import { AlertCircle } from "lucide-react";
+import { AlertCircle, Star } from "lucide-react";
+import { usePreferences } from "./PreferencesProvider";
 
 interface ToolShellProps {
   children: ReactNode;
@@ -24,6 +25,7 @@ function FooterSentence({ footer }: { footer: ToolFooter }) {
 
 export default function ToolShell({ children, extraContent }: ToolShellProps) {
   const pathname = usePathname();
+  const { favorites, toggleFavorite } = usePreferences();
 
   const currentTool = toolsConfig
     .flatMap((cat) => cat.tools)
@@ -39,6 +41,7 @@ export default function ToolShell({ children, extraContent }: ToolShellProps) {
 
   const Icon = currentTool.icon;
   const footer = currentTool.footer;
+  const isFavorite = favorites.includes(currentTool.href);
 
   return (
     <div className="max-w-4xl mx-auto opacity-100 transition-opacity duration-500">
@@ -51,6 +54,20 @@ export default function ToolShell({ children, extraContent }: ToolShellProps) {
           <h1 className="text-2xl md:text-3xl font-extrabold tracking-tight text-slate-900 break-words">
             {currentTool.name}
           </h1>
+          <button
+            type="button"
+            onClick={() => toggleFavorite(currentTool.href)}
+            aria-pressed={isFavorite}
+            aria-label={isFavorite ? `取消收藏 ${currentTool.name}` : `收藏 ${currentTool.name}`}
+            title={isFavorite ? "取消收藏" : "收藏到侧栏"}
+            className={`ml-auto shrink-0 p-2 rounded-xl border transition-colors ${
+              isFavorite
+                ? "border-amber-200 bg-amber-50 text-amber-600"
+                : "border-slate-200 bg-white text-slate-500 hover:border-indigo-300 hover:text-indigo-600"
+            }`}
+          >
+            <Star className="w-4 h-4 md:w-5 md:h-5" fill={isFavorite ? "currentColor" : "none"} />
+          </button>
         </div>
         <p className="text-slate-500 text-sm md:text-base break-words">{currentTool.desc}</p>
       </div>

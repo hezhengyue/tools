@@ -77,6 +77,15 @@ footer: { mode: "local", subject: "文本", extra: "补充说明（可选）" }
 ```
 `mode: "local"` 生成「所有处理在浏览器本地完成，{subject}不会上传到任何服务器。」；`mode: "server"` 用于确实需要服务端查询的工具（目前仅 IP 地理位置），生成「归属地由服务端接口查询…」。ToolShell 统一渲染，**禁止 `dangerouslySetInnerHTML`、禁止页脚写自由 HTML、禁止在页面里自写 `<h1>` 重复标题**。
 
+# 站点级能力约定
+
+- **单一数据源**：`src/config/tools.ts` 是工具清单的唯一来源。侧栏、首页、命令面板检索（`config/search.ts`）与每页 metadata（`config/metadata.ts`）都由它派生。新增工具只需注册清单，不要在多处维护名称列表；英文 / 缩写别名在 `search.ts` 的 `ALIASES` 里补。
+- **metadata 的载体**：所有工具页都是 `"use client"`，Next.js 不允许客户端组件导出 `metadata`。因此每个工具目录下有一个极小的服务端 `layout.tsx`，只做 `export const metadata = toolMetadata("/xxx")` 并原样返回 `children`。新增工具页时复制一份即可；不要改成 `generateMetadata` + `headers()`，那会让全部路由转为动态渲染。
+- **站点地址**：canonical 与 OG 绝对地址来自 `NEXT_PUBLIC_SITE_URL`（`config/site.ts`）。未配置时**不输出**绝对 URL，避免 localhost 泄漏到线上。
+- **主题 / 偏好**：`PreferencesProvider` 管理 `tools.theme`、`tools.favorites`、`tools.recent` 三个 localStorage key；`layout.tsx` 里的内联 `THEME_INIT` 与 Provider 的 `applyTheme` 判断必须保持一致。深色模式靠 `html.dark` 上重定义 Tailwind v4 的 `--color-*` 变量实现，**不要在新页面里写死 `#fff` / 固定浅色底**，统一用 slate / 语义色 utility，才能自动适配深色。
+- **命令面板**：任何组件都可以调用 `openCommandPalette()` 打开；全局快捷键与 `tools:open-search` 事件由 `CommandPalette.tsx` 统一监听。
+- **PWA**：`public/sw.js` 的导航请求是 network-first（在线永远拿最新版），RSC 与 `/api/` 不缓存。修改缓存策略必须提升 `CACHE_NAME`。`PwaRegister.tsx` 只在生产 + 非 localhost 注册，避免本地验证被缓存干扰。
+
 # 工程与质量约定
 
 - **验证基线**：`npx tsc --noEmit`、`npm run lint` 都必须零错误；涉及路由/构建时再跑 `npm run build`。pre-commit 钩子会对暂存的 TS/TSX 自动执行 ESLint，未通过无法提交。

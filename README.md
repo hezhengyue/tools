@@ -31,19 +31,48 @@ npx tsc --noEmit # 类型检查
 ```
 src/
   app/                  # 首页 + 32 个工具页 + /api/my-ip 服务端路由
+    <工具名>/layout.tsx # 每页独立 metadata（页面是 "use client"，metadata 只能由 layout 导出）
     api/my-ip/route.ts  # 全站唯一的服务端接口：查询公网 IP 归属地
-    globals.css         # .ui-* 设计令牌（唯一视觉来源）
+    globals.css         # .ui-* 设计令牌、深色模式变量覆盖（唯一视觉来源）
   components/
-    ToolShell.tsx       # 所有工具页的统一外壳（标题 / 内容卡 / 页脚）
-    Sidebar.tsx         # 桌面侧栏（含工具搜索）
+    ToolShell.tsx       # 所有工具页的统一外壳（标题 / 收藏星标 / 内容卡 / 页脚）
+    Sidebar.tsx         # 桌面侧栏（命令面板入口、最近使用、收藏、外观切换）
     MobileHeader.tsx    # 移动端顶栏与抽屉
+    CommandPalette.tsx  # Ctrl/⌘+K 全局命令面板
+    PreferencesProvider.tsx # 主题 / 收藏 / 最近使用的 localStorage 状态
+    ThemeToggle.tsx     # 浅色 / 深色 / 跟随系统三态切换
+    PwaRegister.tsx     # 生产环境注册 Service Worker、离线提示
+    RecentBar.tsx       # 首页「继续上次」
     ui/ToolUI.tsx       # Panel / Button / Notice / OutputBlock 等模板组件
   config/
-    tools.ts            # 工具清单（名称、图标、描述、页脚说明）
-    site.ts             # 站点名称与描述
+    tools.ts            # 工具清单（名称、图标、描述、页脚说明）——全站唯一数据源
+    search.ts           # 命令面板检索索引与别名
+    metadata.ts         # 每页 metadata 生成
+    site.ts             # 站点名称、描述、部署地址
+public/
+  manifest.webmanifest / sw.js / offline.html
+  icon-*.png / og.jpg  # PWA 图标与分享图
 ```
 
-新增工具页时请遵循 `AGENTS.md` 的「界面模板规范」：用 `ToolShell` 包裹、复用 `ToolUI` 模板组件、在 `tools.ts` 注册并填写结构化 `footer`。
+新增工具页时请遵循 `AGENTS.md` 的「界面模板规范」：用 `ToolShell` 包裹、复用 `ToolUI` 模板组件、在 `tools.ts` 注册并填写结构化 `footer`，并复制一份同目录 `layout.tsx` 承载 metadata。检索索引、侧栏、命令面板都会自动收录，无需额外注册。
+
+## 站点级能力
+
+- **全局搜索**：`Ctrl/⌘ + K` 或点侧栏 / 移动端顶栏的搜索入口，支持名称、描述、分类与英文别名，↑↓ 选择、Enter 直达。
+- **收藏与最近使用**：工具页标题右侧星标收藏，侧栏置顶「最近使用 / 我的收藏」，首页显示「继续上次」；数据只存 `localStorage`。
+- **深色模式**：侧栏底部或移动端顶栏切换浅色 / 深色 / 跟随系统；首屏由内联脚本预设主题，不会闪白。
+- **PWA 离线**：`manifest.webmanifest` + `sw.js`，页面导航 network-first、静态资源 cache-first，已访问过的工具断网可用；未缓存页面回退 `offline.html`。
+- **SEO**：每个工具页有独立 title / description / Open Graph；根 layout 统一 title 模板与站点级 OG 图。
+
+## 环境变量
+
+部署时建议配置：
+
+```bash
+NEXT_PUBLIC_SITE_URL=https://你的域名
+```
+
+配置后才会输出 canonical 与 Open Graph 的绝对地址（含 `/og.jpg`）；未配置时不会把 `localhost` 写进公开页面。除此之外无必需环境变量。
 
 ## 数据与隐私
 
@@ -54,6 +83,8 @@ src/
 ## 部署
 
 纯 Next.js 应用，可部署到任意支持 Node.js 运行时的平台（Vercel、EdgeOne Pages、自有服务器等）。`/api/my-ip` 是动态路由，响应带 `Cache-Control: no-store`；不依赖任何 CDN 私有请求头。代码推送到 `main` 后需等待平台重新构建才会生效。
+
+Service Worker 只在生产环境且非 localhost 时注册，并要求 HTTPS（或 localhost）。若修改了 `public/sw.js` 的缓存策略，请同步提升 `CACHE_NAME` 版本号，否则老用户不会淘汰旧缓存。
 
 ## 提交约定
 

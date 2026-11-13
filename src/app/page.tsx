@@ -2,6 +2,7 @@
 import Link from "next/link";
 import { ArrowRight } from "lucide-react";
 import { toolsConfig } from "../config/tools";
+import RecentBar from "../components/RecentBar";
 
 export default function Home() {
   return (
@@ -11,7 +12,9 @@ export default function Home() {
           欢迎回来 👋
         </h1>
       </header>
-      
+
+      <RecentBar />
+
       <div className="space-y-8 md:space-y-12">
         {toolsConfig.map((category, index) => (
           <section key={index}>

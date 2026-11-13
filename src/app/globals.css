@@ -327,3 +327,120 @@
      下限保证格子被 22px 撑开时数字仍然看得清 */
   font-size: clamp(9px, calc(52cqw / var(--cols)), 22px);
 }
+
+/* ================================================================
+   命令面板遮罩（独立于主题，深色下也保持统一的暗色）
+   ================================================================ */
+.cmd-backdrop {
+  background-color: rgba(2, 6, 23, 0.55);
+  backdrop-filter: blur(2px);
+}
+
+/* ================================================================
+   深色模式
+   ----------------------------------------------------------------
+   Tailwind v4 的 utility 编译为 var(--color-xxx)，因此在 html.dark 上
+   重定义色阶就能让 32 个页面整体反转，无需逐个页面加 dark: 变体。
+   下面这些规则刻意放在所有 @layer 之外：无 layer 的规则优先级天然高于
+   Tailwind 的 theme / utilities layer，才能覆盖 @apply 生成的值。
+   ================================================================ */
+html.dark {
+  color-scheme: dark;
+
+  /* 中性色阶反转：浅底深字 → 深底浅字 */
+  --color-white: #111827;
+  --color-slate-50: #0b1120;
+  --color-slate-100: #111c2e;
+  --color-slate-200: #263449;
+  --color-slate-300: #3b4c63;
+  --color-slate-400: #64748b;
+  --color-slate-500: #94a3b8;
+  --color-slate-600: #cbd5e1;
+  --color-slate-700: #e2e8f0;
+  --color-slate-800: #f1f5f9;
+  --color-slate-900: #f8fafc;
+  --color-slate-950: #ffffff;
+
+  /* 语义色的浅底换成同色系深色 */
+  --color-indigo-50: #1e1b4b;
+  --color-indigo-100: #2c2a6b;
+  --color-indigo-200: #3730a3;
+  --color-emerald-50: #062f26;
+  --color-emerald-100: #064e3b;
+  --color-emerald-200: #065f46;
+  --color-red-50: #3f1218;
+  --color-red-100: #5b1a21;
+  --color-red-200: #7f2530;
+  --color-amber-50: #3a2508;
+  --color-amber-100: #4a310c;
+  --color-amber-200: #6b4a12;
+  --color-amber-900: #fde68a;
+  --color-teal-50: #072f2c;
+
+  /* 语义色文字在深底上提亮（背景色另在下方单独兜回主色） */
+  --color-indigo-600: #a5b4fc;
+  --color-indigo-700: #c7d2fe;
+  --color-indigo-800: #e0e7ff;
+  --color-emerald-600: #6ee7b7;
+  --color-emerald-700: #a7f3d0;
+  --color-emerald-800: #d1fae5;
+  --color-red-600: #fca5a5;
+  --color-red-700: #fecaca;
+  --color-red-800: #fee2e2;
+  --color-amber-600: #fcd34d;
+  --color-amber-700: #fde68a;
+}
+
+html.dark body {
+  background-color: #0b1120;
+}
+
+html.dark ::selection {
+  background-color: #3730a3;
+  color: #ffffff;
+}
+
+/* 白色文字不能跟着 --color-white 一起变深 */
+html.dark [class*="text-white"] {
+  color: #ffffff;
+}
+
+/* 主按钮：变量名被提亮了，但按钮本体要维持 indigo-600 + 白字 */
+html.dark .bg-indigo-600 { background-color: #4f46e5; }
+html.dark .bg-indigo-700 { background-color: #4338ca; }
+html.dark .hover\:bg-indigo-700:hover { background-color: #4338ca; }
+html.dark .ui-btn-primary {
+  background-color: #4f46e5;
+  color: #ffffff;
+}
+html.dark .ui-btn-primary:hover { background-color: #4338ca; }
+
+/* 带斜杠透明度的 utility 编译成字面色值，无法靠变量反转，逐类兜底 */
+html.dark [class*="bg-white/"] { background-color: rgba(17, 24, 39, 0.85); }
+html.dark [class*="bg-slate-50/"],
+html.dark [class*="bg-slate-100/"] { background-color: rgba(30, 41, 59, 0.6); }
+html.dark [class*="bg-slate-300/"],
+html.dark [class*="bg-slate-400/"] { background-color: rgba(100, 116, 139, 0.4); }
+html.dark [class*="bg-indigo-50/"] { background-color: rgba(30, 27, 75, 0.6); }
+html.dark [class*="bg-emerald-50/"] { background-color: rgba(6, 47, 38, 0.95); }
+html.dark [class*="bg-red-50/"] { background-color: rgba(63, 18, 24, 0.5); }
+html.dark [class*="bg-amber-50/"] { background-color: rgba(58, 37, 8, 0.6); }
+html.dark [class*="border-slate-200/"] { border-color: rgba(38, 52, 73, 0.85); }
+html.dark [class*="border-amber-200/"] { border-color: rgba(107, 74, 18, 0.8); }
+html.dark [class*="text-emerald-6"],
+html.dark [class*="text-emerald-7"] { color: #6ee7b7; }
+
+/* 摄像头 / 视频容器本该是黑底，不能被反转成白 */
+html.dark [class*="bg-slate-900"] { background-color: #050a14; }
+html.dark [class*="bg-slate-900/"] { background-color: rgba(5, 10, 20, 0.5); }
+
+/* Markdown 预览里的 @apply 值不是类名，需要按选择器覆盖 */
+html.dark .md-preview pre { background-color: #050a14; color: #e2e8f0; }
+html.dark .md-preview pre code { color: inherit; }
+html.dark .md-preview code { background-color: #111c2e; }
+html.dark .md-preview blockquote { background-color: #1e1b4b; }
+html.dark .ui-textarea.ui-output-warning {
+  background-color: #3a2508;
+  border-color: #6b4a12;
+  color: #fde68a;
+}
