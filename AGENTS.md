@@ -67,7 +67,7 @@ export default function XxxPage() {
 - `children` 可自定义内容区（如代码块），复制仍取 `value`；复制/下载按钮在 `value` 为空时自动禁用。
 - 只需单个动作用 `CopyButton`（自带「已复制」成功态）或 `DownloadButton`，**不要在页面里再写 `navigator.clipboard` / `Blob` 下载逻辑**。
 - 禁止：把复制/下载做成结果下方一排大按钮、用 `<details>` 折叠藏结果、每个输出块各写一套按钮样式。
-- 例外：整页级主操作按钮组（如「复制全部 / 重新检测」）与图片 / 画板文件导出不属于文本输出块，继续用 `Button` / `ToolActions`。
+- 例外：整页级主操作按钮组（如「复制全部 / 重新检测」）与图片文件导出不属于文本输出块，继续用 `Button` / `ToolActions`。
 
 设计约定：主色 `indigo-600`；成功 `emerald`；提示 `amber`；错误 `red`；卡片 `rounded-2xl`，按钮 `rounded-xl`，小控件 `rounded-lg`；边框统一 `border-slate-200`；次级底色 `bg-slate-50`。语义色（哈希算法标签、密码强度、增删高亮、私钥警示）可保留。
 
@@ -81,7 +81,7 @@ footer: { mode: "local", subject: "文本", extra: "补充说明（可选）" }
 
 - **验证基线**：`npx tsc --noEmit`、`npm run lint` 都必须零错误；涉及路由/构建时再跑 `npm run build`。pre-commit 钩子会对暂存的 TS/TSX 自动执行 ESLint，未通过无法提交。
 - **依赖**：只保留实际 import 的包；`crypto-js` 一律用子路径（如 `crypto-js/sha256`）按需引入，不要从主入口全量导入。
-- **随机与密码**：需要安全随机一律用 `crypto.getRandomValues`，禁止 `Math.random()` 生成密码；洗牌用 Fisher-Yates；抽奖等非安全场景也统一走模块级 `shuffle()`。
+- **随机与密码**：需要安全随机一律用 `crypto.getRandomValues`，禁止 `Math.random()` 生成密码；洗牌用 Fisher-Yates；游戏、抽签这类非安全场景可以用 `Math.random()`，但必须发生在事件回调/effect 里，不能出现在渲染期（否则水合不一致，也会被 React Compiler 的 purity 规则拦下）。
 - **剪贴板**：统一用 `writeClipboard()`（内置 `execCommand` 降级），禁止页面里直接 `navigator.clipboard.writeText` 或无条件弹「已复制」。
 - **资源**：图片类页面必须校验文件大小与像素上限、等比缩小超大图；`createObjectURL` 在卸载/替换时 `revokeObjectURL`，`ImageBitmap` 用完 `close()`，所有 `setTimeout` 在卸载时清理；高频绘制用 `requestAnimationFrame` 合并。
 - **可访问性**：允许用户缩放（viewport 不设 `userScalable: false`）；独立 `<label>` 必须用 `htmlFor` 关联控件 id；图标按钮必须有 `aria-label`；上传区支持键盘触发；动态提示用 `Notice`（自带 `role=status/alert`）；小字最低 `text-slate-500`，不要用 `text-slate-400`。

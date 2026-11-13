@@ -1,10 +1,10 @@
 // config/tools.ts
 import {
   Key, FileJson, Shield, Code,
-  Hash, KeyRound, FileBadge, FileDiff, Type, Palette, Gamepad, Gift,
+  Hash, KeyRound, FileBadge, FileDiff, Type, Gamepad,
   Image, FileImage, Sparkles, Globe, MonitorSmartphone, MapPin, FileCode,
   Camera, ScreenShare, Video, Braces, Clock, Binary,
-  Bomb, Grid2x2
+  Bomb, Grid2x2, Worm
 } from "lucide-react";
 
 /**
@@ -267,18 +267,15 @@ export const toolsConfig: ToolCategory[] = [
         }
       },
       {
-        name: "画板",
-        href: "/draw-board",
-        icon: Palette,
-        desc: "轻量级在线画板，支持多色画笔、橡皮擦、撤销重做。",
-        footer: { mode: "local", subject: "画布内容" }
-      },
-      {
-        name: "随机抽奖",
-        href: "/lucky-draw",
-        icon: Gift,
-        desc: "支持名单管理、自定义抽取人数、炫酷动画的在线抽奖工具。",
-        footer: { mode: "local", subject: "名单数据" }
+        name: "贪吃蛇",
+        href: "/snake",
+        icon: Worm,
+        desc: "经典贪吃蛇，电脑用方向键、手机滑动或点屏幕方向键；三档速度，最高分自动记录。",
+        footer: {
+          mode: "local",
+          subject: "游戏进度",
+          extra: "最高分只存在这台设备的浏览器里，不上传任何数据。"
+        }
       },
     ]
   },
