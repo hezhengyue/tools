@@ -3,7 +3,8 @@ import {
   Key, FileJson, Shield, Code,
   Hash, KeyRound, FileBadge, FileDiff, Type, Palette, Gamepad, Gift,
   Image, FileImage, Sparkles, Globe, MonitorSmartphone, MapPin, FileCode,
-  Camera, ScreenShare, Video, Braces, Clock, Binary
+  Camera, ScreenShare, Video, Braces, Clock, Binary,
+  Bomb, Grid2x2
 } from "lucide-react";
 
 /**
@@ -243,6 +244,28 @@ export const toolsConfig: ToolCategory[] = [
     category: "游戏",
     icon: Gamepad,
     tools: [
+      {
+        name: "扫雷",
+        href: "/minesweeper",
+        icon: Bomb,
+        desc: "经典扫雷，首点必安全；三档难度、右键插旗、点击数字快速展开，支持触屏标记模式。",
+        footer: {
+          mode: "local",
+          subject: "棋盘数据",
+          extra: "最佳成绩只保存在你这台设备的浏览器里，清空站点数据会一并清除。"
+        }
+      },
+      {
+        name: "2048",
+        href: "/game-2048",
+        icon: Grid2x2,
+        desc: "方向键或滑动合并同值数字，目标合成 2048；支持撤销一步，最高分自动记录。",
+        footer: {
+          mode: "local",
+          subject: "游戏进度",
+          extra: "最高分存在本机浏览器，不上传任何数据。"
+        }
+      },
       {
         name: "画板",
         href: "/draw-board",
