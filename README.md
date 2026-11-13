@@ -1,12 +1,13 @@
 # 正月工具箱
 
-一个基于 Next.js App Router 的纯前端在线工具站：20 个常用工具，界面统一、无需后端、大部分计算都在浏览器本地完成。
+一个基于 Next.js App Router 的纯前端在线工具站：26 个常用工具，界面统一、无需后端、大部分计算都在浏览器本地完成。
 
 ## 技术栈
 
 - Next.js 16（App Router）+ React 19 + TypeScript
 - Tailwind CSS v4（`@import "tailwindcss"` + `@layer components`）
-- `lucide-react` 图标；Web Worker 用于 RSA 密钥、证书与文本 diff 等重计算
+- `lucide-react` 图标；Web Worker 用于 RSA 密钥、证书、正则匹配、文件哈希与文本 diff 等重计算
+- `qrcode` + `jsQR` 负责二维码生成与识别，`crypto-js` 按子路径引入做哈希
 
 ## 本地运行
 
@@ -28,7 +29,7 @@ npx tsc --noEmit # 类型检查
 
 ```
 src/
-  app/                  # 首页 + 20 个工具页 + /api/my-ip 服务端路由
+  app/                  # 首页 + 26 个工具页 + /api/my-ip 服务端路由
     api/my-ip/route.ts  # 全站唯一的服务端接口：查询公网 IP 归属地
     globals.css         # .ui-* 设计令牌（唯一视觉来源）
   components/

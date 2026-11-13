@@ -4,7 +4,8 @@ import {
   Hash, KeyRound, FileBadge, FileDiff, Type, Gamepad,
   Image, FileImage, Sparkles, Globe, MonitorSmartphone, MapPin, FileCode,
   Camera, ScreenShare, Video, Braces, Clock, Binary,
-  Bomb, Grid2x2, Worm, CircleDot
+  Bomb, Grid2x2, Worm, CircleDot,
+  Regex, QrCode, Fingerprint, KeySquare, Palette, IdCard, Shapes
 } from "lucide-react";
 
 /**
@@ -62,6 +63,17 @@ export const toolsConfig: ToolCategory[] = [
         }
       },
       {
+        name: "文件哈希校验",
+        href: "/file-hash",
+        icon: Fingerprint,
+        desc: "拖拽文件流式计算 MD5/SHA-1/SHA-256/SHA-512，粘贴官方哈希值自动比对，大文件不占内存。",
+        footer: {
+          mode: "local",
+          subject: "文件",
+          extra: "分块读取、独立线程计算，内存占用恒定；MD5 与 SHA-1 仅适合完整性校验，不能作为安全凭证。"
+        }
+      },
+      {
         name: "SSH 密钥生成",
         href: "/ssh-key",
         icon: KeyRound,
@@ -81,6 +93,17 @@ export const toolsConfig: ToolCategory[] = [
           mode: "local",
           subject: "证书与私钥",
           extra: "自签证书默认不受浏览器信任，生产环境建议使用权威 CA 签发证书。"
+        }
+      },
+      {
+        name: "JWT 解析",
+        href: "/jwt",
+        icon: KeySquare,
+        desc: "本地解码 JWT 的 Header / Payload / Signature，展示过期倒计时与标准声明，实时提示过期状态。",
+        footer: {
+          mode: "local",
+          subject: "Token",
+          extra: "只做 Base64URL 解码，不验证签名；生产环境的真实 token 等于登录凭证，请勿粘贴到任何在线工具。"
         }
       },
     ]
@@ -133,6 +156,17 @@ export const toolsConfig: ToolCategory[] = [
           extra: "Base64 只是编码不是加密，任何人都能还原，不要用它保存密码。"
         }
       },
+      {
+        name: "UUID / 随机串",
+        href: "/uuid",
+        icon: IdCard,
+        desc: "批量生成 UUID v4 / v7、NanoID 与自定义随机串，支持前缀、大小写、长度与字符集，附带去重统计。",
+        footer: {
+          mode: "local",
+          subject: "生成的 ID",
+          extra: "随机源为浏览器密码学安全的 crypto.getRandomValues；最近 5 批记录只保存在本机浏览器。"
+        }
+      },
     ]
   },
   {
@@ -170,6 +204,17 @@ export const toolsConfig: ToolCategory[] = [
         icon: FileDiff,
         desc: "实时对比两段文本的差异，支持按行/词/字符三种模式，高亮显示增删内容。",
         footer: { mode: "local", subject: "文本" }
+      },
+      {
+        name: "正则测试器",
+        href: "/regex",
+        icon: Regex,
+        desc: "实时匹配高亮、分组捕获、替换预览与常用表达式速查；独立线程运行，卡住自动终止。",
+        footer: {
+          mode: "local",
+          subject: "表达式与文本",
+          extra: "匹配在独立线程执行并设 1.5 秒超时，避免灾难性回溯锁死页面。"
+        }
       },
     ]
   },
@@ -236,6 +281,34 @@ export const toolsConfig: ToolCategory[] = [
           mode: "local",
           subject: "录制内容",
           extra: "录制同样需要手动授权共享画面，停止共享或关闭页面即自动结束并释放采集。"
+        }
+      },
+    ]
+  },
+  {
+    category: "实用工具",
+    icon: Shapes,
+    tools: [
+      {
+        name: "二维码生成 / 识别",
+        href: "/qrcode",
+        icon: QrCode,
+        desc: "生成文本 / WiFi / 名片二维码，可调容错、配色与中心 Logo；支持批量、上传图片或摄像头识别。",
+        footer: {
+          mode: "local",
+          subject: "二维码内容与图片",
+          extra: "摄像头画面只在本机逐帧分析，不录制、不上传；二维码内容请勿包含密码等敏感信息。"
+        }
+      },
+      {
+        name: "颜色与取色器",
+        href: "/color",
+        icon: Palette,
+        desc: "HEX / RGB / HSL / CMYK 互转、屏幕吸色、WCAG 对比度检测、配色方案与图片主色调提取。",
+        footer: {
+          mode: "local",
+          subject: "颜色与图片",
+          extra: "屏幕取色需要浏览器支持 EyeDropper API（Chrome / Edge），Safari 与 Firefox 可手动输入色值。"
         }
       },
     ]

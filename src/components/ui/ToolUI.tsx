@@ -222,6 +222,83 @@ export function Badge({
   );
 }
 
+/** 分段选择器：一组互斥选项，可带图标。选项多于容器宽度时自动换行 */
+export function Segmented<T extends string>({
+  label,
+  value,
+  options,
+  onChange,
+  className = "",
+}: {
+  label: string;
+  value: T;
+  options: { value: T; label: string; icon?: IconType }[];
+  onChange: (next: T) => void;
+  className?: string;
+}) {
+  return (
+    <div
+      className={`inline-flex flex-wrap gap-1 p-1 bg-slate-100 rounded-xl ${className}`}
+      role="group"
+      aria-label={label}
+    >
+      {options.map(({ value: item, label: text, icon: Icon }) => {
+        const active = item === value;
+        return (
+          <button
+            key={item}
+            type="button"
+            onClick={() => onChange(item)}
+            aria-pressed={active}
+            className={`flex items-center gap-1.5 px-3 py-1.5 text-sm rounded-lg transition-all ${
+              active
+                ? "bg-white text-indigo-600 font-semibold shadow-sm"
+                : "text-slate-600 hover:text-slate-800"
+            }`}
+          >
+            {Icon && <Icon size={14} strokeWidth={1.75} />}
+            {text}
+          </button>
+        );
+      })}
+    </div>
+  );
+}
+
+/** 复选框开关：label 与控件通过 id 关联 */
+export function Switch({
+  id,
+  checked,
+  onChange,
+  label,
+  hint,
+  disabled = false,
+}: {
+  id: string;
+  checked: boolean;
+  onChange: (next: boolean) => void;
+  label: ReactNode;
+  hint?: ReactNode;
+  disabled?: boolean;
+}) {
+  return (
+    <div className="flex items-center gap-2 min-w-0">
+      <input
+        id={id}
+        type="checkbox"
+        checked={checked}
+        disabled={disabled}
+        onChange={(event) => onChange(event.target.checked)}
+        className="ui-checkbox shrink-0"
+      />
+      <label htmlFor={id} className="text-sm text-slate-700 cursor-pointer select-none">
+        {label}
+      </label>
+      {hint && <span className="text-xs text-slate-500">{hint}</span>}
+    </div>
+  );
+}
+
 /* ================================================================
    输出块：复制 / 下载的统一交互
    ----------------------------------------------------------------
