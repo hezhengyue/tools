@@ -4,7 +4,7 @@ import {
   Hash, KeyRound, FileBadge, FileDiff, Type, Gamepad,
   Image, FileImage, Sparkles, Globe, MonitorSmartphone, MapPin, FileCode,
   Camera, ScreenShare, Video, Braces, Clock, Binary,
-  Bomb, Grid2x2, Worm
+  Bomb, Grid2x2, Worm, CircleDot
 } from "lucide-react";
 
 /**
@@ -275,6 +275,17 @@ export const toolsConfig: ToolCategory[] = [
           mode: "local",
           subject: "游戏进度",
           extra: "最高分只存在这台设备的浏览器里，不上传任何数据。"
+        }
+      },
+      {
+        name: "五子棋",
+        href: "/gomoku",
+        icon: CircleDot,
+        desc: "15 路棋盘，人机三档难度或同屏双人轮流；自动判五连、最后一手标记、支持悔棋。",
+        footer: {
+          mode: "local",
+          subject: "对局数据",
+          extra: "刷新或重开会清空当前棋局，不保留历史对局记录。"
         }
       },
     ]
