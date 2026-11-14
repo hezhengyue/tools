@@ -49,15 +49,27 @@
      布局尺寸：全站唯一来源
      ----------------------------------------------------------------
      页面宽度只在这里定义，由 src/app/layout.tsx 的主内容容器使用。
-     工具页 / ToolShell / 组件里禁止再写页面级 max-w-* / w-[calc(...)]。
-     1600px 上限：1920 屏基本铺满，2560 屏留出留白避免一行文字过长。
-     编辑区、预览区、棋盘也统一在这里定义，新增页面直接用语义类，
-     不要写一次性数值（否则后续维护者每建一页都要重新选一次尺寸）。
-     规范见 AGENTS.md「布局尺寸：唯一规则」。
+     .ui-page 刻意不设 max-width：随分辨率自适应铺满，2K / 4K 屏都能
+     用满宽度。工具页 / ToolShell / 组件里禁止再写页面级 max-w-*。
+     超宽屏的可读性由下面的组件级限宽统一兜底，页面不需要做任何判断：
+     说明文字 .ui-prose、页脚 .ui-footer、提示条 .ui-notice 限 100ch，
+     单行输入 .ui-input / .ui-select 限 48rem；编辑器 / 预览 / 表格 /
+     画布仍完整铺满。规范见 AGENTS.md「布局尺寸：唯一规则」。
      ================================================================ */
   .ui-page {
     @apply mx-auto w-full px-4 py-4 sm:px-6 sm:py-6 lg:px-8 lg:py-8 xl:px-10 xl:py-10;
-    max-width: 1600px;
+  }
+
+  /* 说明文字：超宽屏下限制行长，避免一行几百字难以阅读 */
+  .ui-prose {
+    max-width: 100ch;
+  }
+
+  /* 首页卡片网格：列数由视口自动决定，卡片宽度始终稳定 */
+  .ui-card-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+    gap: 1.25rem;
   }
 
   /* 主编辑区：大屏给足高度，内容显示更多 */
@@ -149,6 +161,7 @@
   }
   .ui-input {
     @apply w-full p-3 bg-white border border-slate-200 rounded-xl text-sm text-slate-800 outline-none transition-all focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500;
+    max-width: 48rem;
   }
   .ui-textarea {
     @apply w-full p-4 bg-slate-50 border border-slate-200 rounded-xl font-mono text-sm text-slate-800 outline-none transition-all resize-y focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500;
@@ -161,6 +174,7 @@
   }
   .ui-select {
     @apply w-full p-3 bg-white border border-slate-200 rounded-xl text-sm text-slate-800 outline-none transition-all focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500;
+    max-width: 48rem;
   }
   .ui-input-sm {
     @apply p-2 rounded-lg;
@@ -202,6 +216,7 @@
   /* ---- 提示条 / 状态 ---- */
   .ui-notice {
     @apply p-4 rounded-2xl border text-sm flex items-start gap-2;
+    max-width: 100ch;
   }
   .ui-notice-tip {
     @apply bg-amber-50 border-amber-200 text-amber-700;
@@ -228,6 +243,7 @@
   /* ---- 页脚说明（所有工具页共用） ---- */
   .ui-footer {
     @apply mt-6 md:mt-8 p-4 bg-slate-50 rounded-2xl border border-slate-200/60 flex items-start gap-2 text-sm text-slate-600;
+    max-width: 100ch;
   }
   .ui-footer-icon {
     @apply w-4 h-4 mt-0.5 shrink-0 text-amber-500;

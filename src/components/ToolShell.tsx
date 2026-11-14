@@ -69,7 +69,7 @@ export default function ToolShell({ children, extraContent }: ToolShellProps) {
             <Star className="w-4 h-4 md:w-5 md:h-5" fill={isFavorite ? "currentColor" : "none"} />
           </button>
         </div>
-        <p className="text-slate-500 text-sm md:text-base break-words">{currentTool.desc}</p>
+        <p className="ui-prose text-slate-500 text-sm md:text-base break-words">{currentTool.desc}</p>
       </div>
 
       {/* 内容卡片：移动端内边距减小 */}
