@@ -130,7 +130,7 @@ export default function TextToolsPage() {
           value={input}
           onChange={(event) => setInput(event.target.value)}
           placeholder="粘贴或输入要处理的文本…"
-          className="ui-textarea min-h-[180px]"
+          className="ui-textarea ui-editor"
           spellCheck={false}
         />
         <div className="flex flex-wrap items-center justify-between gap-3 mt-3">
@@ -162,7 +162,6 @@ export default function TextToolsPage() {
           hint="点击上方任意工具即可转换，可连续处理"
           value={output}
           filename="text-tools-result.txt"
-          minHeight="min-h-[160px]"
           placeholder="转换结果会显示在这里"
           actions={
             <IconButton

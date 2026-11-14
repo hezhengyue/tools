@@ -282,7 +282,6 @@ export default function IpSubnetPage() {
               label="计算摘要"
               value={summary}
               filename="subnet.txt"
-              minHeight="min-h-[130px]"
               textareaClassName="text-xs"
             />
           </div>

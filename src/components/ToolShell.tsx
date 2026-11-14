@@ -33,7 +33,7 @@ export default function ToolShell({ children, extraContent }: ToolShellProps) {
 
   if (!currentTool) {
     return (
-      <div className="max-w-4xl mx-auto">
+      <div className="w-full">
         <div className="ui-panel md:p-8">{children}</div>
       </div>
     );
@@ -44,7 +44,7 @@ export default function ToolShell({ children, extraContent }: ToolShellProps) {
   const isFavorite = favorites.includes(currentTool.href);
 
   return (
-    <div className="max-w-4xl mx-auto opacity-100 transition-opacity duration-500">
+    <div className="w-full opacity-100 transition-opacity duration-500">
       {/* 头部：响应式排版 */}
       <div className="mb-6 md:mb-8">
         <div className="flex items-center space-x-3 md:space-x-4 mb-3 md:mb-4">

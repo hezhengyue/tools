@@ -161,7 +161,7 @@ export default function JwtPage() {
             onChange={(event) => setToken(event.target.value)}
             spellCheck={false}
             placeholder="粘贴 eyJhbGciOi... 开头的 JWT"
-            className="ui-textarea min-h-[130px] break-all"
+            className="ui-textarea ui-editor break-all"
           />
           <div className="flex flex-wrap gap-2">
             <Button variant="secondary" size="sm" icon={Sparkles} onClick={loadSample}>载入示例</Button>
@@ -219,7 +219,6 @@ export default function JwtPage() {
                 copyLabel="复制 Header"
                 filename="jwt-header.json"
                 mimeType="application/json;charset=utf-8"
-                minHeight="min-h-[120px]"
                 textareaClassName="text-xs"
               />
               <OutputBlock
@@ -229,7 +228,6 @@ export default function JwtPage() {
                 copyLabel="复制 Payload"
                 filename="jwt-payload.json"
                 mimeType="application/json;charset=utf-8"
-                minHeight="min-h-[200px]"
                 textareaClassName="text-xs"
               />
               <OutputBlock
@@ -237,7 +235,6 @@ export default function JwtPage() {
                 hint="签名段（Base64URL，本站不验签）"
                 value={result.signature}
                 copyLabel="复制签名"
-                minHeight="min-h-[80px]"
                 textareaClassName="text-xs"
               />
             </div>

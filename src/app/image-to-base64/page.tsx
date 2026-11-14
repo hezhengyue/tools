@@ -143,8 +143,8 @@ export default function ImageToBase64Page() {
             {/* Main Content Area */}
             <div className="grid grid-cols-1 lg:grid-cols-5 gap-4">
               {/* Preview：直接复用 dataUri，不再额外创建一份 ObjectURL */}
-              <div className="lg:col-span-2 bg-slate-100/80 border border-slate-200 rounded-2xl flex items-center justify-center p-4 min-h-[300px]">
-                <img src={dataUri} alt={`${image.name} 的预览`} className="max-w-full max-h-[60vh] object-contain drop-shadow-lg rounded-lg" />
+              <div className="lg:col-span-2 bg-slate-100/80 border border-slate-200 rounded-2xl flex items-center justify-center p-4 ui-editor">
+                <img src={dataUri} alt={`${image.name} 的预览`} className="max-w-full max-h-[75vh] object-contain drop-shadow-lg rounded-lg" />
               </div>
 
               {/* Base64 Output */}
@@ -171,7 +171,7 @@ export default function ImageToBase64Page() {
                   readOnly
                   value={output}
                   aria-label="Base64 编码结果"
-                  className="ui-textarea flex-1 text-xs min-h-[300px] resize-none"
+                  className="ui-textarea flex-1 text-xs ui-editor resize-none"
                 />
                 <div className="p-3 border-t border-slate-100 bg-slate-50/50 flex justify-between items-center">
                   <span className="text-xs text-slate-500 hidden sm:block">

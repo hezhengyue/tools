@@ -233,7 +233,6 @@ export default function UuidPage() {
           copyLabel="复制全部 ID"
           filename="ids.txt"
           placeholder="点击「生成 ID」后，结果会一行一条显示在这里…"
-          minHeight="min-h-[220px]"
           textareaClassName="text-xs"
         />
 

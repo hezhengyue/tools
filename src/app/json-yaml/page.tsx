@@ -101,7 +101,7 @@ function JsonYamlCore() {
       </div>
 
       {/* 主体双栏布局 */}
-      <div className="flex flex-col lg:flex-row gap-6 min-h-[500px]">
+      <div className="flex flex-col lg:flex-row gap-6 ui-editor">
         
         {/* 左侧输入框 */}
         <div className="flex-1 flex flex-col">

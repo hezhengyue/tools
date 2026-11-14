@@ -40,7 +40,7 @@ function TextDiffCore() {
     if (!result?.diffs) return null;
     
     return (
-      <div className="font-mono text-sm whitespace-pre-wrap break-all bg-slate-50 p-4 rounded-xl border border-slate-200 min-h-[200px] max-h-[400px] overflow-auto">
+      <div className="font-mono text-sm whitespace-pre-wrap break-all bg-slate-50 p-4 rounded-xl border border-slate-200 min-h-[240px] max-h-[calc(100vh_-_240px)] overflow-auto">
         {result.diffs.map((part, i) => {
           if (part.added) {
             return (
@@ -111,7 +111,7 @@ function TextDiffCore() {
             value={oldText}
             onChange={(e) => setOldText(e.target.value)}
             placeholder="粘贴或输入原始文本..."
-            className="ui-textarea min-h-[200px]"
+            className="ui-textarea ui-editor"
           />
         </div>
 
@@ -126,7 +126,7 @@ function TextDiffCore() {
             value={newText}
             onChange={(e) => setNewText(e.target.value)}
             placeholder="粘贴或输入修改后的文本..."
-            className="ui-textarea min-h-[200px]"
+            className="ui-textarea ui-editor"
           />
         </div>
       </div>

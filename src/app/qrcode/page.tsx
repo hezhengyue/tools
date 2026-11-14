@@ -621,7 +621,7 @@ export default function QrCodePage() {
                 )}
               </div>
               {batchUrl && (
-                <img src={batchUrl} alt="批量生成的二维码合并预览" className="w-full max-h-80 object-contain bg-white border border-slate-200 rounded-xl" />
+                <img src={batchUrl} alt="批量生成的二维码合并预览" className="w-full max-h-[70vh] object-contain bg-white border border-slate-200 rounded-xl" />
               )}
             </div>
 
@@ -681,7 +681,6 @@ export default function QrCodePage() {
               copyLabel="复制识别结果"
               filename="qrcode-decoded.txt"
               placeholder="识别到的内容会出现在这里…"
-              minHeight="min-h-[130px]"
             />
 
             <Notice tone="tip">

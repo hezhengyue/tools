@@ -737,7 +737,7 @@ export default function GomokuPage() {
         )}
 
         {/* 棋盘 */}
-        <div className="mx-auto w-full max-w-[520px]">
+        <div className="ui-board">
           <div ref={wrapRef} className="relative w-full aspect-square touch-none select-none">
             <canvas
               ref={canvasRef}

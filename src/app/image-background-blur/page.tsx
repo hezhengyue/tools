@@ -408,7 +408,7 @@ export default function ImageBackgroundBlurPage() {
 
             {!resultUrl ? (
               <div 
-                className="relative w-full h-[65vh] min-h-[400px] bg-slate-100 border border-slate-200 rounded-2xl flex items-center justify-center overflow-hidden touch-none p-4"
+                className="relative w-full h-[75vh] min-h-[400px] bg-slate-100 border border-slate-200 rounded-2xl flex items-center justify-center overflow-hidden touch-none p-4"
                 onPointerDown={handlePointerDown}
                 onPointerMove={handlePointerMove}
                 onPointerUp={handlePointerUp}
@@ -450,7 +450,7 @@ export default function ImageBackgroundBlurPage() {
               </div>
             ) : (
               <div className="space-y-4 animate-in fade-in slide-in-from-bottom-4 duration-500">
-                <div className="w-full h-[65vh] min-h-[400px] bg-slate-100/80 border border-slate-200 rounded-2xl flex items-center justify-center p-4">
+                <div className="w-full h-[75vh] min-h-[400px] bg-slate-100/80 border border-slate-200 rounded-2xl flex items-center justify-center p-4">
                   <img src={resultUrl} alt="背景虚化结果" className="max-w-full max-h-full object-contain drop-shadow-xl rounded-lg" />
                 </div>
                 <div className="flex justify-center items-center bg-emerald-50 text-emerald-700 px-6 py-4 rounded-2xl border border-emerald-100">

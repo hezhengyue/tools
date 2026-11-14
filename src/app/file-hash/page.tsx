@@ -332,7 +332,6 @@ export default function FileHashPage() {
           copyLabel="复制报告"
           filename="checksums.txt"
           placeholder="计算完成后会按「哈希值两个空格文件名」的格式汇总…"
-          minHeight="min-h-[100px]"
           textareaClassName="text-xs"
         />
 

@@ -494,7 +494,7 @@ function JsonFormatCore() {
           placeholder='粘贴 JSON，例如 {"name": "正月工具箱", "tools": 15}'
           spellCheck={false}
           autoComplete="off"
-          className={`ui-textarea font-mono min-h-[220px] ${
+          className={`ui-textarea font-mono ui-editor ${
             parsed.filled && !parsed.ok ? "border-red-300" : ""
           }`}
         />
@@ -638,7 +638,7 @@ function JsonFormatCore() {
                   <span className="ui-output-hint">只读</span>
                 </div>
               </div>
-              <div className="p-4 overflow-auto max-h-[480px] font-mono text-[13px] leading-6">
+              <div className="p-4 overflow-auto max-h-[calc(100vh_-_240px)] font-mono text-[13px] leading-6">
                 <JsonNode value={parsed.value} depth={0} isLast onCopy={handleCopyTree} />
               </div>
             </div>
@@ -649,7 +649,6 @@ function JsonFormatCore() {
               value={output}
               filename={mode === "ts" ? "types.ts" : mode === "min" ? "data.min.json" : "data.json"}
               mimeType={mode === "ts" ? "text/plain;charset=utf-8" : "application/json;charset=utf-8"}
-              minHeight="min-h-[260px]"
             />
           )}
         </div>

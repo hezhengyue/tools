@@ -121,8 +121,8 @@ function ImageResult({ blob, filename, hint }: { blob: Blob | null; filename: st
 
   return (
     <div>
-      <div className="ui-display p-4 flex items-center justify-center min-h-[160px]">
-        {url && <img src={url} alt="处理结果预览" className="max-w-full max-h-[360px] object-contain rounded-lg" />}
+      <div className="ui-display p-4 flex items-center justify-center ui-editor">
+        {url && <img src={url} alt="处理结果预览" className="max-w-full max-h-[70vh] object-contain rounded-lg" />}
       </div>
       <div className="flex flex-wrap items-center justify-between gap-3 mt-3">
         <span className="text-xs text-slate-500">输出 {formatBytes(blob.size)}</span>
@@ -325,7 +325,7 @@ function GridPanel({ source }: { source: ImageSource | null }) {
 
       {source && (
         <div className="relative mt-4 rounded-xl overflow-hidden border border-slate-200 bg-white">
-          <img src={source.url} alt="切图预览" className="w-full max-h-[360px] object-contain" />
+          <img src={source.url} alt="切图预览" className="w-full max-h-[70vh] object-contain" />
           <div
             className="absolute inset-0 grid pointer-events-none"
             style={{ gridTemplateColumns: `repeat(${cols}, 1fr)`, gridTemplateRows: `repeat(${rows}, 1fr)` }}
@@ -469,7 +469,7 @@ function SvgPanel() {
         onChange={(event) => setText(event.target.value)}
         spellCheck={false}
         aria-label="SVG 源码"
-        className="ui-textarea min-h-[220px] text-xs"
+        className="ui-textarea ui-editor text-xs"
       />
       <div className="flex flex-wrap items-center gap-3 mt-3">
         <label htmlFor="svg-width" className="text-sm text-slate-600">输出宽度</label>

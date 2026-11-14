@@ -75,7 +75,7 @@ function FieldCard({
       </div>
 
       {item.mode === "specific" && (
-        <div className="grid grid-cols-8 sm:grid-cols-10 gap-1 max-h-36 overflow-y-auto pr-1">
+        <div className="grid grid-cols-8 sm:grid-cols-10 xl:grid-cols-12 gap-1 max-h-[40vh] overflow-y-auto pr-1">
           {values.map((value) => {
             const active = item.specific.includes(value);
             return (

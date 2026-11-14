@@ -335,7 +335,6 @@ export default function SelfCertPage() {
               copyLabel="复制私钥"
               filename="private-key.pem"
               mimeType="application/x-pem-file;charset=utf-8"
-              minHeight="min-h-[250px]"
               textareaClassName="text-xs"
             />
 
@@ -345,7 +344,6 @@ export default function SelfCertPage() {
               copyLabel="复制证书"
               filename="certificate.pem"
               mimeType="application/x-pem-file;charset=utf-8"
-              minHeight="min-h-[250px]"
               textareaClassName="text-xs"
             />
           </div>

@@ -177,7 +177,7 @@ ${html}
                 id="md-source"
                 value={source}
                 onChange={(event) => setSource(event.target.value)}
-                className="ui-textarea min-h-[420px] lg:min-h-[520px]"
+                className="ui-textarea ui-editor"
                 spellCheck={false}
                 aria-label="Markdown 源码"
               />
@@ -185,7 +185,7 @@ ${html}
             </Panel>
             <Panel icon={FileCode2} title="实时预览" className="md-print-root">
               <div
-                className="md-preview min-h-[420px] lg:min-h-[520px] max-h-[680px] overflow-y-auto pr-1"
+                className="md-preview ui-viewer pr-1"
                 // HTML 已由 DOMPurify 净化，且剥离了 script / 事件属性
                 dangerouslySetInnerHTML={{ __html: html }}
               />
@@ -217,7 +217,6 @@ ${html}
               value={html}
               filename="markdown-output.html"
               mimeType="text/html;charset=utf-8"
-              minHeight="min-h-[140px]"
               textareaClassName="text-xs"
               actions={
                 <>
@@ -235,7 +234,7 @@ ${html}
               id="md-html-input"
               value={htmlInput}
               onChange={(event) => setHtmlInput(event.target.value)}
-              className="ui-textarea min-h-[300px]"
+              className="ui-textarea ui-editor"
               spellCheck={false}
               aria-label="HTML 源码"
             />
@@ -250,7 +249,6 @@ ${html}
               value={resultMd}
               filename="converted.md"
               mimeType="text/markdown;charset=utf-8"
-              minHeight="min-h-[240px]"
             />
           </div>
         </>

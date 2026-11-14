@@ -542,7 +542,7 @@ export default function SnakePage() {
         )}
 
         {/* 棋盘 */}
-        <div className="mx-auto w-full max-w-[460px]">
+        <div className="ui-board">
           <div
             ref={wrapRef}
             className="relative w-full aspect-square touch-none select-none"

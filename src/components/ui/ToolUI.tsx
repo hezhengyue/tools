@@ -438,7 +438,6 @@ export function OutputBlock({
   copyLabel = "复制",
   tone = "default",
   placeholder,
-  minHeight = "min-h-[120px]",
   textareaClassName = "",
   children,
   actions,
@@ -452,7 +451,6 @@ export function OutputBlock({
   copyLabel?: string;
   tone?: "default" | "warning";
   placeholder?: string;
-  minHeight?: string;
   textareaClassName?: string;
   children?: ReactNode;
   actions?: ReactNode;
@@ -481,7 +479,7 @@ export function OutputBlock({
           readOnly
           value={value}
           placeholder={placeholder}
-          className={`ui-textarea ${minHeight} ${warning ? "ui-output-warning" : ""} ${textareaClassName}`}
+          className={`ui-textarea ui-output-min ${warning ? "ui-output-warning" : ""} ${textareaClassName}`}
         />
       )}
     </div>

@@ -25,8 +25,8 @@ export default function Home() {
               </h2>
             </div>
             
-            {/* 网格：手机单列，平板双列，桌面三列 */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
+            {/* 网格：手机单列，平板双列，桌面三列，大屏四到五列 */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-4 sm:gap-6">
               {category.tools.map((tool) => (
                 <Link 
                   key={tool.href} 

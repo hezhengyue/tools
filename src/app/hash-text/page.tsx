@@ -117,7 +117,7 @@ function HashTextCore() {
           value={inputText}
           onChange={(e) => { setInputText(e.target.value); handleRegenerate(); }}
           placeholder="输入任意文本进行哈希计算..."
-          className="ui-textarea min-h-[120px]"
+          className="ui-textarea ui-editor"
           autoFocus
         />
         <div className="text-right text-xs text-slate-500 mt-2">{inputText.length} 个字符</div>

@@ -627,7 +627,7 @@ export default function ScreenshotPage() {
                 <img
                   src={shot.url}
                   alt="截取到的屏幕画面"
-                  className="block max-w-full max-h-[60vh] h-auto rounded-lg shadow-sm"
+                  className="block max-w-full max-h-[75vh] h-auto rounded-lg shadow-sm"
                   draggable={false}
                 />
                 {cropRect && cropRect.w > 0 && cropRect.h > 0 && (
@@ -744,7 +744,7 @@ export default function ScreenshotPage() {
           aria-modal="true"
           aria-label="框选截图区域"
         >
-          <div className="flex items-center justify-between w-full max-w-5xl text-sm text-white/80">
+          <div className="flex items-center justify-between w-full text-sm text-white/80">
             <span>拖动鼠标框选要截取的区域，松开即完成</span>
             <span className="font-mono text-xs text-white/50">
               {selRect && selRect.w >= MIN_CROP && selRect.h >= MIN_CROP

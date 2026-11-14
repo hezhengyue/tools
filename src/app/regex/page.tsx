@@ -205,7 +205,7 @@ export default function RegexPage() {
             onChange={(event) => setText(event.target.value)}
             spellCheck={false}
             placeholder="粘贴要匹配的文本…"
-            className="ui-textarea min-h-[130px]"
+            className="ui-textarea ui-editor"
           />
         </div>
 
@@ -232,7 +232,7 @@ export default function RegexPage() {
             )}
           </div>
 
-          <div className="ui-textarea min-h-[120px] whitespace-pre-wrap break-all font-mono text-sm leading-relaxed">
+          <div className="ui-textarea ui-viewer whitespace-pre-wrap break-all font-mono text-sm leading-relaxed">
             {segments.length ? (
               segments.map((part, index) =>
                 part.hit ? (
@@ -249,7 +249,7 @@ export default function RegexPage() {
           </div>
 
           {result?.ok && result.matches.length > 0 && (
-            <div className="max-h-56 overflow-y-auto rounded-xl border border-slate-200 divide-y divide-slate-100">
+            <div className="max-h-[50vh] overflow-y-auto rounded-xl border border-slate-200 divide-y divide-slate-100">
               {result.matches.slice(0, 200).map((match, index) => (
                 <div key={`${match.index}-${index}`} className="px-3 py-2 text-sm flex flex-wrap items-baseline gap-x-3 gap-y-1">
                   <span className="text-slate-500 font-mono text-xs shrink-0">#{index + 1} @ {match.index}</span>
@@ -296,7 +296,6 @@ export default function RegexPage() {
             copyLabel="复制替换结果"
             filename="regex-replaced.txt"
             placeholder="替换后的文本会出现在这里…"
-            minHeight="min-h-[110px]"
           />
         </div>
 

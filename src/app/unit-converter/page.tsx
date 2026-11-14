@@ -225,7 +225,6 @@ export default function UnitConverterPage() {
           value={`${valid ? raw : "—"} ${leftUnit.label} = ${rightValue} ${rightUnit.label}
 ${baseText} (${fromBase} 进制) = ${baseResult.main || "—"} (${toBase} 进制)`}
           filename="unit-converter.txt"
-          minHeight="min-h-[80px]"
           textareaClassName="text-xs"
         />
       </div>

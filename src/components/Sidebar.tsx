@@ -73,7 +73,7 @@ export default function Sidebar({ className = "" }: SidebarProps) {
   };
 
   return (
-    <aside className={`w-72 bg-white/80 backdrop-blur-xl border-r border-slate-200 flex flex-col shadow-[4px_0_24px_rgba(0,0,0,0.02)] z-10 h-full ${className}`}>
+    <aside className={`shrink-0 w-72 bg-white/80 backdrop-blur-xl border-r border-slate-200 flex flex-col shadow-[4px_0_24px_rgba(0,0,0,0.02)] z-10 h-full ${className}`}>
       {/* Logo 区域 */}
       <div className="h-20 flex items-center px-6 border-b border-slate-100 shrink-0">
         <img src="/logo.png" alt={`${SITE_NAME} 标志`} className="w-10 h-10 rounded-lg mr-3 object-contain" />

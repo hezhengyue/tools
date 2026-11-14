@@ -60,12 +60,12 @@ export default function XxxPage() {
   value={privateKey}
   filename="private-key.pem"  // 传了才出现下载按钮
   copyLabel="复制私钥"
-  minHeight="min-h-[250px]"
 />
 ```
 
 - `children` 可自定义内容区（如代码块），复制仍取 `value`；复制/下载按钮在 `value` 为空时自动禁用。
 - 只需单个动作用 `CopyButton`（自带「已复制」成功态）或 `DownloadButton`，**不要在页面里再写 `navigator.clipboard` / `Blob` 下载逻辑**。
+- `OutputBlock` 没有 `minHeight` 参数，高度统一由 `.ui-output-min` 控制；页面不要自己指定高度，也不要新增类似的高度参数。
 - 禁止：把复制/下载做成结果下方一排大按钮、用 `<details>` 折叠藏结果、每个输出块各写一套按钮样式。
 - 例外：整页级主操作按钮组（如「复制全部 / 重新检测」）与图片文件导出不属于文本输出块，继续用 `Button` / `ToolActions`。
 
@@ -76,6 +76,17 @@ export default function XxxPage() {
 footer: { mode: "local", subject: "文本", extra: "补充说明（可选）" }
 ```
 `mode: "local"` 生成「所有处理在浏览器本地完成，{subject}不会上传到任何服务器。」；`mode: "server"` 用于确实需要服务端查询的工具（目前仅 IP 地理位置），生成「归属地由服务端接口查询…」。ToolShell 统一渲染，**禁止 `dangerouslySetInnerHTML`、禁止页脚写自由 HTML、禁止在页面里自写 `<h1>` 重复标题**。
+
+## 布局尺寸：唯一规则（强制）
+
+**全站宽度只在 `src/app/globals.css` 的 `.ui-page` 定义**（`max-width: 1600px`），由 `src/app/layout.tsx` 的主内容容器使用。1920 屏基本铺满，2560 屏留出留白避免一行文字长到无法阅读。
+
+- **禁止**在工具页、`ToolShell`、任何组件里写页面级宽度类（`max-w-4xl` / `max-w-6xl` / `w-[calc(100%-18rem)]` 等）。新增页面只写内容，宽度自动继承，不需要也不允许做选择。
+- 主编辑区统一用 `.ui-editor`，主预览区统一用 `.ui-viewer`，棋盘统一用 `.ui-board`（内含「不超过可视高度」保护，保证整盘完整可见）。**不要自己写 `min-h-[420px]` / `max-w-[520px]` 这类一次性数值**。
+- 局部元素（文字截断、按钮组、小控件）仍可用 `max-w-[10rem]`，但不得用在页面或主内容容器上。
+- 滚动区上限统一用视口相对值（`max-h-[70vh]` / `max-h-[calc(100vh_-_240px)]`），不要写死 `max-h-[400px]` 这类在 4K 屏上显得很小的数值。
+- 需要「更大 / 显示更多」时**只改 `globals.css` 里的这几个语义类**，不要逐页改；首页卡片网格断点在 `src/app/page.tsx` 统一维护。
+- 理由：多档位、每页 `wide` 属性、可覆盖宽度，会让后续维护者（包括 AI）每建一页都要判断一次用哪档，必然出现不一致。唯一规则 = 零判断 = 不会写错。
 
 # 站点级能力约定
 

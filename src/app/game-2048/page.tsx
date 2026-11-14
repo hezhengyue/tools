@@ -335,7 +335,7 @@ export default function Game2048Page() {
           <Notice tone="error">四个方向都动不了了，本局得分 {score}。点「新游戏」再来一局。</Notice>
         )}
 
-        <div className="mx-auto w-full max-w-[480px]">
+        <div className="ui-board">
           <div
             className="grid grid-cols-4 grid-rows-4 gap-2 sm:gap-3 p-2 sm:p-3 bg-slate-200 rounded-2xl aspect-square touch-none select-none"
             onTouchStart={handleTouchStart}

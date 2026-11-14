@@ -33,9 +33,9 @@ interface Level {
 }
 
 const LEVELS: Record<LevelKey, Level> = {
-  easy: { label: "初级", rows: 9, cols: 9, mines: 10, cell: 40 },
-  medium: { label: "中级", rows: 16, cols: 16, mines: 40, cell: 40 },
-  hard: { label: "高级", rows: 16, cols: 30, mines: 99, cell: 34 },
+  easy: { label: "初级", rows: 9, cols: 9, mines: 10, cell: 52 },
+  medium: { label: "中级", rows: 16, cols: 16, mines: 40, cell: 50 },
+  hard: { label: "高级", rows: 16, cols: 30, mines: 99, cell: 44 },
 };
 
 const LEVEL_ORDER: LevelKey[] = ["easy", "medium", "hard"];

@@ -166,7 +166,6 @@ function SshKeyCore() {
         filename="id_rsa.pub"
         mimeType="application/octet-stream"
         placeholder="点击上方按钮生成密钥..."
-        minHeight="min-h-[120px]"
         textareaClassName="text-xs"
       />
 
@@ -182,7 +181,6 @@ function SshKeyCore() {
         filename="id_rsa"
         mimeType="application/octet-stream"
         placeholder="点击上方按钮生成密钥..."
-        minHeight="min-h-[200px]"
         textareaClassName="text-xs"
       />
 

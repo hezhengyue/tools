@@ -45,6 +45,44 @@
    - 边框：border-slate-200；次级底色：bg-slate-50
    ================================================================ */
 @layer components {
+  /* ================================================================
+     布局尺寸：全站唯一来源
+     ----------------------------------------------------------------
+     页面宽度只在这里定义，由 src/app/layout.tsx 的主内容容器使用。
+     工具页 / ToolShell / 组件里禁止再写页面级 max-w-* / w-[calc(...)]。
+     1600px 上限：1920 屏基本铺满，2560 屏留出留白避免一行文字过长。
+     编辑区、预览区、棋盘也统一在这里定义，新增页面直接用语义类，
+     不要写一次性数值（否则后续维护者每建一页都要重新选一次尺寸）。
+     规范见 AGENTS.md「布局尺寸：唯一规则」。
+     ================================================================ */
+  .ui-page {
+    @apply mx-auto w-full px-4 py-4 sm:px-6 sm:py-6 lg:px-8 lg:py-8 xl:px-10 xl:py-10;
+    max-width: 1600px;
+  }
+
+  /* 主编辑区：大屏给足高度，内容显示更多 */
+  .ui-editor {
+    @apply min-h-[320px] lg:min-h-[420px] xl:min-h-[520px];
+  }
+
+  /* 主预览区：同样给足高度，但不超过可视区域，超长内容在区内滚动 */
+  .ui-viewer {
+    @apply min-h-[320px] lg:min-h-[420px] xl:min-h-[520px] overflow-y-auto;
+    max-height: calc(100vh - 180px);
+  }
+
+  /* 棋盘：随容器放大，但不超过可视高度，保证整盘始终完整可见 */
+  .ui-board {
+    width: 100%;
+    max-width: min(680px, calc(100vh - 280px));
+    margin-inline: auto;
+  }
+
+  /* 输出块高度：OutputBlock 内部统一使用，页面不再传 minHeight */
+  .ui-output-min {
+    @apply min-h-[160px] xl:min-h-[220px];
+  }
+
   /* ---- 卡片与信息展示 ---- */
   .ui-panel {
     @apply bg-white border border-slate-200 rounded-2xl p-5;
@@ -325,7 +363,7 @@
   line-height: 1;
   /* 100cqw 是棋盘宽度，除以列数即单格宽度，取 52% 作为数字字号；
      下限保证格子被 22px 撑开时数字仍然看得清 */
-  font-size: clamp(9px, calc(52cqw / var(--cols)), 22px);
+  font-size: clamp(9px, calc(52cqw / var(--cols)), 28px);
 }
 
 /* ================================================================

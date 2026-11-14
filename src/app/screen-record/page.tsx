@@ -384,7 +384,7 @@ export default function ScreenRecordPage() {
               controls
               src={result.url}
               aria-label="录制结果预览"
-              className="w-full max-h-[60vh] rounded-xl bg-slate-900"
+              className="w-full max-h-[75vh] rounded-xl bg-slate-900"
             />
 
             <div className="ui-kv-list mt-4">
@@ -509,7 +509,7 @@ export default function ScreenRecordPage() {
                     autoPlay
                     playsInline
                     aria-label="录制画面预览"
-                    className="w-full max-h-[55vh] object-contain bg-slate-900"
+                    className="w-full max-h-[75vh] object-contain bg-slate-900"
                   />
                 </div>
 

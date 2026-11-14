@@ -257,7 +257,7 @@ function Base64Core() {
                 placeholder="支持中文与 emoji，按 UTF-8 编码后转 Base64"
                 spellCheck={false}
                 autoComplete="off"
-                className="ui-textarea min-h-[180px] font-mono"
+                className="ui-textarea font-mono ui-editor"
               />
             </div>
           ) : (
@@ -388,7 +388,6 @@ function Base64Core() {
             value={output}
             filename={`${source === "file" && file ? file.name : "text"}.base64.txt`}
             placeholder="编码结果会显示在这里"
-            minHeight="min-h-[180px]"
             textareaClassName="font-mono"
           />
 
@@ -414,7 +413,7 @@ function Base64Core() {
               placeholder="粘贴 Base64 字符串，可带 data:image/png;base64, 前缀"
               spellCheck={false}
               autoComplete="off"
-              className="ui-textarea min-h-[180px] font-mono"
+              className="ui-textarea font-mono ui-editor"
             />
           </div>
 
@@ -432,7 +431,6 @@ function Base64Core() {
             value={decoded}
             filename="decoded.txt"
             placeholder="解码后的文本会显示在这里"
-            minHeight="min-h-[180px]"
           />
 
           {!encoded.trim() && (
