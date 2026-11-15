@@ -1,152 +1,57 @@
 // src/app/self-cert/useCertGenerator.ts
+// 自签证书生成的状态机。所有计算都在主线程完成（WebCrypto 异步、不阻塞），
+// 不再经过 Web Worker —— 部分部署环境 / 内置浏览器里 Worker 会被静默拦掉，
+// 表现为「一直生成中」直到超时。
+
 import { useCallback, useEffect, useRef, useState } from "react";
 import { randomId } from "@/lib/random";
+import { hasWebCrypto } from "@/lib/rsa-keypair";
+import type { CertRequestPayload, CertResult, SanEntry, SanType } from "./cert";
 
-export type SanType = "DNS" | "IP";
-
-export interface SanEntry {
-  id: string;
-  type: SanType;
-  value: string;
-}
-
-export interface CertRequestPayload {
-  commonName: string;
-  sanEntries: SanEntry[];
-  keySize: 2048 | 4096;
-  hash: "sha256" | "sha384" | "sha512";
-  days: number;
-  organization?: string;
-  country?: string;
-}
-
-export interface CertResult {
-  privateKey: string;
-  certificate: string;
-  generatedAt: number;
-  info: {
-    subject: string;
-    issuer: string;
-    notBefore: string;
-    notAfter: string;
-    san: string[];
-    keySize: number;
-    hash: string;
-  };
-}
-
-interface WorkerMessage {
-  type: "CERT_GENERATED" | "CERT_ERROR";
-  payload: Partial<CertResult> & {
-    requestId?: string;
-    error?: string;
-  };
-}
-
-const GENERATE_TIMEOUT = 60_000;
+export type { CertRequestPayload, CertResult, SanEntry, SanType };
 
 export function useCertGenerator() {
-  const workerRef = useRef<Worker | null>(null);
-  const timeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const requestIdRef = useRef<string>("");
   const [result, setResult] = useState<CertResult | null>(null);
   const [isGenerating, setIsGenerating] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [cost, setCost] = useState(0);
+  const [nativeEngine, setNativeEngine] = useState(true);
 
-  const clearTimer = useCallback(() => {
-    if (timeoutRef.current) {
-      clearTimeout(timeoutRef.current);
-      timeoutRef.current = null;
+  // 首帧不读浏览器能力，保证水合一致
+  useEffect(() => {
+    setNativeEngine(hasWebCrypto());
+  }, []);
+
+  const generateCert = useCallback(async (payload: CertRequestPayload) => {
+    const requestId = randomId("cert_");
+    requestIdRef.current = requestId;
+    setResult(null);
+    setError(null);
+    setCost(0);
+    setIsGenerating(true);
+
+    // 先让「生成中」渲染出来：没有 WebCrypto 时下一步会同步阻塞主线程
+    await new Promise((resolve) => setTimeout(resolve, 30));
+
+    try {
+      const { createSelfSignedCert } = await import("./cert");
+      const startedAt = performance.now();
+      const next = await createSelfSignedCert(payload);
+      if (requestIdRef.current !== requestId) return; // 期间又发起了新请求
+      setResult(next);
+      setCost(Math.max(0.1, Math.round((performance.now() - startedAt) / 100) / 10));
+    } catch (cause) {
+      if (requestIdRef.current !== requestId) return;
+      setResult(null);
+      setError(cause instanceof Error ? `证书生成失败：${cause.message}` : "证书生成失败");
+    } finally {
+      if (requestIdRef.current === requestId) {
+        requestIdRef.current = "";
+        setIsGenerating(false);
+      }
     }
   }, []);
 
-  const handleMessage = useCallback((event: MessageEvent<WorkerMessage>) => {
-    const { type, payload } = event.data;
-    if (payload.requestId !== requestIdRef.current) return;
-    clearTimer();
-    requestIdRef.current = "";
-    setIsGenerating(false);
-
-    if (type === "CERT_GENERATED") {
-      // 结构不完整时按失败处理，避免页面拿到 undefined 私钥还展示"生成成功"
-      if (!payload.privateKey || !payload.certificate || !payload.info) {
-        setResult(null);
-        setError("生成结果不完整，请重试");
-        return;
-      }
-      setResult(payload as CertResult);
-      setError(null);
-      return;
-    }
-
-    if (type === "CERT_ERROR") {
-      setResult(null);
-      setError(payload.error ?? "生成失败");
-    }
-  }, [clearTimer]);
-
-  const setupWorker = useCallback(() => {
-    workerRef.current?.terminate();
-    try {
-      const worker = new Worker(
-        new URL("./cert-generator.worker.ts", import.meta.url),
-        { type: "module" }
-      );
-      worker.onmessage = handleMessage;
-      worker.onerror = (err) => {
-        clearTimer();
-        requestIdRef.current = "";
-        setIsGenerating(false);
-        setResult(null);
-        setError(err.message || "Worker 执行失败");
-      };
-      workerRef.current = worker;
-    } catch {
-      workerRef.current = null;
-      queueMicrotask(() => setError("Worker 初始化失败"));
-    }
-  }, [clearTimer, handleMessage]);
-
-  useEffect(() => {
-    setupWorker();
-    return () => {
-      workerRef.current?.terminate();
-      workerRef.current = null;
-      clearTimer();
-    };
-  }, [setupWorker, clearTimer]);
-
-  const generateCert = useCallback((payload: CertRequestPayload) => {
-    // 超时后 Worker 已被终止，下次生成前重建
-    if (!workerRef.current) setupWorker();
-    if (!workerRef.current) {
-      setError("Worker 未就绪");
-      return;
-    }
-
-    clearTimer();
-    setResult(null);
-    setError(null);
-    setIsGenerating(true);
-
-    const requestId = randomId("cert_");
-    requestIdRef.current = requestId;
-
-    timeoutRef.current = setTimeout(() => {
-      timeoutRef.current = null;
-      requestIdRef.current = "";
-      setIsGenerating(false);
-      setResult(null);
-      setError("证书生成超时（60秒），可尝试 2048 位密钥");
-      workerRef.current?.terminate();
-      workerRef.current = null;
-    }, GENERATE_TIMEOUT);
-
-    workerRef.current.postMessage({
-      type: "GENERATE_CERT",
-      payload: { ...payload, requestId },
-    });
-  }, [clearTimer, setupWorker]);
-
-  return { result, error, isGenerating, generateCert };
+  return { result, error, isGenerating, generateCert, cost, nativeEngine };
 }

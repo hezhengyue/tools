@@ -37,17 +37,15 @@ const FACTORIES: Record<HashAlgo, () => Hasher> = {
 };
 
 export interface HashFileOptions {
-  /** 每块大小，主线程兜底时用更小的块减少单次卡顿 */
+  /** 每块大小，默认 1MB：块太大单次阻塞久，太小进度回调太频繁 */
   chunkSize?: number;
-  /** 每块之间让出主线程，Worker 里不需要 */
-  yieldToUi?: boolean;
   /** 返回 true 时中止计算（用户点了停止） */
   shouldStop?: () => boolean;
   onProgress?: (progress: HashProgress) => void;
 }
 
 export async function hashFile(file: File, options: HashFileOptions = {}): Promise<Hashes> {
-  const { chunkSize = 2 * 1024 * 1024, yieldToUi = false, shouldStop, onProgress } = options;
+  const { chunkSize = 1024 * 1024, shouldStop, onProgress } = options;
 
   const hashers = {} as Record<HashAlgo, Hasher>;
   for (const algo of HASH_ALGOS) hashers[algo] = FACTORIES[algo]();
@@ -66,7 +64,8 @@ export async function hashFile(file: File, options: HashFileOptions = {}): Promi
 
     onProgress?.({ loaded: Math.min(offset, file.size), total: file.size });
 
-    if (yieldToUi) await new Promise((resolve) => setTimeout(resolve, 0));
+    // 每块之间让出主线程：crypto-js 是纯 JS，连续算几 MB 会让页面掉帧
+    await new Promise((resolve) => setTimeout(resolve, 0));
   }
 
   const hashes = {} as Hashes;

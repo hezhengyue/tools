@@ -72,6 +72,8 @@ export default function SelfCertPage() {
     error,
     isGenerating,
     generateCert,
+    cost,
+    nativeEngine,
   } = useCertGenerator();
 
   const [commonName, setCommonName] = useState("");
@@ -368,6 +370,19 @@ export default function SelfCertPage() {
 
           {error && <Notice tone="error">{error}</Notice>}
 
+          {isGenerating && nativeEngine && (
+            <Notice tone="info">
+              正在用浏览器原生加密接口生成密钥并签名，通常 1 秒内完成，请勿关闭页面。
+            </Notice>
+          )}
+
+          {isGenerating && !nativeEngine && (
+            <Notice tone="tip">
+              当前浏览器没有提供原生加密接口（需要 HTTPS 或 localhost，部分内置浏览器也不支持），
+              只能用纯 JS 实现，2048 位约 10–40 秒、4096 位更久，期间页面会无响应。建议改用 2048 位或换桌面浏览器。
+            </Notice>
+          )}
+
           <p className="ui-prose text-xs text-slate-500 leading-relaxed">
             自签证书不会被系统和浏览器信任，仅适合内网服务、本地开发与测试；对外站点请使用权威 CA 签发的证书。
           </p>
@@ -379,6 +394,7 @@ export default function SelfCertPage() {
               <div className="ui-kv-list">
                 <KeyRow label="算法" value={`RSA ${result.info.keySize}`} />
                 <KeyRow label="签名算法" value={result.info.hash} mono />
+                <KeyRow label="耗时" value={`${cost} 秒（${result.source === "webcrypto" ? "原生加密接口" : "JS 实现"}）`} />
                 <KeyRow
                   label="生效时间"
                   value={new Date(result.info.notBefore).toLocaleString()}

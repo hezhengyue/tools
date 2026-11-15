@@ -84,7 +84,7 @@ NEXT_PUBLIC_SITE_URL=https://你的域名
 
 纯 Next.js 应用，可部署到任意支持 Node.js 运行时的平台（Vercel、EdgeOne Pages、自有服务器等）。**当前生产环境是 EdgeOne Pages**。`/api/my-ip` 是动态路由，响应带 `Cache-Control: no-store`；不依赖任何 CDN 私有请求头。代码推送到 `main` 后需等待平台重新构建才会生效。
 
-在 EdgeOne Pages 上，`/_next/static/` 下的 Web Worker 分包曾出现「页面正常、Worker 迟迟不响应」的情况（文件哈希一直停在 0%）。因此依赖 Worker 的功能都必须有主线程兜底：`/file-hash` 在 6 秒收不到首包或线程报错时会自动切到主线程分块计算，并给出提示。新增 Worker 功能请照此处理，不要假设线程一定可用。
+在 EdgeOne Pages 上，`/_next/static/` 下的 Web Worker 分包曾出现「页面正常、Worker 建得出来但消息永不返回」的情况（文件哈希一直停在 0%、自签证书一直等到超时）。因此 **`/file-hash`、`/ssh-key`、`/self-cert` 已改为纯主线程实现，不再使用 Worker**：文件哈希用 1MB 分块 + 每块让出主线程保持响应；RSA 走 WebCrypto（异步、不阻塞），只有在没有 `crypto.subtle` 的环境才退回 forge 同步实现并明确提示会变慢。新增功能如果要用 Worker，必须同时提供主线程兜底，不要假设线程一定可用。
 
 Service Worker 只在生产环境且非 localhost 时注册，并要求 HTTPS（或 localhost）。若修改了 `public/sw.js` 的缓存策略，请同步提升 `CACHE_NAME` 版本号，否则老用户不会淘汰旧缓存。
 

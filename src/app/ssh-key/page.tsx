@@ -4,91 +4,29 @@ import { useState, useRef, useEffect, useCallback } from "react";
 import { RefreshCw } from "lucide-react";
 import ToolShell from "@/components/ToolShell";
 import { Notice, OutputBlock } from "@/components/ui/ToolUI";
+import { hasWebCrypto } from "@/lib/rsa-keypair";
+import type { SshKeyPair } from "./keygen";
 
 type KeySize = 2048 | 4096;
 
-interface KeyPair {
-  publicKey: string;
-  privateKey: string;
-  type: "rsa";
-  generatedAt: number;
-}
-
 function SshKeyCore() {
   const [keySize, setKeySize] = useState<KeySize>(2048);
-  const [keyPair, setKeyPair] = useState<KeyPair | null>(null);
+  const [keyPair, setKeyPair] = useState<SshKeyPair | null>(null);
   const [loading, setLoading] = useState(false);
   const [elapsed, setElapsed] = useState(0);
+  const [cost, setCost] = useState(0);
   const [genError, setGenError] = useState("");
+  // 挂载后才判断，避免首帧与服务端渲染不一致
+  const [nativeEngine, setNativeEngine] = useState(true);
 
-  const workerRef = useRef<Worker | null>(null);
-  const timeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const requestIdRef = useRef(0);
   const generatingRef = useRef(false);
 
-  const clearTimeoutTimer = () => {
-    if (timeoutRef.current) clearTimeout(timeoutRef.current);
-    timeoutRef.current = null;
-  };
-
-  // =========================
-  // worker init（初始化与超时重建共用同一套消息绑定）
-  // =========================
-  const setupWorker = useCallback(() => {
-    workerRef.current?.terminate();
-    let worker: Worker;
-    try {
-      worker = new Worker(new URL("./ssh.worker.ts", import.meta.url));
-    } catch {
-      // 不在 effect 里同步 setState；generate() 会检查并给出提示
-      workerRef.current = null;
-      return;
-    }
-    workerRef.current = worker;
-
-    worker.onmessage = (e: MessageEvent<KeyPair & { error?: string; requestId?: number }>) => {
-      const data = e.data;
-      // 超时重建/重复生成后，旧线程可能才回消息，必须丢弃
-      if (data?.requestId !== requestIdRef.current) return;
-      clearTimeoutTimer();
-      generatingRef.current = false;
-      setLoading(false);
-      // Worker 失败时返回 { error }，不能当成成功结果渲染出空密钥
-      if (data?.error || !data?.publicKey || !data?.privateKey) {
-        setGenError(`密钥生成失败：${data?.error || "返回结果不完整"}`);
-        setKeyPair(null);
-        return;
-      }
-      setGenError("");
-      setKeyPair({
-        publicKey: data.publicKey,
-        privateKey: data.privateKey,
-        type: "rsa",
-        generatedAt: data.generatedAt,
-      });
-    };
-
-    worker.onerror = () => {
-      // 已超时/已结束的线程再报错，不应覆盖新的状态
-      if (!generatingRef.current) return;
-      clearTimeoutTimer();
-      generatingRef.current = false;
-      setLoading(false);
-      setKeyPair(null);
-      setGenError("密钥生成线程异常，请降低位数后重试");
-    };
+  useEffect(() => {
+    setNativeEngine(hasWebCrypto());
   }, []);
 
-  useEffect(() => {
-    setupWorker();
-    return () => {
-      clearTimeoutTimer();
-      workerRef.current?.terminate();
-      workerRef.current = null;
-    };
-  }, [setupWorker]);
-
-  // 生成期间显示已用时：4096 位在慢设备上要等几秒，没有进度提示会像卡死
+  // 生成期间显示已用时：JS 兜底路径要等几十秒，没有计时会像卡死
   useEffect(() => {
     if (!loading) return;
     const startedAt = Date.now();
@@ -98,44 +36,39 @@ function SshKeyCore() {
     return () => clearInterval(timer);
   }, [loading]);
 
-  // =========================
-  // size change
-  // =========================
-  const handleSizeChange = (size: KeySize) => {
-    setKeySize(size);
-  };
-
-  // =========================
-  // generate key
-  // =========================
-  const generate = useCallback(() => {
+  const generate = useCallback(async () => {
     // 同步防重入：按钮 disabled 要等下一次渲染才生效
     if (generatingRef.current) return;
-    if (!workerRef.current) {
-      setGenError("浏览器不支持 Web Worker，无法生成密钥");
-      setKeyPair(null);
-      return;
-    }
     generatingRef.current = true;
     const requestId = ++requestIdRef.current;
-    clearTimeoutTimer();
-    setElapsed(0);
-    setGenError("");
-    // 生成中不再展示上一把私钥，避免误把旧密钥当成新生成的复制
-    setKeyPair(null);
-    setLoading(true);
-    workerRef.current.postMessage({ type: "rsa", bits: keySize, requestId });
 
-    // 4096 位在慢设备上可能很久，超时兜底避免一直卡在「生成中...」
-    timeoutRef.current = setTimeout(() => {
-      requestIdRef.current += 1; // 作废旧线程的迟到响应
-      generatingRef.current = false;
-      setLoading(false);
-      setKeyPair(null);
-      setGenError("生成超时，已重置生成线程，请重试或改用 2048 位");
-      setupWorker();
-    }, keySize === 4096 ? 120000 : 60000);
-  }, [keySize, setupWorker]);
+    setGenError("");
+    setKeyPair(null);
+    setCost(0);
+    setElapsed(0);
+    setLoading(true);
+
+    // 先让「生成中」渲染出来：没有 WebCrypto 时下一步会同步阻塞主线程
+    await new Promise((resolve) => setTimeout(resolve, 30));
+
+    try {
+      // forge 体积不小，按需加载，不拖首屏
+      const { createSshKeyPair } = await import("./keygen");
+      const startedAt = performance.now();
+      const pair = await createSshKeyPair(keySize);
+      if (requestIdRef.current !== requestId) return;
+      setKeyPair(pair);
+      setCost(Math.max(0.1, Math.round((performance.now() - startedAt) / 100) / 10));
+    } catch (error) {
+      if (requestIdRef.current !== requestId) return;
+      setGenError(`密钥生成失败：${error instanceof Error ? error.message : "未知错误"}`);
+    } finally {
+      if (requestIdRef.current === requestId) {
+        generatingRef.current = false;
+        setLoading(false);
+      }
+    }
+  }, [keySize]);
 
   const authorizedCommand = keyPair
     ? `echo "${keyPair.publicKey}" >> ~/.ssh/authorized_keys`
@@ -154,7 +87,7 @@ function SshKeyCore() {
 
         <div className="ui-form-grid">
           <button
-            onClick={() => handleSizeChange(2048)}
+            onClick={() => setKeySize(2048)}
             className={`p-3 rounded-xl border text-left transition-all ${
               keySize === 2048
                 ? "bg-indigo-600 text-white border-indigo-600 shadow-md shadow-indigo-600/20"
@@ -166,7 +99,7 @@ function SshKeyCore() {
           </button>
 
           <button
-            onClick={() => handleSizeChange(4096)}
+            onClick={() => setKeySize(4096)}
             className={`p-3 rounded-xl border text-left transition-all ${
               keySize === 4096
                 ? "bg-indigo-600 text-white border-indigo-600 shadow-md shadow-indigo-600/20"
@@ -183,7 +116,7 @@ function SshKeyCore() {
           generate
       ========================= */}
       <button
-        onClick={generate}
+        onClick={() => void generate()}
         disabled={loading}
         className="ui-btn ui-btn-primary w-full py-3"
       >
@@ -191,17 +124,30 @@ function SshKeyCore() {
         {loading ? `生成中… ${elapsed}s` : "生成 RSA SSH Key"}
       </button>
 
-      {loading && (
+      {loading && nativeEngine && (
         <Notice tone="info">
-          正在用浏览器原生加密接口生成密钥，2048 位通常 1 秒内完成，4096 位约几秒，请勿关闭页面。
+          正在用浏览器原生加密接口生成，2048 位通常 1 秒内完成，4096 位约几秒，请勿关闭页面。
+        </Notice>
+      )}
+
+      {loading && !nativeEngine && (
+        <Notice tone="tip">
+          当前浏览器没有提供原生加密接口（需要 HTTPS 或 localhost，部分内置浏览器也不支持），
+          只能用纯 JS 实现生成，4096 位可能需要 30 秒以上，期间页面会无响应。建议改用 2048 位或换桌面浏览器。
         </Notice>
       )}
 
       {genError && <Notice tone="error" role="alert">{genError}</Notice>}
 
+      {keyPair && (
+        <Notice tone="success">
+          生成完成，耗时 {cost} 秒（{keyPair.source === "webcrypto" ? "原生加密接口" : "JS 实现"}）。
+        </Notice>
+      )}
+
       {/* =========================
           public key
-          ========================= */}
+      ========================= */}
       <OutputBlock
         label="Public Key"
         value={keyPair?.publicKey || ""}
