@@ -10,20 +10,11 @@ import {
 } from "lucide-react";
 
 /**
- * 页脚说明（可选，结构化纯文本，不允许 HTML）。
- * 全站固定文案由 ToolShell 渲染，格式与措辞都不随工具变化：
- *   - 默认（local）：「所有处理均在浏览器本地完成，数据不会上传到服务器。」
- *   - mode = "server"：「归属地需由服务端接口查询，仅将你的公网 IP 发送给公共 IP 库…」
- * 工具**通常不需要填 footer**。只有两种情况才填：
- *   1) 确实需要服务端请求 → mode: "server"（目前仅 IP 地理位置）；
- *   2) 页面里没写、又必须让用户在底部看到的一条补充 → note。
- * 工具的其它介绍一律写在自己的页面里，不要塞进页脚（避免底部与页面内重复）。
+ * 页脚说明**不在这里配置**：文案由 ToolShell 统一渲染，全站固定、不可自定义。
+ * 唯一区别是「是否需要服务端请求」——那份名单写在 ToolShell.tsx 的
+ * SERVER_ROUTES 里（目前只有 /ip-geo），工具清单不再参与。
+ * 工具的用法、限制、安全提醒一律写在页面里，不要指望页脚。
  */
-export interface ToolFooter {
-  mode?: "local" | "server";
-  /** 可选的补充一句，跟在固定隐私句后面；绝大多数工具留空 */
-  note?: string;
-}
 
 /**
  * 内容宽度档位：决定工具页内容区的宽度，**与屏幕分辨率无关**。
@@ -53,8 +44,6 @@ export interface ToolItem {
   desc: string;
   /** 宽度档位；默认 "narrow"，写工具时必须按上面的三问显式分配 */
   layout?: ToolLayout;
-  /** 可选：仅服务端工具或确有必要的一句补充，其余一律不填 */
-  footer?: ToolFooter;
 }
 
 export interface ToolCategory {
@@ -101,16 +90,14 @@ export const toolsConfig: ToolCategory[] = [
         href: "/self-cert",
         icon: FileBadge,
         desc: "浏览器本地生成自签名 X.509 TLS 证书，自动识别域名/IP，支持 SAN 扩展，输出标准 PEM 格式证书与私钥。",
-        layout: "medium",
-        footer: { note: "自签证书默认不受浏览器信任，生产环境建议使用权威 CA 签发的证书。" }
+        layout: "medium"
       },
       {
         name: "JWT 解析",
         href: "/jwt",
         icon: KeySquare,
         desc: "本地解码 JWT 的 Header / Payload / Signature，展示过期倒计时与标准声明，实时提示过期状态。",
-        layout: "medium",
-        footer: { note: "只做 Base64URL 解码，不验证签名；请勿粘贴生产环境的真实 Token。" }
+        layout: "medium"
       },
     ]
   },
@@ -178,9 +165,7 @@ export const toolsConfig: ToolCategory[] = [
         href: "/ip-geo",
         icon: MapPin,
         desc: "查询当前公网 IP 及详细的国家、城市、经纬度、运营商等归属地信息。",
-        layout: "narrow",
-        // 唯一需要服务端查询的工具：如实说明，不套用「本地处理」的固定句
-        footer: { mode: "server" }
+        layout: "narrow"
       },
       {
         name: "IP 与子网计算",
@@ -233,21 +218,21 @@ export const toolsConfig: ToolCategory[] = [
         name: "图片预处理",
         href: "/image-compress",
         icon: FileImage,
-        desc: "必选清除隐私 + 可选压缩转格式，体积减少 40%~70%，纯前端处理。",
+        desc: "清除隐私信息 + 可选压缩转 WebP/AVIF，体积减少约一半，支持批量。",
         layout: "full"
       },
       {
         name: "背景虚化",
         href: "/image-background-blur",
         icon: Sparkles,
-        desc: "涂抹主体自动虚化背景，模拟单反景深效果，纯前端零延迟。",
+        desc: "涂抹主体后自动虚化背景，模拟单反景深效果。",
         layout: "full"
       },
       {
         name: "图片转 Base64",
         href: "/image-to-base64",
         icon: FileCode,
-        desc: "一键将图片转换为 Base64 字符串，支持内联到 HTML/CSS 中，纯前端处理。",
+        desc: "一键把图片转成 Base64 字符串，方便内联到 HTML / CSS。",
         layout: "full"
       },
       {
@@ -267,7 +252,7 @@ export const toolsConfig: ToolCategory[] = [
         name: "在线截图",
         href: "/screenshot",
         icon: Camera,
-        desc: "按快捷键或点一下，直接拖动框选屏幕/窗口的任意区域，松开即完成并自动复制到剪贴板。",
+        desc: "先选屏幕/窗口，画面冻结后拖框选择区域，也可直接保存整张，结果可复制或下载 PNG。",
         layout: "full"
       },
       {

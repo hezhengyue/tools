@@ -367,6 +367,10 @@ export default function SelfCertPage() {
           </div>
 
           {error && <Notice tone="error">{error}</Notice>}
+
+          <p className="ui-prose text-xs text-slate-500 leading-relaxed">
+            自签证书不会被系统和浏览器信任，仅适合内网服务、本地开发与测试；对外站点请使用权威 CA 签发的证书。
+          </p>
         </div>
 
         {result && (

@@ -1,14 +1,14 @@
 // src/components/ToolShell.tsx
 // 所有工具页共用的外壳模板：页面标题 → 内容卡 → 一行固定隐私说明。
 // 视觉样式统一取自 globals.css 的 .ui-* 语义类。
-// 隐私文案是全站固定句（local / server 两种），工具只在确有必要时用 footer.note 补一句；
-// 工具的额外介绍请写在自己的页面里，不要塞进页脚。
+// 页脚是**框架固定文案**：任何工具都不能自定义、也不能省略；
+// 需要服务端请求的工具名单写在下面的 SERVER_ROUTES 里，页面与清单都不参与。
 "use client";
 
 import { ReactNode } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { toolsConfig, type ToolFooter, type ToolLayout } from "@/config/tools";
+import { toolsConfig, type ToolLayout } from "@/config/tools";
 import { ChevronRight, Server, ShieldCheck, Star } from "lucide-react";
 import { usePreferences } from "./PreferencesProvider";
 
@@ -24,19 +24,24 @@ const LAYOUT_CLASS: Record<ToolLayout, string> = {
   full: "ui-layout-full",
 };
 
-/** 全站固定的一行隐私说明：格式一致、文案不随工具变化，note 才由工具自定义 */
-function PrivacyLine({ footer }: { footer?: ToolFooter }) {
-  const isServer = footer?.mode === "server";
-  const Icon = isServer ? Server : ShieldCheck;
+/**
+ * 会向服务端发请求的工具（目前只有 IP 地理位置）。
+ * 只有这份名单里的路径会换用「服务端查询」的固定句，其余一律是本地处理句。
+ * 这是框架层的事实来源：不要把它挪回 tools.ts，也不要让页面自己写页脚。
+ */
+const SERVER_ROUTES = new Set<string>(["/ip-geo"]);
+
+/** 全站固定的一行隐私说明：两项固定文案之一，不接收任何自定义文本 */
+function PrivacyLine({ server }: { server: boolean }) {
+  const Icon = server ? Server : ShieldCheck;
   return (
     <footer className="ui-privacy">
       <Icon className="ui-privacy-icon" aria-hidden="true" />
       <span>
-        {isServer
+        {server
           ? "归属地需由服务端接口查询，仅将你的公网 IP 发送给公共 IP 库，不收集或存储个人信息。"
           : "所有处理均在浏览器本地完成，数据不会上传到服务器。"}
       </span>
-      {footer?.note && <span className="ui-privacy-note">{footer.note}</span>}
     </footer>
   );
 }
@@ -44,6 +49,7 @@ function PrivacyLine({ footer }: { footer?: ToolFooter }) {
 export default function ToolShell({ children, extraContent }: ToolShellProps) {
   const pathname = usePathname();
   const { favorites, toggleFavorite } = usePreferences();
+  const isServer = SERVER_ROUTES.has(pathname);
 
   // 面包屑的分类从同一份清单派生，不需要页面再传一次
   const current = toolsConfig
@@ -54,7 +60,7 @@ export default function ToolShell({ children, extraContent }: ToolShellProps) {
     return (
       <div className="w-full">
         <div className="ui-panel ui-layout-narrow md:p-5">{children}</div>
-        <PrivacyLine />
+        <PrivacyLine server={isServer} />
       </div>
     );
   }
@@ -105,8 +111,8 @@ export default function ToolShell({ children, extraContent }: ToolShellProps) {
         {children}
       </div>
 
-      {/* 底部说明：全站一行固定隐私句，不再重复工具介绍 */}
-      <PrivacyLine footer={currentTool.footer} />
+      {/* 底部说明：全站框架固定的一行隐私句，页面与清单都不能改、也不能去掉 */}
+      <PrivacyLine server={isServer} />
 
       {extraContent}
     </div>

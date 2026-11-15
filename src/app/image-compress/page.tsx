@@ -336,7 +336,7 @@ export default function ImageCompressPage() {
                 {isProcessing ? "处理中..." : "拖拽图片到此处，或点击上传"}
               </p>
               <p className="text-sm text-slate-500 mt-1">
-                支持 JPG / PNG / HEIC / WebP 等格式，批量处理
+                支持 JPG / PNG / WebP / GIF 等常见格式，批量处理；HEIC 能否解码取决于浏览器
               </p>
             </div>
           </div>

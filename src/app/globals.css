@@ -325,7 +325,7 @@
   }
 
   /* ---- 页脚隐私说明（所有工具页共用的一行小字） ----
-     固定文案由 ToolShell 渲染，工具只在确有必要时用 note 补一句。
+     文案由 ToolShell 固定渲染，工具不能自定义、也不能省略；
      刻意不做成卡片 / 警告图标：底部说明不该和上方内容卡抢视觉，
      也不重复工具页内部已有的介绍。 */
   .ui-privacy {
@@ -333,11 +333,6 @@
   }
   .ui-privacy-icon {
     @apply w-3.5 h-3.5 shrink-0 text-emerald-600;
-  }
-  .ui-privacy-note::before {
-    content: "·";
-    margin-right: 0.5rem;
-    color: var(--color-slate-400);
   }
 
   /* ---- Markdown 预览排版（未引入 typography 插件，样式集中在此） ---- */
