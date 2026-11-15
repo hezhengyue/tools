@@ -4,9 +4,10 @@
 "use client";
 
 import { ReactNode } from "react";
+import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { toolsConfig, type ToolFooter } from "@/config/tools";
-import { AlertCircle, Star } from "lucide-react";
+import { AlertCircle, ChevronRight, Star } from "lucide-react";
 import { usePreferences } from "./PreferencesProvider";
 
 interface ToolShellProps {
@@ -27,11 +28,12 @@ export default function ToolShell({ children, extraContent }: ToolShellProps) {
   const pathname = usePathname();
   const { favorites, toggleFavorite } = usePreferences();
 
-  const currentTool = toolsConfig
-    .flatMap((cat) => cat.tools)
-    .find((tool) => tool.href === pathname);
+  // 面包屑的分类从同一份清单派生，不需要页面再传一次
+  const current = toolsConfig
+    .flatMap((cat) => cat.tools.map((tool) => ({ tool, category: cat.category })))
+    .find((item) => item.tool.href === pathname);
 
-  if (!currentTool) {
+  if (!current) {
     return (
       <div className="w-full">
         <div className="ui-panel md:p-8">{children}</div>
@@ -39,12 +41,21 @@ export default function ToolShell({ children, extraContent }: ToolShellProps) {
     );
   }
 
+  const currentTool = current.tool;
   const Icon = currentTool.icon;
   const footer = currentTool.footer;
   const isFavorite = favorites.includes(currentTool.href);
 
   return (
     <div className="w-full opacity-100 transition-opacity duration-500">
+      <nav aria-label="面包屑" className="ui-breadcrumb">
+        <Link href="/">首页</Link>
+        <ChevronRight className="w-3.5 h-3.5 shrink-0" aria-hidden="true" />
+        <span>{current.category}</span>
+        <ChevronRight className="w-3.5 h-3.5 shrink-0" aria-hidden="true" />
+        <span className="ui-breadcrumb-current" aria-current="page">{currentTool.name}</span>
+      </nav>
+
       {/* 头部：响应式排版 */}
       <div className="mb-6 md:mb-8">
         <div className="flex items-center space-x-3 md:space-x-4 mb-3 md:mb-4">

@@ -215,7 +215,7 @@ export default function SelfCertPage() {
             </button>
 
             {showAdvanced && (
-              <div className="grid md:grid-cols-2 gap-4 mt-4">
+              <div className="ui-form-grid mt-4">
                 <input
                   placeholder="组织(O)"
                   value={organization}

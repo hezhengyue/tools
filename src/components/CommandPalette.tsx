@@ -104,10 +104,11 @@ export default function CommandPalette() {
     const onKeyDown = (event: KeyboardEvent) => {
       if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === "k") {
         event.preventDefault();
-        if (open) setOpen(false);
+        if (open) closePalette();
         else openPalette();
       } else if (event.key === "Escape" && open) {
-        setOpen(false);
+        event.preventDefault();
+        closePalette();
       }
     };
     window.addEventListener("keydown", onKeyDown);
@@ -116,15 +117,11 @@ export default function CommandPalette() {
       window.removeEventListener("keydown", onKeyDown);
       window.removeEventListener("tools:open-search", openPalette);
     };
-  }, [open, openPalette]);
+  }, [open, openPalette, closePalette]);
 
   useEffect(() => {
     if (open) queueMicrotask(() => inputRef.current?.focus());
   }, [open]);
-
-  useEffect(() => {
-    if (open) activeRowRef.current?.scrollIntoView({ block: "nearest" });
-  }, [active, open]);
 
   const items = useMemo<PaletteItem[]>(() => {
     if (query.trim()) {
@@ -147,6 +144,13 @@ export default function CommandPalette() {
     return list.slice(0, 12);
   }, [query, recent, favorites]);
 
+  /* 结果列表可能因输入/收藏变化变短，统一钳制索引，避免高亮与 Enter 落空 */
+  const activeIndex = items.length > 0 ? Math.min(active, items.length - 1) : 0;
+
+  useEffect(() => {
+    if (open) activeRowRef.current?.scrollIntoView({ block: "nearest" });
+  }, [activeIndex, open]);
+
   const select = useCallback((entry: SearchEntry) => {
     router.push(entry.href);
     setOpen(false);
@@ -155,13 +159,13 @@ export default function CommandPalette() {
   const onInputKeyDown = (event: ReactKeyboardEvent<HTMLInputElement>) => {
     if (event.key === "ArrowDown") {
       event.preventDefault();
-      setActive((index) => Math.min(index + 1, items.length - 1));
+      setActive((index) => Math.min(Math.max(index, 0) + 1, Math.max(items.length - 1, 0)));
     } else if (event.key === "ArrowUp") {
       event.preventDefault();
-      setActive((index) => Math.max(index - 1, 0));
-    } else if (event.key === "Enter" && items[active]) {
+      setActive((index) => Math.max(Math.min(index, items.length - 1) - 1, 0));
+    } else if (event.key === "Enter" && items[activeIndex]) {
       event.preventDefault();
-      select(items[active].entry);
+      select(items[activeIndex].entry);
     }
   };
 
@@ -187,7 +191,7 @@ export default function CommandPalette() {
             placeholder="搜索工具、功能或关键词…"
             aria-label="搜索工具"
             aria-controls="cmd-listbox"
-            aria-activedescendant={items[active] ? `cmd-option-${active}` : undefined}
+            aria-activedescendant={items[activeIndex] ? `cmd-option-${activeIndex}` : undefined}
             className="flex-1 min-w-0 py-4 bg-transparent text-base text-slate-800 placeholder:text-slate-500 outline-none"
           />
           <button
@@ -221,12 +225,12 @@ export default function CommandPalette() {
               <ResultRow
                 item={item}
                 index={index}
-                active={index === active}
+                active={index === activeIndex}
                 favorite={favorites.includes(item.entry.href)}
                 onHover={setActive}
                 onSelect={select}
                 onToggleFavorite={toggleFavorite}
-                rowRef={index === active ? (node) => { activeRowRef.current = node; } : undefined}
+                rowRef={index === activeIndex ? (node) => { activeRowRef.current = node; } : undefined}
               />
             </div>
           ))}

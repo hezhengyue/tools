@@ -174,7 +174,7 @@ function WatermarkPanel({ source }: { source: ImageSource | null }) {
 
   return (
     <Panel icon={Droplets} title="水印参数">
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+      <div className="ui-form-grid">
         <div>
           <label htmlFor="wm-text" className="ui-label text-sm block mb-2">水印文字</label>
           <input id="wm-text" value={text} onChange={(event) => setText(event.target.value)} className="ui-input" />

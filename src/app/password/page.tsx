@@ -321,7 +321,7 @@ function PasswordGeneratorCore() {
       </div>
 
       {/* 字符类型 */}
-      <div className="grid grid-cols-2 gap-4 mb-4">
+      <div className="ui-form-grid mb-4">
         <label className="flex items-center gap-2 cursor-pointer">
           <input
             type="checkbox"

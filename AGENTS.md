@@ -20,7 +20,8 @@ This version has breaking changes — APIs, conventions, and file structure may 
 - `src/app/globals.css` → `@layer components` 里的 `.ui-*` 语义类（设计令牌）。
 - `src/components/ui/ToolUI.tsx` → 结构组件：`Panel` / `KeyRow` / `DisplayBox` / `Button` / `IconButton` / `Notice` / `EmptyState` / `Field` / `ToolActions` / `Badge`，以及输出块 `OutputBlock` / `CopyButton` / `DownloadButton` 与剪贴板工具 `writeClipboard`。
 - `src/config/site.ts` → 站点名称与描述的唯一来源（metadata / 侧栏 / 移动端顶栏共用）。
-- `src/components/ToolShell.tsx` → 所有工具页统一外壳（标题、图标、描述、内容卡、页脚）。全部工具页都用它包裹。
+- `src/components/ToolShell.tsx` → 所有工具页统一外壳（面包屑、标题、图标、描述、收藏、内容卡、页脚）。全部工具页都用它包裹，面包屑的分类从 `tools.ts` 派生，页面不要自己写。
+- 首页 / 导航组件：`HomeSearch`（搜索主入口）、`RecentBar`（最近 + 收藏快捷入口）、`HomeCategories`（可折叠分类）、`Sidebar`、`MobileHeader`（模态抽屉）、`CommandPalette`、`ShortcutHint`（Mac 显示 ⌘K）。
 
 新工具页骨架：
 ```tsx
@@ -85,6 +86,8 @@ footer: { mode: "local", subject: "文本", extra: "补充说明（可选）" }
 
 - **禁止**在工具页、`ToolShell`、任何组件里写页面级宽度类（`max-w-4xl` / `max-w-6xl` / `w-[calc(100%-18rem)]` 等）。新增页面只写内容，宽度自动继承，不需要也不允许做选择。
 - 主编辑区统一用 `.ui-editor`，主预览区统一用 `.ui-viewer`，棋盘统一用 `.ui-board`（内含「不超过可视高度」保护，保证整盘完整可见）。**不要自己写 `min-h-[420px]` / `max-w-[520px]` 这类一次性数值**。
+- **表单 / 选项字段组统一用 `.ui-form-grid`**（`auto-fit minmax(22rem, 1fr)`，列数随视口自动算）。不要写死 `grid grid-cols-2` / `sm:grid-cols-2`——那会让 2K / 4K 屏上只剩两列、每个输入被拉成一条。固定 2 列的按钮组、A/交换/B 三列输入、Markdown / Diff 双栏编辑区属于有语义的布局，保留原写法。
+- 面包屑 `.ui-breadcrumb`、快捷键 `.ui-shortcut`、侧栏阴影 `.ui-sidebar` 也都在 `globals.css`，不要在组件里另写一套。
 - 局部元素（文字截断、按钮组、小控件）仍可用 `max-w-[10rem]`，但不得用在页面或主内容容器上。
 - 滚动区上限统一用视口相对值（`max-h-[70vh]` / `max-h-[calc(100vh_-_240px)]`），不要写死 `max-h-[400px]` 这类在 4K 屏上显得很小的数值。
 - 需要「更大 / 显示更多」时**只改 `globals.css` 里的这几个语义类**，不要逐页改；首页卡片网格用 `.ui-card-grid`，不要写死断点列数。
@@ -95,8 +98,10 @@ footer: { mode: "local", subject: "文本", extra: "补充说明（可选）" }
 - **单一数据源**：`src/config/tools.ts` 是工具清单的唯一来源。侧栏、首页、命令面板检索（`config/search.ts`）与每页 metadata（`config/metadata.ts`）都由它派生。新增工具只需注册清单，不要在多处维护名称列表；英文 / 缩写别名在 `search.ts` 的 `ALIASES` 里补。
 - **metadata 的载体**：所有工具页都是 `"use client"`，Next.js 不允许客户端组件导出 `metadata`。因此每个工具目录下有一个极小的服务端 `layout.tsx`，只做 `export const metadata = toolMetadata("/xxx")` 并原样返回 `children`。新增工具页时复制一份即可；不要改成 `generateMetadata` + `headers()`，那会让全部路由转为动态渲染。
 - **站点地址**：canonical 与 OG 绝对地址来自 `NEXT_PUBLIC_SITE_URL`（`config/site.ts`）。未配置时**不输出**绝对 URL，避免 localhost 泄漏到线上。
-- **主题 / 偏好**：`PreferencesProvider` 管理 `tools.theme`、`tools.favorites`、`tools.recent` 三个 localStorage key；`layout.tsx` 里的内联 `THEME_INIT` 与 Provider 的 `applyTheme` 判断必须保持一致。深色模式靠 `html.dark` 上重定义 Tailwind v4 的 `--color-*` 变量实现，**不要在新页面里写死 `#fff` / 固定浅色底**，统一用 slate / 语义色 utility，才能自动适配深色。
-- **命令面板**：任何组件都可以调用 `openCommandPalette()` 打开；全局快捷键与 `tools:open-search` 事件由 `CommandPalette.tsx` 统一监听。
+- **主题 / 偏好**：`PreferencesProvider` 管理 `tools.theme`、`tools.favorites`、`tools.recent`、`tools.collapsedCategories` 四个 localStorage key；`layout.tsx` 里的内联 `THEME_INIT` 与 Provider 的 `applyTheme` 判断必须保持一致。新增偏好一律走 Provider（含首帧不读存储、多标签同步），不要在组件里直接碰 localStorage。
+- **深色模式**：靠 `html.dark` 上重定义 Tailwind v4 的 `--color-*` 变量实现。Tailwind v4 把纯色类编译为 `var(--color-xxx)`、透明度类编译为 `color-mix(... var(--color-xxx) ...)`，**两者都会自动跟随变量**。因此「不要在新页面里写死 `#fff` / 固定浅色底」，也**禁止再按 `[class*="bg-xxx/"]` 逐类兜底**（会漏掉新类并覆盖正确透明度）。只有三类例外允许覆盖：`text-white`、主按钮 `bg-indigo-600/700`、黑底视频容器 `bg-slate-900`。
+- **分类折叠**：侧栏与首页共用 `useCategoryExpansion(scope, defaults)`（在 `PreferencesProvider.tsx` 导出）。视图只传 scope（`"sidebar"` / `"home"`）和「默认展开哪些分类」（侧栏 = 当前工具所属分类，首页 = 全部分类），不要自己读写折叠状态、不要另建 state。两个 scope 的状态**按视图隔离**，否则「侧栏只展开当前分类」会把首页也折掉；读写仍只有这一个 hook 与 `tools.collapsedCategories` 一个 key。
+- **命令面板 / 抽屉**：任何组件都可以调用 `openCommandPalette()` 打开；全局快捷键与 `tools:open-search` 事件由 `CommandPalette.tsx` 统一监听，平台快捷键文案统一用 `ShortcutHint`。`MobileHeader` 的移动端抽屉是模态对话框：点链接自动关闭（事件委托，新增链接无需再改）、Esc 关闭、Tab 焦点循环、关闭后焦点回到菜单按钮、打开时锁定主区滚动。改抽屉时这些行为都要保留。
 - **PWA**：`public/sw.js` 的导航请求是 network-first（在线永远拿最新版），RSC 与 `/api/` 不缓存。修改缓存策略必须提升 `CACHE_NAME`。`PwaRegister.tsx` 只在生产 + 非 localhost 注册，避免本地验证被缓存干扰。
 
 # 工程与质量约定

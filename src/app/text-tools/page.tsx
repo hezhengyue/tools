@@ -96,7 +96,7 @@ function StatGrid({ stats }: { stats: ReturnType<typeof textStats> }) {
     ["英文字母 / 数字", `${stats.letters} / ${stats.digits}`],
   ];
   return (
-    <div className="ui-kv-list grid grid-cols-1 sm:grid-cols-2 gap-x-8 gap-y-3">
+    <div className="ui-kv-list ui-form-grid">
       {rows.map(([label, value]) => (
         <KeyRow key={label} label={label} value={value} mono />
       ))}

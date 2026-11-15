@@ -72,6 +72,35 @@
     gap: 1.25rem;
   }
 
+  /* 表单 / 选项字段组：列数随视口自动算，超宽屏不会只剩两列把输入拉成一条 */
+  .ui-form-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(min(100%, 22rem), 1fr));
+    gap: 1rem 1.5rem;
+    align-items: start;
+  }
+
+  /* 工具页面包屑：由 ToolShell 按 tools.ts 的分类统一渲染 */
+  .ui-breadcrumb {
+    @apply flex flex-wrap items-center gap-1.5 mb-4 text-xs text-slate-500;
+  }
+  .ui-breadcrumb a {
+    @apply hover:text-indigo-600 transition-colors;
+  }
+  .ui-breadcrumb-current {
+    @apply font-medium text-slate-700;
+  }
+
+  /* 快捷键提示标签 */
+  .ui-shortcut {
+    @apply shrink-0 px-1.5 py-0.5 rounded border border-slate-200 bg-white text-[10px] font-medium text-slate-500;
+  }
+
+  /* 侧栏阴影走语义类，深色模式单独覆盖 */
+  .ui-sidebar {
+    box-shadow: 4px 0 24px rgba(15, 23, 42, 0.04);
+  }
+
   /* 主编辑区：大屏给足高度，内容显示更多 */
   .ui-editor {
     @apply min-h-[320px] lg:min-h-[420px] xl:min-h-[520px];
@@ -469,20 +498,13 @@ html.dark .ui-btn-primary {
 }
 html.dark .ui-btn-primary:hover { background-color: #4338ca; }
 
-/* 带斜杠透明度的 utility 编译成字面色值，无法靠变量反转，逐类兜底 */
-html.dark [class*="bg-white/"] { background-color: rgba(17, 24, 39, 0.85); }
-html.dark [class*="bg-slate-50/"],
-html.dark [class*="bg-slate-100/"] { background-color: rgba(30, 41, 59, 0.6); }
-html.dark [class*="bg-slate-300/"],
-html.dark [class*="bg-slate-400/"] { background-color: rgba(100, 116, 139, 0.4); }
-html.dark [class*="bg-indigo-50/"] { background-color: rgba(30, 27, 75, 0.6); }
-html.dark [class*="bg-emerald-50/"] { background-color: rgba(6, 47, 38, 0.95); }
-html.dark [class*="bg-red-50/"] { background-color: rgba(63, 18, 24, 0.5); }
-html.dark [class*="bg-amber-50/"] { background-color: rgba(58, 37, 8, 0.6); }
-html.dark [class*="border-slate-200/"] { border-color: rgba(38, 52, 73, 0.85); }
-html.dark [class*="border-amber-200/"] { border-color: rgba(107, 74, 18, 0.8); }
-html.dark [class*="text-emerald-6"],
-html.dark [class*="text-emerald-7"] { color: #6ee7b7; }
+/* 重要：纯色与带透明度的颜色类都不要再逐条兜底。
+   Tailwind v4 把 `bg-white/80` 编译成
+   `color-mix(in oklab, var(--color-white) 80%, transparent)`，
+   把 `bg-white` 编译成 `var(--color-white)`；上面已在 html.dark 重定义
+   全部 --color-*，所以现有及以后新增的任意颜色 / 透明度组合会自动反转。
+   按类名列白名单反而会漏掉新类、并覆盖掉原本正确的透明度。
+   下面只保留「变量语义被刻意改写」造成的三类例外。 */
 
 /* 摄像头 / 视频容器本该是黑底，不能被反转成白 */
 html.dark [class*="bg-slate-900"] { background-color: #050a14; }
@@ -498,3 +520,4 @@ html.dark .ui-textarea.ui-output-warning {
   border-color: #6b4a12;
   color: #fde68a;
 }
+html.dark .ui-sidebar { box-shadow: 4px 0 24px rgba(0, 0, 0, 0.45); }

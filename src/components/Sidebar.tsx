@@ -1,14 +1,15 @@
 // src/components/Sidebar.tsx
 "use client";
-import { useState } from "react";
+import { useEffect, useRef } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { toolsConfig } from "../config/tools";
 import { openCommandPalette, toolsByHref, type SearchEntry } from "../config/search";
 import { Home, Search, ChevronDown, ChevronRight, Clock3, Star } from "lucide-react";
 import { SITE_NAME } from "@/config/site";
-import { usePreferences } from "./PreferencesProvider";
+import { usePreferences, useCategoryExpansion } from "./PreferencesProvider";
 import ThemeToggle from "./ThemeToggle";
+import ShortcutHint from "./ShortcutHint";
 
 interface SidebarProps {
   className?: string;
@@ -60,20 +61,29 @@ function QuickGroup({
 export default function Sidebar({ className = "" }: SidebarProps) {
   const pathname = usePathname();
   const { recent, favorites, ready } = usePreferences();
-  const [expandedCategories, setExpandedCategories] = useState<string[]>(
-    toolsConfig.map((c) => c.category)
-  );
+  const navRef = useRef<HTMLElement>(null);
+  const activeRef = useRef<HTMLAnchorElement>(null);
 
-  const toggleCategory = (category: string) => {
-    setExpandedCategories((prev) =>
-      prev.includes(category)
-        ? prev.filter((c) => c !== category)
-        : [...prev, category]
-    );
-  };
+  // 用户没手动折叠过时：侧栏默认只展开当前工具所属分类；首页展开第一组
+  const activeCategory = toolsConfig.find((group) =>
+    group.tools.some((tool) => tool.href === pathname)
+  )?.category ?? toolsConfig[0]?.category ?? "";
+  const { expanded, toggle } = useCategoryExpansion("sidebar", [activeCategory]);
+  const expandedKey = expanded.join("|");
+
+  // 当前工具高亮项滚进视口；只改侧栏自身的 scrollTop，不影响主内容区
+  useEffect(() => {
+    const nav = navRef.current;
+    const item = activeRef.current;
+    if (!nav || !item) return;
+    const navBox = nav.getBoundingClientRect();
+    const itemBox = item.getBoundingClientRect();
+    if (itemBox.top >= navBox.top && itemBox.bottom <= navBox.bottom) return;
+    nav.scrollTop += itemBox.top - navBox.top - (navBox.height - itemBox.height) / 2;
+  }, [pathname, expandedKey]);
 
   return (
-    <aside className={`shrink-0 w-72 bg-white/80 backdrop-blur-xl border-r border-slate-200 flex flex-col shadow-[4px_0_24px_rgba(0,0,0,0.02)] z-10 h-full ${className}`}>
+    <aside className={`ui-sidebar shrink-0 w-72 bg-white/80 backdrop-blur-xl border-r border-slate-200 flex flex-col z-10 h-full ${className}`}>
       {/* Logo 区域 */}
       <div className="h-20 flex items-center px-6 border-b border-slate-100 shrink-0">
         <img src="/logo.png" alt={`${SITE_NAME} 标志`} className="w-10 h-10 rounded-lg mr-3 object-contain" />
@@ -90,14 +100,15 @@ export default function Sidebar({ className = "" }: SidebarProps) {
         >
           <Search className="w-4 h-4 shrink-0" />
           <span className="flex-1 truncate">搜索工具或功能...</span>
-          <kbd className="shrink-0 px-1.5 py-0.5 rounded border border-slate-200 bg-white text-[10px] font-medium text-slate-500">Ctrl K</kbd>
+          <ShortcutHint />
         </button>
       </div>
 
       {/* 导航菜单区域 */}
-      <nav className="flex-1 overflow-y-auto custom-scrollbar p-4 space-y-4">
+      <nav ref={navRef} aria-label="工具导航" className="flex-1 overflow-y-auto custom-scrollbar p-4 space-y-4">
         <Link
           href="/"
+          aria-current={pathname === "/" ? "page" : undefined}
           className={`flex items-center px-4 py-2.5 rounded-xl transition-all duration-200 group font-medium whitespace-nowrap ${
             pathname === "/" ? "bg-indigo-50 text-indigo-600" : "text-slate-600 hover:bg-slate-100/80 hover:text-indigo-600"
           }`}
@@ -115,11 +126,12 @@ export default function Sidebar({ className = "" }: SidebarProps) {
 
         {/* 动态渲染分类与工具 */}
         {toolsConfig.map((category) => {
-          const isExpanded = expandedCategories.includes(category.category);
+          const isExpanded = expanded.includes(category.category);
           return (
             <div key={category.category} className="space-y-1">
               <button
-                onClick={() => toggleCategory(category.category)}
+                type="button"
+                onClick={() => toggle(category.category)}
                 aria-expanded={isExpanded}
                 className="w-full flex items-center justify-between px-4 py-2 text-xs font-bold text-slate-500 uppercase tracking-wider hover:text-slate-600 transition-colors"
               >
@@ -137,7 +149,9 @@ export default function Sidebar({ className = "" }: SidebarProps) {
                     return (
                       <Link
                         key={tool.href}
+                        ref={isActive ? activeRef : undefined}
                         href={tool.href}
+                        aria-current={isActive ? "page" : undefined}
                         className={`flex items-center px-4 py-2.5 rounded-xl transition-all duration-200 group text-sm font-medium whitespace-nowrap ${
                           isActive
                             ? "bg-indigo-50 text-indigo-600"

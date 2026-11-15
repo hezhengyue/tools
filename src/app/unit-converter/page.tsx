@@ -140,7 +140,7 @@ export default function UnitConverterPage() {
             <span className="text-sm font-semibold text-slate-700">全部单位对照</span>
             <span className="text-xs text-slate-500">基准值 {formatNumber(baseValue)} {category.base}</span>
           </div>
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-8 gap-y-2">
+          <div className="ui-form-grid">
             {category.units.map((unit) => (
               <KeyRow
                 key={unit.key}

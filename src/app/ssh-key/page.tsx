@@ -115,7 +115,7 @@ function SshKeyCore() {
           选择 RSA Key Size
         </div>
 
-        <div className="grid grid-cols-2 gap-3">
+        <div className="ui-form-grid">
           <button
             onClick={() => handleSizeChange(2048)}
             className={`p-3 rounded-xl border text-left transition-all ${

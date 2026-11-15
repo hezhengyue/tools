@@ -178,7 +178,7 @@ export default function IpSubnetPage() {
           </Panel>
 
           <Panel icon={ShieldCheck} title="IPv4 与整数互转" className="mt-5">
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div className="ui-form-grid">
               <div>
                 <label htmlFor="ip-to-int" className="ui-label text-sm block mb-2">当前 IP → 十进制整数</label>
                 <div className="flex items-center gap-2">
@@ -206,7 +206,7 @@ export default function IpSubnetPage() {
           </Panel>
 
           <Panel icon={Search} title="掩码反推与包含判断" className="mt-5">
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div className="ui-form-grid">
               <div>
                 <label htmlFor="mask-input" className="ui-label text-sm block mb-2">点分子网掩码 → 前缀</label>
                 <div className="flex items-center gap-2">
