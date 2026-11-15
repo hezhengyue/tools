@@ -32,7 +32,9 @@ export function parseColor(input: string): RGB | null {
       b: channel(hex.slice(4, 6)),
     };
   }
-  const rgbMatch = value.match(/^rgba?\(\s*(\d{1,3})\s*[, ]\s*(\d{1,3})\s*[, ]\s*(\d{1,3})/);
+  // 严格锚定且只接受 rgb() 的三分量写法：rgba(...,0.5) 的 alpha 不能被静默丢弃，
+  // 尾部多余内容也不能被当作合法颜色接受（对比度会算错）。
+  const rgbMatch = value.match(/^rgb\(\s*(\d{1,3})\s*[, ]\s*(\d{1,3})\s*[, ]\s*(\d{1,3})\s*\)$/i);
   if (rgbMatch) {
     const [r, g, b] = rgbMatch.slice(1).map(Number);
     if ([r, g, b].every((n) => n >= 0 && n <= 255)) return { r, g, b };

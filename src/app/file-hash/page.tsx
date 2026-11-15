@@ -61,20 +61,25 @@ export default function FileHashPage() {
   const workerRef = useRef<Worker | null>(null);
   const nextKeyRef = useRef(1);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
+  // 同步记账：React state 要等下一次渲染才更新，连点/连续拖拽时不能拿它做守卫
+  const runningRef = useRef(false);
+  const countRef = useRef(0);
 
   useEffect(() => () => {
     workerRef.current?.terminate();
   }, []);
 
   const addFiles = (files: FileList | File[]) => {
-    if (running) return;
+    if (runningRef.current) return;
     const incoming = Array.from(files);
-    const room = MAX_FILES - items.length;
+    if (!incoming.length) return;
+    const room = MAX_FILES - countRef.current;
     if (room <= 0) {
       setNotice(`最多同时处理 ${MAX_FILES} 个文件，请先移除部分文件`);
       return;
     }
     const count = Math.min(room, incoming.length);
+    countRef.current += count;
     const base = nextKeyRef.current;
     nextKeyRef.current += count;
     const added: FileItem[] = incoming.slice(0, count).map((file, index) => ({
@@ -99,8 +104,11 @@ export default function FileHashPage() {
   };
 
   const start = () => {
-    if (running || !items.length) return;
+    if (runningRef.current || !items.length) return;
+    runningRef.current = true;
     const queue = items;
+    // 正常只有一条线程；仍先收掉残留引用，避免异常路径下重复创建
+    workerRef.current?.terminate();
     const worker = new Worker(new URL("./hash.worker.ts", import.meta.url));
     workerRef.current = worker;
     let index = 0;
@@ -111,6 +119,7 @@ export default function FileHashPage() {
       if (index >= queue.length) {
         worker.terminate();
         workerRef.current = null;
+        runningRef.current = false;
         setRunning(false);
         return;
       }
@@ -123,6 +132,8 @@ export default function FileHashPage() {
 
     worker.onmessage = (event: MessageEvent<HashResponse>) => {
       const message = event.data;
+      // 只接受当前队列项的消息，迟到/串扰的旧消息直接丢弃
+      if (message.id !== queue[index]?.key) return;
       if (message.type === "progress") {
         const percent = message.total ? Math.round((message.loaded / message.total) * 100) : 100;
         setItems((prev) =>
@@ -152,6 +163,7 @@ export default function FileHashPage() {
       setNotice("计算线程异常，已停止；请刷新页面后重试");
       worker.terminate();
       workerRef.current = null;
+      runningRef.current = false;
       setRunning(false);
       setItems((prev) =>
         prev.map((item) => item.status === "running" ? { ...item, status: "pending" } : item)
@@ -163,6 +175,7 @@ export default function FileHashPage() {
   const stop = () => {
     workerRef.current?.terminate();
     workerRef.current = null;
+    runningRef.current = false;
     setRunning(false);
     setItems((prev) =>
       prev.map((item) => item.status === "running" ? { ...item, status: "pending" } : item)
@@ -170,14 +183,16 @@ export default function FileHashPage() {
   };
 
   const remove = (key: number) => {
-    if (running) return;
+    if (runningRef.current) return;
     const rest = items.filter((item) => item.key !== key);
+    countRef.current = rest.length;
     setItems(rest);
     setSelectedKey((prev) => (prev === key ? rest[0]?.key ?? null : prev));
   };
 
   const clear = () => {
     stop();
+    countRef.current = 0;
     setItems([]);
     setSelectedKey(null);
     setExpected("");

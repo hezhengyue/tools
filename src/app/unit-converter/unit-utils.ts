@@ -188,7 +188,8 @@ export function formatInBase(value: number, base: number, maxFraction = 12): str
   let fraction = rest - Math.floor(rest);
   while (fraction > 0 && fracText.length < maxFraction) {
     fraction *= base;
-    const digit = Math.floor(fraction + 1e-10);
+    // epsilon 可能把极接近 1 的小数推到 digit === base，产出 0.G / 0.undefined
+    const digit = Math.min(base - 1, Math.floor(fraction + 1e-10));
     fracText += DIGITS[digit];
     fraction -= digit;
     if (fraction < 1e-12) break;

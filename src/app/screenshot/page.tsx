@@ -107,6 +107,8 @@ export default function ScreenshotPage() {
   const selRef = useRef<Rect | null>(null);
   /** 防连点：一次框选只允许提交一次，避免重复生成与重复写剪贴板 */
   const committingRef = useRef(false);
+  /** Esc / 取消：PNG 编码是异步的，期间取消必须让迟到的结果被丢弃 */
+  const cancelledRef = useRef(false);
   const delayTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const copiedTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -139,6 +141,12 @@ export default function ScreenshotPage() {
     selRef.current = null;
     dragStartRef.current = null;
   }, []);
+
+  /** 用户主动取消：正在进行的提交也要作废 */
+  const cancelSelection = useCallback(() => {
+    if (committingRef.current) cancelledRef.current = true;
+    exitSelection();
+  }, [exitSelection]);
 
   /** 停止共享（结果图保留） */
   const stopShare = useCallback(() => {
@@ -264,6 +272,7 @@ export default function ScreenshotPage() {
     if (frameUrlRef.current) URL.revokeObjectURL(frameUrlRef.current);
     frameCanvasRef.current = canvas;
     committingRef.current = false;
+    cancelledRef.current = false;
     const url = URL.createObjectURL(blob);
     frameUrlRef.current = url;
     setFrameUrl(url);
@@ -337,6 +346,12 @@ export default function ScreenshotPage() {
       const blob = await new Promise<Blob | null>((resolve) =>
         out.toBlob(resolve, "image/png")
       );
+      // 编码期间按了 Esc / 取消，不能再把这张图写进结果、也不能自动复制
+      if (cancelledRef.current) {
+        cancelledRef.current = false;
+        committingRef.current = false;
+        return;
+      }
       if (!blob) {
         committingRef.current = false;
         setError("生成图片失败，请重试");
@@ -404,7 +419,7 @@ export default function ScreenshotPage() {
     const onKeyDown = (event: KeyboardEvent) => {
       if (event.key === "Escape" && selecting) {
         event.preventDefault();
-        exitSelection();
+        cancelSelection();
         return;
       }
       if (event.key === "Enter" && selecting) {
@@ -425,7 +440,7 @@ export default function ScreenshotPage() {
     };
     window.addEventListener("keydown", onKeyDown);
     return () => window.removeEventListener("keydown", onKeyDown);
-  }, [beginCapture, commitFullFrame, commitRect, exitSelection, selecting]);
+  }, [beginCapture, commitFullFrame, commitRect, cancelSelection, selecting]);
 
   const copyImage = useCallback(async () => {
     if (!shot) return;
@@ -786,7 +801,7 @@ export default function ScreenshotPage() {
             <Button icon={Check} onClick={commitFullFrame}>
               截取整张画面
             </Button>
-            <Button variant="secondary" icon={X} onClick={exitSelection}>
+            <Button variant="secondary" icon={X} onClick={cancelSelection}>
               取消（Esc）
             </Button>
           </div>

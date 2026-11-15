@@ -40,7 +40,7 @@ function TextDiffCore() {
     if (!result?.diffs) return null;
     
     return (
-      <div className="font-mono text-sm whitespace-pre-wrap break-all bg-slate-50 p-4 rounded-xl border border-slate-200 min-h-[240px] max-h-[calc(100vh_-_240px)] overflow-auto">
+      <div className="ui-viewer font-mono text-sm whitespace-pre-wrap break-all bg-slate-50 p-4 rounded-xl border border-slate-200">
         {result.diffs.map((part, i) => {
           if (part.added) {
             return (

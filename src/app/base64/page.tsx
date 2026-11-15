@@ -8,6 +8,7 @@ import type { DragEvent } from "react";
 import { ArrowLeftRight, Binary, FileUp, Info, X } from "lucide-react";
 import ToolShell from "@/components/ToolShell";
 import { Notice, OutputBlock } from "@/components/ui/ToolUI";
+import { checkImageFile } from "@/lib/image-guard";
 
 /* ============================ 编解码 ============================ */
 
@@ -24,6 +25,7 @@ function bytesToBase64(bytes: Uint8Array): string {
 /** base64 → Uint8Array：容忍换行、URL-safe 字符与缺失的 padding */
 function base64ToBytes(input: string): Uint8Array {
   const cleaned = input
+    .replace(/^data:[^,]*;base64,/i, "") // 页面承诺可直接粘贴 data URL，前缀要先剥掉
     .replace(/\s+/g, "")
     .replace(/-/g, "+")
     .replace(/_/g, "/");
@@ -89,21 +91,30 @@ function Base64Core() {
   /* ---------- 文件编码 ---------- */
   const fileOutput = useMemo(() => {
     if (!file) return "";
-    const base64 = file.dataUrl.slice(file.dataUrl.indexOf(",") + 1);
-    let result = withPrefix
-      ? urlSafe
-        ? `data:${file.type || "application/octet-stream"};base64,${toUrlSafe(base64)}`
-        : file.dataUrl
-      : base64;
-    if (!withPrefix && urlSafe) result = toUrlSafe(result);
-    if (mimeWrap) result = wrap76(result);
-    return result;
+    const comma = file.dataUrl.indexOf(",");
+    const prefix = file.dataUrl.slice(0, comma + 1);
+    const base64 = file.dataUrl.slice(comma + 1);
+    if (urlSafe) {
+      const body = toUrlSafe(base64);
+      return withPrefix ? `${prefix}${body}` : body;
+    }
+    // MIME 换行只能作用于 Base64 主体；连前缀一起换行会得到非法的 data URL
+    const body = mimeWrap ? wrap76(base64) : base64;
+    return withPrefix ? `${prefix}${body}` : body;
   }, [file, mimeWrap, urlSafe, withPrefix]);
 
   /* ---------- 解码 ---------- */
   useEffect(() => {
     const input = encoded.trim();
-    if (!input) return;
+    if (!input) {
+      // 清空输入时必须同步清掉上一次的结果 / 错误 / 容错提示
+      queueMicrotask(() => {
+        setDecoded("");
+        setDecodeError("");
+        setLossy(false);
+      });
+      return;
+    }
     const timer = setTimeout(() => {
       try {
         const bytes = base64ToBytes(input);
@@ -131,11 +142,19 @@ function Base64Core() {
     return () => clearTimeout(timer);
   }, [encoded]);
 
-  const pickFile = useCallback((next: File | null | undefined) => {
+  const pickFile = useCallback(async (next: File | null | undefined) => {
     if (!next) return;
     if (next.size > MAX_FILE_BYTES) {
       setFileError(`文件 ${formatBytes(next.size)}，超过 ${formatBytes(MAX_FILE_BYTES)} 上限。`);
       return;
+    }
+    // 图片会作为 <img> 预览解码，先挡住高压缩比的超大尺寸图
+    if (next.type.startsWith("image/")) {
+      const guardError = await checkImageFile(next);
+      if (guardError) {
+        setFileError(guardError);
+        return;
+      }
     }
     const reader = new FileReader();
     reader.onload = () => {
@@ -154,7 +173,7 @@ function Base64Core() {
   const handleDrop = (e: DragEvent<HTMLDivElement>) => {
     e.preventDefault();
     setDragging(false);
-    pickFile(e.dataTransfer.files?.[0]);
+    void pickFile(e.dataTransfer.files?.[0]);
   };
 
   const switchMode = (next: "encode" | "decode") => {
@@ -275,7 +294,7 @@ function Base64Core() {
                     : "border-slate-200 bg-slate-50/60"
                 }`}
               >
-                <FileUp size={22} className="mx-auto text-slate-400 mb-2" />
+                <FileUp size={22} className="mx-auto text-slate-500 mb-2" />
                 <p className="text-sm text-slate-600">
                   把文件拖到这里，或
                   <button
@@ -294,7 +313,7 @@ function Base64Core() {
                   type="file"
                   className="hidden"
                   onChange={(e) => {
-                    pickFile(e.target.files?.[0]);
+                    void pickFile(e.target.files?.[0]);
                     e.target.value = "";
                   }}
                 />

@@ -22,6 +22,8 @@ function SshKeyCore() {
 
   const workerRef = useRef<Worker | null>(null);
   const timeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const requestIdRef = useRef(0);
+  const generatingRef = useRef(false);
 
   const clearTimeoutTimer = () => {
     if (timeoutRef.current) clearTimeout(timeoutRef.current);
@@ -43,22 +45,35 @@ function SshKeyCore() {
     }
     workerRef.current = worker;
 
-    worker.onmessage = (e: MessageEvent<KeyPair & { error?: string }>) => {
-      clearTimeoutTimer();
-      setLoading(false);
+    worker.onmessage = (e: MessageEvent<KeyPair & { error?: string; requestId?: number }>) => {
       const data = e.data;
+      // 超时重建/重复生成后，旧线程可能才回消息，必须丢弃
+      if (data?.requestId !== requestIdRef.current) return;
+      clearTimeoutTimer();
+      generatingRef.current = false;
+      setLoading(false);
       // Worker 失败时返回 { error }，不能当成成功结果渲染出空密钥
       if (data?.error || !data?.publicKey || !data?.privateKey) {
         setGenError(`密钥生成失败：${data?.error || "返回结果不完整"}`);
+        setKeyPair(null);
         return;
       }
       setGenError("");
-      setKeyPair(data);
+      setKeyPair({
+        publicKey: data.publicKey,
+        privateKey: data.privateKey,
+        type: "rsa",
+        generatedAt: data.generatedAt,
+      });
     };
 
     worker.onerror = () => {
+      // 已超时/已结束的线程再报错，不应覆盖新的状态
+      if (!generatingRef.current) return;
       clearTimeoutTimer();
+      generatingRef.current = false;
       setLoading(false);
+      setKeyPair(null);
       setGenError("密钥生成线程异常，请降低位数后重试");
     };
   }, []);
@@ -83,18 +98,28 @@ function SshKeyCore() {
   // generate key
   // =========================
   const generate = useCallback(() => {
+    // 同步防重入：按钮 disabled 要等下一次渲染才生效
+    if (generatingRef.current) return;
     if (!workerRef.current) {
       setGenError("浏览器不支持 Web Worker，无法生成密钥");
+      setKeyPair(null);
       return;
     }
+    generatingRef.current = true;
+    const requestId = ++requestIdRef.current;
     clearTimeoutTimer();
     setGenError("");
+    // 生成中不再展示上一把私钥，避免误把旧密钥当成新生成的复制
+    setKeyPair(null);
     setLoading(true);
-    workerRef.current.postMessage({ type: "rsa", bits: keySize });
+    workerRef.current.postMessage({ type: "rsa", bits: keySize, requestId });
 
     // 4096 位在慢设备上可能很久，超时兜底避免一直卡在「生成中...」
     timeoutRef.current = setTimeout(() => {
+      requestIdRef.current += 1; // 作废旧线程的迟到响应
+      generatingRef.current = false;
       setLoading(false);
+      setKeyPair(null);
       setGenError("生成超时，已重置生成线程，请重试或改用 2048 位");
       setupWorker();
     }, keySize === 4096 ? 120000 : 60000);

@@ -388,7 +388,24 @@
   animation: tile-pop 150ms cubic-bezier(0.22, 0.9, 0.3, 1.15);
 }
 
+/* 主题切换瞬间禁用全站过渡：否则 CSS 变量变化会让所有卡片/按钮
+   出现 150~500ms 的低对比度中间色；applyTheme 会在两帧后移除此 class。 */
+html.theme-switching *,
+html.theme-switching *::before,
+html.theme-switching *::after {
+  transition: none !important;
+  animation: none !important;
+}
+
 @media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    scroll-behavior: auto !important;
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
   .tile-pop {
     animation: none;
   }

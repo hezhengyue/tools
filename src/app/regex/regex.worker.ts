@@ -29,6 +29,8 @@ export type RegexResponse =
   | { id: number; ok: false; error: string };
 
 const MAX_MATCHES = 1000;
+const MAX_TEXT = 2_000_000;
+const MAX_REPLACED = 2_000_000;
 
 function toMatch(match: RegExpExecArray): RegexMatch {
   return {
@@ -46,6 +48,12 @@ self.onmessage = (event: MessageEvent<RegexRequest>) => {
   try {
     if (!pattern) {
       respond({ id, ok: true, matches: [], replaced: "", truncated: false });
+      return;
+    }
+
+    // 请求与响应都要结构化克隆整篇文本，超大输入先拒绝，避免主线程被搬运拖卡
+    if (text.length > MAX_TEXT) {
+      respond({ id, ok: false, error: "测试文本过长（上限 200 万字符），请分段测试" });
       return;
     }
 
@@ -73,6 +81,11 @@ self.onmessage = (event: MessageEvent<RegexRequest>) => {
     let replaced = "";
     try {
       replaced = text.replace(new RegExp(pattern, flags), replacement);
+      // 替换模板可能让结果膨胀百倍，截断后再 postMessage，防止一次性搬运数十 MB
+      if (replaced.length > MAX_REPLACED) {
+        replaced = `${replaced.slice(0, MAX_REPLACED)}\n…（替换结果过长，已截断）`;
+        truncated = true;
+      }
     } catch (error) {
       replaced = `替换失败：${error instanceof Error ? error.message : String(error)}`;
     }

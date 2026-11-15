@@ -6,6 +6,7 @@ import {
 } from "lucide-react";
 import ToolShell from "@/components/ToolShell";
 import { CopyButton, Notice } from "@/components/ui/ToolUI";
+import { checkImageFile } from "@/lib/image-guard";
 
 // 20MB 的文件会生成约 27MB 的 Base64 文本，再大就容易导致标签页卡死
 const MAX_FILE_BYTES = 20 * 1024 * 1024;
@@ -36,13 +37,18 @@ export default function ImageToBase64Page() {
   );
   const output = includePrefix ? dataUri : image?.raw || "";
 
-  const processFile = useCallback((f: File) => {
+  const processFile = useCallback(async (f: File) => {
     if (!f.type.startsWith("image/")) {
       setError("请选择有效的图片文件");
       return;
     }
     if (f.size > MAX_FILE_BYTES) {
       setError("图片超过 20MB，转换后的文本过大会导致页面卡顿");
+      return;
+    }
+    const guardError = await checkImageFile(f);
+    if (guardError) {
+      setError(guardError);
       return;
     }
     setError("");
@@ -89,7 +95,7 @@ export default function ImageToBase64Page() {
 
         {!image ? (
           <div
-            className={`border-2 border-dashed rounded-2xl p-12 flex flex-col items-center justify-center transition-all cursor-pointer min-h-[400px] ${
+            className={`border-2 border-dashed rounded-2xl p-12 flex flex-col items-center justify-center transition-all cursor-pointer ui-editor ${
               dragActive ? "border-indigo-500 bg-indigo-50/50 scale-[1.01]" : "border-slate-200 hover:border-slate-400 bg-slate-50/50"
             }`}
             onDragOver={(e) => { e.preventDefault(); setDragActive(true); }}
@@ -97,7 +103,7 @@ export default function ImageToBase64Page() {
             onDrop={(e) => {
               e.preventDefault();
               setDragActive(false);
-              if (e.dataTransfer.files[0]) processFile(e.dataTransfer.files[0]);
+              if (e.dataTransfer.files[0]) void processFile(e.dataTransfer.files[0]);
             }}
             onClick={() => fileInputRef.current?.click()}
             onKeyDown={(e) => {
@@ -116,7 +122,7 @@ export default function ImageToBase64Page() {
               accept="image/*"
               className="hidden"
               aria-label="选择图片"
-              onChange={(e) => e.target.files?.[0] && processFile(e.target.files[0])}
+              onChange={(e) => e.target.files?.[0] && void processFile(e.target.files[0])}
             />
             <div className="w-16 h-16 bg-white shadow-sm rounded-full flex items-center justify-center mb-4">
               <ImageIcon size={32} className="text-indigo-500" />

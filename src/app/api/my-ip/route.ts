@@ -12,6 +12,10 @@ import { NextResponse } from "next/server";
  *   2. 平台若注入了完整的地理位置头，优先使用（零额外请求）。
  *   3. 否则由服务端查询公共 IP 库：ipwho.is -> ipapi.co 双回退。
  * 服务端发请求，避免浏览器 CORS，也不会把第三方接口暴露给前端。
+ *
+ * 注意：这些 IP / geo 头在直连部署时客户端可伪造。本接口只返回公开归属地数据、
+ * 目标域名固定，且对 IP 做白名单校验，但不应作为鉴权或计费依据；
+ * 下面的轻量限流用于缓解对上游配额的滥用。
  */
 
 export interface GeoInfo {
@@ -53,9 +57,9 @@ function countryName(name: string, code: string): string {
 }
 
 /** 平台请求头 / IP 库里的占位值（Unknown、N/A 等）统一视为空 */
-function clean(value: string): string {
-  const v = (value || "").trim();
-  return /^(unknown|null|n\/a|none|-)$/i.test(v) ? "" : v;
+function clean(value: unknown): string {
+  const v = String(value ?? "").trim();
+  return /^(unknown|null|undefined|n\/a|none|-)$/i.test(v) ? "" : v;
 }
 
 function toNumber(value: unknown): number | null {
@@ -116,42 +120,69 @@ function getClientIp(h: Headers): string {
 
 /** 兼容平台手动开启的地理位置回源头（key=value 串或 JSON） */
 function parseGeoHeader(h: Headers): GeoInfo | null {
-  const raw = h.get("eo-connecting-geo") || h.get("eo-client-geo") || "";
-  const countryHeader = h.get("eo-client-ipcountry") || h.get("cf-ipcountry") || "";
-  const kv: Record<string, string> = {};
+  try {
+    const raw = h.get("eo-connecting-geo") || h.get("eo-client-geo") || "";
+    const countryHeader = h.get("eo-client-ipcountry") || h.get("cf-ipcountry") || "";
+    // 无原型 + 字段白名单：JSON 里的 __proto__ 不能污染，非字符串值不会让 .trim() 抛错
+    const kv: Record<string, string> = Object.create(null);
+    const put = (key: string, value: unknown) => {
+      if (!/^[a-zA-Z_][a-zA-Z0-9_]*$/.test(key)) return;
+      if (typeof value === "string" || typeof value === "number") kv[key] = String(value);
+    };
 
-  if (raw) {
-    try {
+    if (raw) {
       const decoded = decodeURIComponent(raw);
       if (decoded.trim().startsWith("{")) {
-        Object.assign(kv, JSON.parse(decoded));
+        const parsed: unknown = JSON.parse(decoded);
+        if (parsed && typeof parsed === "object" && !Array.isArray(parsed)) {
+          for (const [key, value] of Object.entries(parsed)) put(key, value);
+        }
       } else {
         const re = /(\w+)\s*=\s*("([^"]*)"|'([^']*)'|(\S+))/g;
         let m: RegExpExecArray | null;
-        while ((m = re.exec(decoded)) !== null) {
-          kv[m[1]] = m[3] ?? m[4] ?? m[5] ?? "";
-        }
+        while ((m = re.exec(decoded)) !== null) put(m[1], m[3] ?? m[4] ?? m[5] ?? "");
       }
-    } catch {
-      // 头部格式不认识就忽略，继续走公共 IP 库
     }
+
+    const code = clean(kv.nation_alpha2 || kv.country_code || kv.countryCode || countryHeader).toUpperCase();
+    const name = clean(kv.nation_name || kv.country_name || kv.country);
+    const city = clean(kv.city_name || kv.city);
+    if (!code && !name && !city) return null;
+
+    return {
+      asn: toNumber(kv.asn),
+      countryName: countryName(name, code),
+      countryCodeAlpha2: code || "-",
+      regionName: clean(kv.region_name || kv.region),
+      cityName: city,
+      latitude: toNumber(kv.latitude ?? kv.lat),
+      longitude: toNumber(kv.longitude ?? kv.lon),
+      cisp: clean(kv.network_operator || kv.isp || kv.org),
+      timezone: clean(kv.timezone),
+    };
+  } catch {
+    // 头部格式不认识就忽略，继续走公共 IP 库；绝不能让一个畸形头把接口打成 500
+    return null;
   }
+}
 
-  const code = (kv.nation_alpha2 || kv.country_code || kv.countryCode || countryHeader).toUpperCase();
-  const name = kv.nation_name || kv.country_name || kv.country || "";
-  if (!code && !name && !kv.city_name) return null;
-
-  return {
-    asn: toNumber(kv.asn),
-    countryName: countryName(clean(name), code),
-    countryCodeAlpha2: code || "-",
-    regionName: clean(kv.region_name || kv.region || ""),
-    cityName: clean(kv.city_name || kv.city || ""),
-    latitude: toNumber(kv.latitude ?? kv.lat),
-    longitude: toNumber(kv.longitude ?? kv.lon),
-    cisp: clean(kv.network_operator || kv.isp || kv.org || ""),
-    timezone: clean(kv.timezone || ""),
-  };
+// 单实例内存限流：防止接口被当作任意公网 IP 的免费查询代理而耗尽上游配额。
+// Serverless 多实例下只是尽力而为，不替代网关层限流。
+const RATE_WINDOW = 60_000;
+const RATE_LIMIT = 30;
+const hits = new Map<string, { count: number; resetAt: number }>();
+function rateLimited(key: string): boolean {
+  const now = Date.now();
+  const entry = hits.get(key);
+  if (!entry || now > entry.resetAt) {
+    hits.set(key, { count: 1, resetAt: now + RATE_WINDOW });
+    if (hits.size > 500) {
+      for (const [k, v] of hits) if (now > v.resetAt) hits.delete(k);
+    }
+    return false;
+  }
+  entry.count += 1;
+  return entry.count > RATE_LIMIT;
 }
 
 interface IpwhoResponse {
@@ -182,11 +213,15 @@ interface IpapiResponse {
   timezone?: string;
 }
 
-async function fetchJson<T>(url: string): Promise<T | null> {
+function combineSignals(a: AbortSignal, b: AbortSignal): AbortSignal {
+  return typeof AbortSignal.any === "function" ? AbortSignal.any([a, b]) : b;
+}
+
+async function fetchJson<T>(url: string, budget: AbortSignal): Promise<T | null> {
   try {
     const res = await fetch(url, {
       cache: "no-store",
-      signal: AbortSignal.timeout(6000),
+      signal: combineSignals(AbortSignal.timeout(4000), budget),
       headers: { Accept: "application/json" },
     });
     if (!res.ok) return null;
@@ -202,89 +237,111 @@ type LookupResult = { geo: GeoInfo; ip: string; source: string };
 async function lookup(ip: string): Promise<LookupResult | null> {
   // target 只可能是通过 isPublicIp 白名单的 IP 字面量；再编码一层彻底杜绝路径注入
   const target = isPublicIp(ip) ? encodeURIComponent(ip) : "";
+  // 两源串行仍要有总预算，否则 4s + 4s 加上调度会顶到平台函数上限
+  const controller = new AbortController();
+  const budget = setTimeout(() => controller.abort(), 8000);
 
-  // 主数据源：ipwho.is，免费、HTTPS、无需 key
-  const a = await fetchJson<IpwhoResponse>(`https://ipwho.is/${target}`);
-  if (a?.success) {
-    const code = String(a.country_code || "").toUpperCase();
-    return {
-      ip: String(a.ip || ip),
-      source: "ipwho.is",
-      geo: {
-        asn: a.connection?.asn ?? null,
-        countryName: countryName(a.country || "", code),
-        countryCodeAlpha2: code || "-",
-        regionName: a.region || "",
-        cityName: a.city || "",
-        latitude: a.latitude ?? null,
-        longitude: a.longitude ?? null,
-        cisp: a.connection?.isp || a.connection?.org || "",
-        timezone: a.timezone?.id || "",
-      },
-    };
+  try {
+    // 主数据源：ipwho.is，免费、HTTPS、无需 key
+    const a = await fetchJson<IpwhoResponse>(`https://ipwho.is/${target}`, controller.signal);
+    if (a?.success) {
+      const code = clean(a.country_code).toUpperCase();
+      return {
+        ip: isPublicIp(String(a.ip || "")) ? String(a.ip) : ip,
+        source: "ipwho.is",
+        geo: {
+          asn: toNumber(a.connection?.asn),
+          countryName: countryName(clean(a.country), code),
+          countryCodeAlpha2: code || "-",
+          regionName: clean(a.region),
+          cityName: clean(a.city),
+          latitude: toNumber(a.latitude),
+          longitude: toNumber(a.longitude),
+          cisp: clean(a.connection?.isp || a.connection?.org),
+          timezone: clean(a.timezone?.id),
+        },
+      };
+    }
+
+    // 备用数据源：ipapi.co
+    const b = await fetchJson<IpapiResponse>(`https://ipapi.co/${target}/json/`, controller.signal);
+    if (b && !b.error && b.ip) {
+      const code = clean(b.country_code || b.country).toUpperCase();
+      return {
+        ip: isPublicIp(String(b.ip)) ? String(b.ip) : ip,
+        source: "ipapi.co",
+        geo: {
+          asn: toNumber(typeof b.asn === "string" ? b.asn.replace(/^AS/i, "") : b.asn),
+          countryName: countryName(clean(b.country_name), code),
+          countryCodeAlpha2: code || "-",
+          regionName: clean(b.region),
+          cityName: clean(b.city),
+          latitude: toNumber(b.latitude),
+          longitude: toNumber(b.longitude),
+          cisp: clean(b.org),
+          timezone: clean(b.timezone),
+        },
+      };
+    }
+
+    return null;
+  } finally {
+    clearTimeout(budget);
   }
-
-  // 备用数据源：ipapi.co
-  const b = await fetchJson<IpapiResponse>(`https://ipapi.co/${target}/json/`);
-  if (b && !b.error && b.ip) {
-    const code = String(b.country_code || b.country || "").toUpperCase();
-    return {
-      ip: String(b.ip),
-      source: "ipapi.co",
-      geo: {
-        asn: toNumber(typeof b.asn === "string" ? b.asn.replace(/^AS/i, "") : b.asn),
-        countryName: countryName(b.country_name || "", code),
-        countryCodeAlpha2: code || "-",
-        regionName: b.region || "",
-        cityName: b.city || "",
-        latitude: b.latitude ?? null,
-        longitude: b.longitude ?? null,
-        cisp: b.org || "",
-        timezone: b.timezone || "",
-      },
-    };
-  }
-
-  return null;
 }
 
+const NO_STORE = { "Cache-Control": "no-store, max-age=0" };
+
 export async function GET() {
-  const h = await headers();
-  const headerIp = getClientIp(h);
-  const local = !headerIp;
-
-  const platformGeo = parseGeoHeader(h);
-  // 只有平台给了完整信息（城市 + 经纬度）才直接使用，避免仅国家码时信息残缺
-  const platformComplete =
-    platformGeo && !!platformGeo.cityName && platformGeo.latitude !== null;
-
-  let geo: GeoInfo | null = platformComplete ? platformGeo : null;
-  let source = platformComplete ? "cdn" : "";
-  let ip = headerIp;
-
-  if (!geo) {
-    const result = await lookup(headerIp);
-    if (result) {
-      geo = result.geo;
-      source = result.source;
-      ip = ip || result.ip; // 本地开发时展示出网公网 IP
-    } else if (platformGeo) {
-      geo = platformGeo;
-      source = "cdn";
+  try {
+    const h = await headers();
+    const headerIp = getClientIp(h);
+    if (rateLimited(headerIp || "unknown")) {
+      return NextResponse.json(
+        { success: false, error: "请求过于频繁，请稍后再试" },
+        { status: 429, headers: NO_STORE }
+      );
     }
-  }
+    const local = !headerIp;
 
-  return NextResponse.json(
-    {
-      success: true,
-      ip: ip || "未知",
-      local,
-      clientIp: ip,
-      geo,
-      asn: geo?.asn ?? null,
-      source: source || null,
-      error: geo ? null : "暂时无法获取地理位置信息，请稍后重试",
-    },
-    { headers: { "Cache-Control": "no-store, max-age=0" } }
-  );
+    const platformGeo = parseGeoHeader(h);
+    // 只有平台给了完整信息（城市 + 经纬度）才直接使用，避免仅国家码时信息残缺
+    const platformComplete =
+      platformGeo && !!platformGeo.cityName && platformGeo.latitude !== null;
+
+    let geo: GeoInfo | null = platformComplete ? platformGeo : null;
+    let source = platformComplete ? "cdn" : "";
+    let ip = headerIp;
+
+    if (!geo) {
+      const result = await lookup(headerIp);
+      if (result) {
+        geo = result.geo;
+        source = result.source;
+        ip = ip || result.ip; // 本地开发时展示出网公网 IP
+      } else if (platformGeo) {
+        geo = platformGeo;
+        source = "cdn";
+      }
+    }
+
+    return NextResponse.json(
+      {
+        success: true,
+        ip: ip || "未知",
+        local,
+        clientIp: ip,
+        geo,
+        asn: geo?.asn ?? null,
+        source: source || null,
+        error: geo ? null : "暂时无法获取地理位置信息，请稍后重试",
+      },
+      { headers: NO_STORE }
+    );
+  } catch {
+    return NextResponse.json(
+      { success: false, error: "暂时无法获取地理位置信息，请稍后重试" },
+      { status: 200, headers: NO_STORE }
+    );
+  }
 }

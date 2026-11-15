@@ -26,7 +26,45 @@ import {
 import {
   useCertGenerator,
   type SanEntry,
+  type SanType,
 } from "./useCertGenerator";
+import { randomId } from "@/lib/random";
+
+/** 严格 IPv4：四段、无前导零、每段 ≤255（forge.bytesFromIP 对非法值不抛错，必须自己挡住） */
+function isIPv4Literal(value: string): boolean {
+  const parts = value.split(".");
+  return parts.length === 4
+    && parts.every((part) => /^(0|[1-9]\d{0,2})$/.test(part) && Number(part) <= 255);
+}
+
+/** 严格 IPv6：允许一次 :: 压缩与末尾 IPv4，禁止 zone id 与随意的 hex 串 */
+function isIPv6Literal(value: string): boolean {
+  if (!value.includes(":") || value.includes("%")) return false;
+  const halves = value.split("::");
+  if (halves.length > 2) return false;
+  let groups = 0;
+  for (const half of halves) {
+    if (!half) continue;
+    for (const part of half.split(":")) {
+      if (!part) return false;
+      if (part.includes(".")) {
+        if (!isIPv4Literal(part)) return false;
+        groups += 2;
+      } else {
+        if (!/^[0-9a-fA-F]{1,4}$/.test(part)) return false;
+        groups += 1;
+      }
+    }
+  }
+  return halves.length === 2 ? groups <= 7 : groups === 8;
+}
+
+function validSan(entry: SanEntry): boolean {
+  const value = entry.value.trim();
+  if (!value) return false;
+  if (entry.type === "IP") return isIPv4Literal(value) || isIPv6Literal(value);
+  return /^(\*\.)?[a-z0-9]([a-z0-9-]*[a-z0-9])?(\.[a-z0-9]([a-z0-9-]*[a-z0-9])?)*$/i.test(value);
+}
 
 export default function SelfCertPage() {
   const {
@@ -44,16 +82,23 @@ export default function SelfCertPage() {
   const [keySize, setKeySize] = useState<2048 | 4096>(2048);
   const [hash, setHash] = useState<"sha256" | "sha384" | "sha512">("sha256");
   const [sanEntries, setSanEntries] = useState<SanEntry[]>([]);
+  const [formError, setFormError] = useState("");
 
   const addSan = () => {
     setSanEntries((prev) => [
       ...prev,
       {
-        id: crypto.randomUUID(),
+        id: randomId("san_"),
         type: "DNS",
         value: "",
       },
     ]);
+  };
+
+  const updateSanType = (id: string, type: SanType) => {
+    setSanEntries((prev) =>
+      prev.map((item) => (item.id === id ? { ...item, type } : item))
+    );
   };
 
   const removeSan = (id: string) => {
@@ -75,12 +120,9 @@ export default function SelfCertPage() {
       return null;
     }
 
-    // 每段必须 ≤255，否则 999.999.999.999 会被当成 IP 写进 SAN 生成错误证书
-    const isIPv4 =
-      /^(\d{1,3}\.){3}\d{1,3}$/.test(value) &&
-      value.split(".").every((part) => Number(part) <= 255);
-    const isIPv6 = value.includes(":") && /^[0-9a-fA-F:.]+$/.test(value);
-    const isIP = isIPv4 || isIPv6;
+    // 旧判断把任意含冒号的 hex 串（dead:beef、a:b）当成 IPv6，
+    // node-forge 会静默写入垃圾字节，生成出浏览器无法校验的证书
+    const isIP = isIPv4Literal(value) || isIPv6Literal(value);
 
     return {
       id: "auto-cn",
@@ -107,43 +149,57 @@ export default function SelfCertPage() {
     return Array.from(map.values());
   }, [autoSan, sanEntries]);
 
+  /** 两个生成入口共用同一套校验，避免「localhost 开发证书」跳过国家代码检查 */
+  const validate = (cn: string): string | null => {
+    if (!cn.trim()) return "请输入证书名称";
+    if (country.trim() && !/^[A-Za-z]{2}$/.test(country.trim())) {
+      return "国家代码必须为 2 位字母，例如 CN、US、KR";
+    }
+    const invalid = finalSan.find((entry) => !validSan(entry));
+    if (invalid) return `SAN「${invalid.type}: ${invalid.value}」不是合法的域名或 IP 地址`;
+    return null;
+  };
+
+  const commonPayload = () => ({
+    keySize,
+    hash,
+    days,
+    organization: organization || undefined,
+    country: country.trim().toUpperCase() || undefined,
+  });
+
   const generate = () => {
     const cn = commonName.trim();
-
-    if (!cn) {
-      alert("请输入证书名称");
+    const message = validate(cn);
+    if (message) {
+      setFormError(message);
       return;
     }
-
-    if (country && !/^[A-Za-z]{2}$/.test(country)) {
-      alert("国家代码必须为2位字母，例如 CN、US、KR");
-      return;
-    }
+    setFormError("");
 
     generateCert({
+      ...commonPayload(),
       commonName: cn,
       sanEntries: finalSan,
-      keySize,
-      hash,
-      days,
-      organization: organization || undefined,
-      country: country.trim().toUpperCase() || undefined,
     });
   };
 
   const generateLocalhost = () => {
+    const message = validate("localhost");
+    if (message) {
+      setFormError(message);
+      return;
+    }
+    setFormError("");
+
     generateCert({
+      ...commonPayload(),
       commonName: "localhost",
       sanEntries: [
         { id: "1", type: "DNS", value: "localhost" },
         { id: "2", type: "IP", value: "127.0.0.1" },
         { id: "3", type: "IP", value: "::1" },
       ],
-      keySize,
-      hash,
-      days,
-      organization: organization || undefined,
-      country: country.trim().toUpperCase() || undefined,
     });
   };
 
@@ -187,10 +243,20 @@ export default function SelfCertPage() {
 
               {sanEntries.map((item) => (
                 <div key={item.id} className="flex gap-2">
+                  <select
+                    value={item.type}
+                    onChange={(e) => updateSanType(item.id, e.target.value as SanType)}
+                    aria-label="SAN 类型"
+                    className="ui-select ui-input-sm w-24 shrink-0"
+                  >
+                    <option value="DNS">DNS</option>
+                    <option value="IP">IP</option>
+                  </select>
                   <input
                     value={item.value}
                     onChange={(e) => updateSan(item.id, e.target.value)}
-                    placeholder="额外SAN"
+                    placeholder={item.type === "IP" ? "如 10.0.0.1 或 ::1" : "如 api.example.com"}
+                    aria-label="SAN 值"
                     className="ui-input ui-input-sm"
                   />
                   <IconButton
@@ -218,6 +284,7 @@ export default function SelfCertPage() {
               <div className="ui-form-grid mt-4">
                 <input
                   placeholder="组织(O)"
+                  aria-label="组织 (O)"
                   value={organization}
                   onChange={(e) => setOrganization(e.target.value)}
                   className="ui-input"
@@ -225,6 +292,7 @@ export default function SelfCertPage() {
 
                 <input
                   placeholder="国家(C)"
+                  aria-label="国家代码 (C)，2 位字母"
                   maxLength={2}
                   value={country}
                   onChange={(e) => setCountry(e.target.value)}
@@ -233,6 +301,7 @@ export default function SelfCertPage() {
 
                 <input
                   type="number"
+                  aria-label="有效期（天）"
                   min={1}
                   max={3650}
                   value={days}
@@ -245,6 +314,7 @@ export default function SelfCertPage() {
                 />
 
                 <select
+                  aria-label="密钥长度"
                   value={keySize}
                   onChange={(e) =>
                     setKeySize(Number(e.target.value) as 2048 | 4096)
@@ -256,6 +326,7 @@ export default function SelfCertPage() {
                 </select>
 
                 <select
+                  aria-label="签名算法"
                   value={hash}
                   onChange={(e) =>
                     setHash(
@@ -271,6 +342,8 @@ export default function SelfCertPage() {
               </div>
             )}
           </div>
+
+          {formError && <Notice tone="error">{formError}</Notice>}
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <Button

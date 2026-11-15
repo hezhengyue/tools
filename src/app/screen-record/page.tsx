@@ -131,6 +131,10 @@ export default function ScreenRecordPage() {
   const audioCtxRef = useRef<AudioContext | null>(null);
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const resultUrlRef = useRef<string | null>(null);
+  // 授权弹窗期间按钮仍可点，重复进入会留下无法被清理的 stream；用同步 ref 锁住
+  const busyRef = useRef(false);
+  // 所有采集轨道（display / 麦克风 / 混音输出）统一登记，退出时一次停干净
+  const tracksRef = useRef<Set<MediaStreamTrack>>(new Set());
   const startedAtRef = useRef(0);
   const pausedAtRef = useRef<number | null>(null);
   const pausedTotalRef = useRef(0);
@@ -145,22 +149,33 @@ export default function ScreenRecordPage() {
     return Math.max(0, Math.floor((now - startedAtRef.current - paused) / 1000));
   }, []);
 
+  const registerTracks = useCallback((...streams: (MediaStream | null | undefined)[]) => {
+    for (const stream of streams) {
+      stream?.getTracks().forEach((track) => tracksRef.current.add(track));
+    }
+  }, []);
+
+  const stopAllTracks = useCallback(() => {
+    tracksRef.current.forEach((track) => track.stop());
+    tracksRef.current.clear();
+    streamRef.current = null;
+    micStreamRef.current = null;
+    busyRef.current = false;
+  }, []);
+
   /** 停掉所有采集轨道、音频上下文与计时器 */
   const cleanupStreams = useCallback(() => {
     if (timerRef.current) {
       clearInterval(timerRef.current);
       timerRef.current = null;
     }
-    streamRef.current?.getTracks().forEach((track) => track.stop());
-    streamRef.current = null;
-    micStreamRef.current?.getTracks().forEach((track) => track.stop());
-    micStreamRef.current = null;
+    stopAllTracks();
     if (audioCtxRef.current) {
       void audioCtxRef.current.close().catch(() => {});
       audioCtxRef.current = null;
     }
     setStream(null);
-  }, []);
+  }, [stopAllTracks]);
 
   /** 录制结束：把分片拼成可播放的文件 */
   const finalize = useCallback(
@@ -202,6 +217,10 @@ export default function ScreenRecordPage() {
   }, [currentElapsed]);
 
   const startRecording = useCallback(async () => {
+    if (busyRef.current) return;
+    busyRef.current = true;
+    let started = false;
+    try {
     setError("");
     setNotice("");
 
@@ -229,6 +248,7 @@ export default function ScreenRecordPage() {
     } catch (err) {
       const e = err as DOMException;
       if (e?.name === "NotAllowedError") {
+        // 继续走下面的分类提示
         setError("你取消了画面选择，或浏览器未授予屏幕录制权限。");
       } else if (e?.name === "NotReadableError") {
         setError("系统拒绝了屏幕采集，可能有其它程序正在占用。");
@@ -238,11 +258,14 @@ export default function ScreenRecordPage() {
       return;
     }
 
+    registerTracks(display);
     let output = display;
     if (micOn) {
       try {
         const mixed = await mixMicrophone(display);
         output = mixed.stream;
+        // 原始系统音轨只在 AudioContext 里被引用，也必须登记，否则退出时不会 stop
+        registerTracks(output, mixed.micStream);
         micStreamRef.current = mixed.micStream;
         audioCtxRef.current = mixed.ctx;
       } catch {
@@ -261,10 +284,8 @@ export default function ScreenRecordPage() {
         audioBitsPerSecond: 128_000,
       });
     } catch {
-      display.getTracks().forEach((track) => track.stop());
-      micStreamRef.current?.getTracks().forEach((track) => track.stop());
+      stopAllTracks();
       if (audioCtxRef.current) void audioCtxRef.current.close().catch(() => {});
-      micStreamRef.current = null;
       audioCtxRef.current = null;
       setError("无法初始化录制器，请尝试降低画质或更换浏览器。");
       return;
@@ -305,7 +326,17 @@ export default function ScreenRecordPage() {
 
     recorder.start(1000);
     setPhase("recording");
-  }, [currentElapsed, finalize, micOn, quality, systemAudio]);
+    started = true;
+    } finally {
+      // 任何失败/取消路径都要释放锁，并停掉可能已申请到的全部轨道
+      if (!started) {
+        stopAllTracks();
+        if (audioCtxRef.current) void audioCtxRef.current.close().catch(() => {});
+        audioCtxRef.current = null;
+        busyRef.current = false;
+      }
+    }
+  }, [currentElapsed, finalize, micOn, quality, systemAudio, registerTracks, stopAllTracks]);
 
   const pauseRecording = () => {
     const recorder = recorderRef.current;
@@ -357,16 +388,13 @@ export default function ScreenRecordPage() {
         recorderRef.current = null;
       }
       if (timerRef.current) clearInterval(timerRef.current);
-      streamRef.current?.getTracks().forEach((track) => track.stop());
-      streamRef.current = null;
-      micStreamRef.current?.getTracks().forEach((track) => track.stop());
-      micStreamRef.current = null;
+      stopAllTracks();
       if (audioCtxRef.current) void audioCtxRef.current.close().catch(() => {});
       audioCtxRef.current = null;
       if (resultUrlRef.current) URL.revokeObjectURL(resultUrlRef.current);
       resultUrlRef.current = null;
     },
-    []
+    [stopAllTracks]
   );
 
   const extension = result?.mime.includes("mp4") ? "mp4" : "webm";

@@ -8,7 +8,7 @@ function rsaToSsh(publicKey: forge.pki.rsa.PublicKey) {
 }
 
 self.onmessage = (e: MessageEvent) => {
-  const { bits } = e.data;
+  const { bits, requestId } = e.data;
 
   try {
     const kp = forge.pki.rsa.generateKeyPair({
@@ -18,6 +18,7 @@ self.onmessage = (e: MessageEvent) => {
 
     self.postMessage({
       type: "rsa",
+      requestId,
       publicKey: rsaToSsh(kp.publicKey),
       privateKey: forge.pki.privateKeyToPem(kp.privateKey),
       generatedAt: Date.now(),
@@ -25,6 +26,7 @@ self.onmessage = (e: MessageEvent) => {
   } catch (err: unknown) {
     self.postMessage({
       type: "rsa",
+      requestId,
       error: err instanceof Error ? err.message : "生成失败",
     });
   }

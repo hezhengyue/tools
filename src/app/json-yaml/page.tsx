@@ -9,6 +9,48 @@ import { Notice, CopyButton } from "@/components/ui/ToolUI";
 
 // ============ 核心功能组件（只写业务逻辑） ============
 
+/**
+ * 扫描 JSON 文本中「超出 Number.MAX_SAFE_INTEGER 的整数字面量」。
+ * JSON.parse 会把它们静默舍入（9007199254740993 → 9007199254740992），
+ * 转换工具必须明确报错，而不是给出看似成功、实则改坏了 ID / 金额的结果。
+ */
+function findUnsafeInteger(text: string): number | null {
+  let inString = false;
+  let escaped = false;
+  for (let i = 0; i < text.length; i += 1) {
+    const ch = text[i];
+    if (inString) {
+      if (escaped) escaped = false;
+      else if (ch === "\\") escaped = true;
+      else if (ch === '"') inString = false;
+      continue;
+    }
+    if (ch === '"') { inString = true; continue; }
+    if (ch === "-" || (ch >= "0" && ch <= "9")) {
+      const match = /^-?\d+(?:\.\d+)?(?:[eE][+-]?\d+)?/.exec(text.slice(i));
+      if (!match) continue;
+      const token = match[0];
+      if (!/[.eE]/.test(token) && !Number.isSafeInteger(Number(token))) return i;
+      i += token.length - 1;
+    }
+  }
+  return null;
+}
+
+function describePosition(text: string, index: number): string {
+  const before = text.slice(0, index);
+  const lastBreak = before.lastIndexOf("\n");
+  return `第 ${before.split("\n").length} 行第 ${index - lastBreak} 列`;
+}
+
+function parseJsonLossless(text: string): unknown {
+  const unsafe = findUnsafeInteger(text);
+  if (unsafe !== null) {
+    throw new Error(`${describePosition(text, unsafe)} 的整数超出 JS 安全范围，无损转换请给该值加引号写成字符串`);
+  }
+  return JSON.parse(text) as unknown;
+}
+
 function JsonYamlCore() {
   const [jsonInput, setJsonInput] = useState("");
   const [yamlOutput, setYamlOutput] = useState("");
@@ -20,11 +62,12 @@ function JsonYamlCore() {
 
     const timer = setTimeout(() => {
       try {
-        const jsonObj: unknown = JSON.parse(jsonInput);
+        const jsonObj = parseJsonLossless(jsonInput);
         setYamlOutput(yaml.dump(jsonObj, { indent: 2 }));
         setError("");
-      } catch {
-        setError("JSON 格式错误，请检查输入内容！");
+      } catch (cause) {
+        // 保留 JSON.parse 自带的位置信息，便于定位错误
+        setError(cause instanceof Error ? cause.message : "JSON 格式错误，请检查输入内容！");
         setYamlOutput("");
       }
     }, 300);
@@ -52,11 +95,11 @@ function JsonYamlCore() {
   // 格式化 JSON（美化输入）
   const handleFormatJson = () => {
     try {
-      const jsonObj: unknown = JSON.parse(jsonInput);
+      const jsonObj = parseJsonLossless(jsonInput);
       setJsonInput(JSON.stringify(jsonObj, null, 2));
       setError("");
-    } catch {
-      setError("JSON 格式错误，无法格式化！请检查输入内容。");
+    } catch (cause) {
+      setError(cause instanceof Error ? cause.message : "JSON 格式错误，无法格式化！请检查输入内容。");
     }
   };
 

@@ -8,6 +8,7 @@ import {
 } from "lucide-react";
 import ToolShell from "@/components/ToolShell";
 import { Notice } from "@/components/ui/ToolUI";
+import { checkImageFile } from "@/lib/image-guard";
 
 // 资源上限：遮罩与撤销栈都是全尺寸像素，大图必须限制
 const MAX_FILE_BYTES = 40 * 1024 * 1024;
@@ -53,6 +54,8 @@ export default function ImageBackgroundBlurPage() {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const resultUrlRef = useRef<string | null>(null);
   const objectUrlRef = useRef<string | null>(null);
+  /** 只接受最后一次上传的解码结果，避免连选两张时旧图覆盖新图 / 漏 revoke */
+  const loadGenRef = useRef(0);
 
   useEffect(() => { resultUrlRef.current = resultUrl; }, [resultUrl]);
   useEffect(() => () => {
@@ -85,7 +88,7 @@ export default function ImageBackgroundBlurPage() {
     ctx.globalAlpha = 1.0;
   }, [image]);
 
-  const loadImage = useCallback((file: File) => {
+  const loadImage = useCallback(async (file: File) => {
     if (!file.type.startsWith("image/")) {
       setLoadError("请选择图片文件");
       return;
@@ -94,12 +97,27 @@ export default function ImageBackgroundBlurPage() {
       setLoadError("图片超过 40MB，请先压缩后再上传");
       return;
     }
+    // 同步占据序号，避免连续选图时先发起的预检回来覆盖后来者
+    const gen = ++loadGenRef.current;
+    // 解码前先按文件头尺寸拦截高压缩比「解码炸弹」
+    const guardError = await checkImageFile(file);
+    if (gen !== loadGenRef.current) return;
+    if (guardError) {
+      setLoadError(guardError);
+      return;
+    }
     setLoadError("");
+    // 上一张可能还在解码，先作废并释放它的 URL
+    if (objectUrlRef.current) URL.revokeObjectURL(objectUrlRef.current);
     const url = URL.createObjectURL(file);
     objectUrlRef.current = url;
     const img = new Image();
 
     img.onload = () => {
+      if (gen !== loadGenRef.current) {
+        URL.revokeObjectURL(url);
+        return;
+      }
       let source: CanvasImageSource = img;
       let w = img.naturalWidth;
       let h = img.naturalHeight;
@@ -135,14 +153,16 @@ export default function ImageBackgroundBlurPage() {
         if (prev) URL.revokeObjectURL(prev);
         return null;
       });
-      // 图片已解码完成，URL 可立即释放
+      // 图片已解码完成，URL 可立即释放（只清自己登记的这一张）
       URL.revokeObjectURL(url);
-      objectUrlRef.current = null;
+      if (objectUrlRef.current === url) objectUrlRef.current = null;
     };
     img.onerror = () => {
       URL.revokeObjectURL(url);
-      objectUrlRef.current = null;
-      setLoadError("图片解码失败，可能格式不受支持或文件已损坏");
+      if (objectUrlRef.current === url) objectUrlRef.current = null;
+      if (gen === loadGenRef.current) {
+        setLoadError("图片解码失败，可能格式不受支持或文件已损坏");
+      }
     };
     img.src = url;
   }, []);
@@ -284,6 +304,9 @@ export default function ImageBackgroundBlurPage() {
       ctx.drawImage(tempMask, 0, 0, w, h);
       ctx.globalCompositeOperation = "destination-over";
       ctx.drawImage(image.source, 0, 0, w, h);
+      // JPEG 不支持 alpha：透明 PNG 被涂抹后残留的透明区必须先铺白底，否则导出变黑
+      ctx.fillStyle = "#ffffff";
+      ctx.fillRect(0, 0, w, h);
       ctx.globalCompositeOperation = "source-over";
 
       // toBlob 异步编码，比同步的 toDataURL 省内存、不阻塞主线程
@@ -330,7 +353,7 @@ export default function ImageBackgroundBlurPage() {
 
         {!image ? (
           <div
-            className={`border-2 border-dashed rounded-2xl p-12 flex flex-col items-center justify-center transition-all cursor-pointer min-h-[400px] ${
+            className={`border-2 border-dashed rounded-2xl p-12 flex flex-col items-center justify-center transition-all cursor-pointer ui-editor ${
               dragActive ? "border-indigo-500 bg-indigo-50/50 scale-[1.01]" : "border-slate-200 hover:border-slate-400 bg-slate-50/50"
             }`}
             onDragOver={(e) => { e.preventDefault(); setDragActive(true); }}
@@ -338,7 +361,7 @@ export default function ImageBackgroundBlurPage() {
             onDrop={(e) => {
               e.preventDefault();
               setDragActive(false);
-              if (e.dataTransfer.files[0]) loadImage(e.dataTransfer.files[0]);
+              if (e.dataTransfer.files[0]) void loadImage(e.dataTransfer.files[0]);
             }}
             onClick={() => fileInputRef.current?.click()}
             onKeyDown={(e) => {
@@ -351,7 +374,7 @@ export default function ImageBackgroundBlurPage() {
             tabIndex={0}
             aria-label="上传需要虚化背景的图片"
           >
-            <input ref={fileInputRef} type="file" accept="image/*" className="hidden" aria-label="选择图片" onChange={(e) => e.target.files?.[0] && loadImage(e.target.files[0])} />
+            <input ref={fileInputRef} type="file" accept="image/*" className="hidden" aria-label="选择图片" onChange={(e) => e.target.files?.[0] && void loadImage(e.target.files[0])} />
             <div className="w-16 h-16 bg-white shadow-sm rounded-full flex items-center justify-center mb-4">
               <ImageIcon size={32} className="text-indigo-500" />
             </div>
@@ -408,7 +431,7 @@ export default function ImageBackgroundBlurPage() {
 
             {!resultUrl ? (
               <div 
-                className="relative w-full h-[75vh] min-h-[400px] bg-slate-100 border border-slate-200 rounded-2xl flex items-center justify-center overflow-hidden touch-none p-4"
+                className="relative w-full h-[75vh] bg-slate-100 border border-slate-200 rounded-2xl flex items-center justify-center overflow-hidden touch-none p-4"
                 onPointerDown={handlePointerDown}
                 onPointerMove={handlePointerMove}
                 onPointerUp={handlePointerUp}
@@ -450,7 +473,7 @@ export default function ImageBackgroundBlurPage() {
               </div>
             ) : (
               <div className="space-y-4 animate-in fade-in slide-in-from-bottom-4 duration-500">
-                <div className="w-full h-[75vh] min-h-[400px] bg-slate-100/80 border border-slate-200 rounded-2xl flex items-center justify-center p-4">
+                <div className="w-full h-[75vh] bg-slate-100/80 border border-slate-200 rounded-2xl flex items-center justify-center p-4">
                   <img src={resultUrl} alt="背景虚化结果" className="max-w-full max-h-full object-contain drop-shadow-xl rounded-lg" />
                 </div>
                 <div className="flex justify-center items-center bg-emerald-50 text-emerald-700 px-6 py-4 rounded-2xl border border-emerald-100">

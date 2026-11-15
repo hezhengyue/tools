@@ -58,7 +58,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       <body className="font-sans flex h-screen bg-slate-50/50 overflow-hidden">
         <PreferencesProvider>
           <Sidebar className="hidden md:flex" />
-          <main className="relative min-w-0 flex-1 overflow-auto">
+          <main tabIndex={-1} className="relative min-w-0 flex-1 overflow-auto outline-none">
             <MobileHeader />
             <div className="ui-page min-h-full">
               {children}

@@ -1,9 +1,12 @@
 /* 正月工具箱 Service Worker
  * 策略：页面导航 network-first（在线永远拿最新版，离线回退缓存），
- * 静态资源 cache-first（_next/static 带内容哈希，天然可长期缓存），
- * RSC / 接口请求完全不缓存。所有工具本来就纯前端，缓存后可离线使用。
+ * 带内容哈希的 /_next/static 走 cache-first，其余无哈希静态资源 network-first，
+ * RSC / 接口 / 其它动态请求完全不缓存。所有工具本来就纯前端，缓存后可离线使用。
+ *
+ * 每次修改本文件或替换无哈希的 public 资源时，必须提升 CACHE_NAME，
+ * 否则老用户的同名缓存不会失效。
  */
-const CACHE_NAME = "zhengyue-tools-v1";
+const CACHE_NAME = "zhengyue-tools-v2";
 const PRECACHE = [
   "/",
   "/offline.html",
@@ -65,10 +68,8 @@ self.addEventListener("fetch", (event) => {
     return;
   }
 
-  const isStatic = url.pathname.startsWith("/_next/static/") ||
-    /\.(png|jpe?g|svg|ico|webp|css|js|woff2?|webmanifest|txt)$/.test(url.pathname);
-
-  if (isStatic) {
+  // 内容哈希文件名天然不可变，可以永久复用
+  if (url.pathname.startsWith("/_next/static/")) {
     event.respondWith(
       caches.open(CACHE_NAME).then((cache) =>
         caches.match(request).then((cached) =>
@@ -79,11 +80,19 @@ self.addEventListener("fetch", (event) => {
     return;
   }
 
-  event.respondWith(
-    caches.open(CACHE_NAME).then((cache) =>
-      fetch(request)
-        .then((response) => remember(cache, request, response))
-        .catch(() => caches.match(request))
-    )
-  );
+  // 无哈希的图标 / manifest / CSS：URL 不变但内容会随版本替换，
+  // 必须 network-first，否则老用户在线也永远看到旧文件。
+  const isPlainStatic = /\.(png|jpe?g|svg|ico|webp|css|js|woff2?|webmanifest|txt)$/.test(url.pathname);
+  if (isPlainStatic) {
+    event.respondWith(
+      caches.open(CACHE_NAME).then((cache) =>
+        fetch(request)
+          .then((response) => remember(cache, request, response))
+          .catch(() => caches.match(request))
+      )
+    );
+    return;
+  }
+
+  // 其余同源 GET（动态资源、图片优化接口等）交给浏览器默认网络行为，不缓存
 });

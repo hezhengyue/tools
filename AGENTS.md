@@ -102,7 +102,7 @@ footer: { mode: "local", subject: "文本", extra: "补充说明（可选）" }
 - **深色模式**：靠 `html.dark` 上重定义 Tailwind v4 的 `--color-*` 变量实现。Tailwind v4 把纯色类编译为 `var(--color-xxx)`、透明度类编译为 `color-mix(... var(--color-xxx) ...)`，**两者都会自动跟随变量**。因此「不要在新页面里写死 `#fff` / 固定浅色底」，也**禁止再按 `[class*="bg-xxx/"]` 逐类兜底**（会漏掉新类并覆盖正确透明度）。只有三类例外允许覆盖：`text-white`、主按钮 `bg-indigo-600/700`、黑底视频容器 `bg-slate-900`。
 - **分类折叠**：侧栏与首页共用 `useCategoryExpansion(scope, defaults)`（在 `PreferencesProvider.tsx` 导出）。视图只传 scope（`"sidebar"` / `"home"`）和「默认展开哪些分类」（侧栏 = 当前工具所属分类，首页 = 全部分类），不要自己读写折叠状态、不要另建 state。两个 scope 的状态**按视图隔离**，否则「侧栏只展开当前分类」会把首页也折掉；读写仍只有这一个 hook 与 `tools.collapsedCategories` 一个 key。
 - **命令面板 / 抽屉**：任何组件都可以调用 `openCommandPalette()` 打开；全局快捷键与 `tools:open-search` 事件由 `CommandPalette.tsx` 统一监听，平台快捷键文案统一用 `ShortcutHint`。`MobileHeader` 的移动端抽屉是模态对话框：点链接自动关闭（事件委托，新增链接无需再改）、Esc 关闭、Tab 焦点循环、关闭后焦点回到菜单按钮、打开时锁定主区滚动。改抽屉时这些行为都要保留。
-- **PWA**：`public/sw.js` 的导航请求是 network-first（在线永远拿最新版），RSC 与 `/api/` 不缓存。修改缓存策略必须提升 `CACHE_NAME`。`PwaRegister.tsx` 只在生产 + 非 localhost 注册，避免本地验证被缓存干扰。
+- **PWA**：`public/sw.js` 的导航请求是 network-first（在线永远拿最新版），`/_next/static/` 带内容哈希走 cache-first，**无哈希的图标 / manifest / CSS 也必须 network-first**（否则老用户在线也永远看旧文件），RSC 与 `/api/` 及未匹配动态请求完全不缓存。修改缓存策略或替换 public 静态资源必须提升 `CACHE_NAME`。`PwaRegister.tsx` 只在生产 + 非 localhost 注册，避免本地验证被缓存干扰。
 
 # 工程与质量约定
 
@@ -111,6 +111,12 @@ footer: { mode: "local", subject: "文本", extra: "补充说明（可选）" }
 - **随机与密码**：需要安全随机一律用 `crypto.getRandomValues`，禁止 `Math.random()` 生成密码；洗牌用 Fisher-Yates；游戏、抽签这类非安全场景可以用 `Math.random()`，但必须发生在事件回调/effect 里，不能出现在渲染期（否则水合不一致，也会被 React Compiler 的 purity 规则拦下）。
 - **剪贴板**：统一用 `writeClipboard()`（内置 `execCommand` 降级），禁止页面里直接 `navigator.clipboard.writeText` 或无条件弹「已复制」。
 - **资源**：图片类页面必须校验文件大小与像素上限、等比缩小超大图；`createObjectURL` 在卸载/替换时 `revokeObjectURL`，`ImageBitmap` 用完 `close()`，所有 `setTimeout` 在卸载时清理；高频绘制用 `requestAnimationFrame` 合并。
+- **解码炸弹（强制）**：任何 `new Image()` / `createImageBitmap()` / `<img src={dataUrl}>` 之前，必须先 `await checkImageFile(file)`（`src/lib/image-guard.ts`），它只读文件头拿原始尺寸并拒绝超大图。文件大小上限挡不住几百 KB 却能解码成上亿像素的高压缩 PNG。返回值非 null 时直接展示错误、不要继续解码。
+- **异步任务防护**：Worker / 生成类任务一律带 `requestId`（worker 原样回传、页面丢弃非当前请求的迟到消息）、用同步 `ref` 防重入（不能只靠按钮 `disabled`）、开始时清空上一次结果、失败/超时也清空结果（尤其私钥/证书，避免用户误把旧结果当新的复制）。`fetch` 一律带 `AbortController` + 超时 + 卸载 abort；响应必须校验业务字段（`success`、`ip` 类型等），不能 `res.ok` 就当成功。
+- **全局键盘监听**：挂在 `window` 上的游戏/快捷键监听，开头必须跳过 `INPUT` / `TEXTAREA` / `SELECT` / `contenteditable` 焦点和 `metaKey/ctrlKey/altKey`，否则命令面板打字会驱动游戏、空格会被吞掉。
+- **游戏状态**：连续输入可能落在同一帧，棋盘/分数/撤销栈要放在同步更新的 `ref` 里（React state 只作渲染镜像），不要基于闭包中的旧 state 累加。
+- **哈希算法**：`crypto-js/sha3` 用的是 Keccak padding(0x01)，**不是** NIST SHA-3；标准 `SHA3-256` / `SHA3-512` 必须用 `@noble/hashes/sha3.js`，旧实现单独标为 `Keccak-512`。别把两者混用。
+- **JSON 精度**：`JSON.parse` 会静默舍入超过 `Number.MAX_SAFE_INTEGER` 的整数。转换类页面必须先扫描字面量并明确报错（json-yaml 的 `parseJsonLossless`），禁止给出「已转换」却改坏了 ID / 金额。
 - **可访问性**：允许用户缩放（viewport 不设 `userScalable: false`）；独立 `<label>` 必须用 `htmlFor` 关联控件 id；图标按钮必须有 `aria-label`；上传区支持键盘触发；动态提示用 `Notice`（自带 `role=status/alert`）；小字最低 `text-slate-500`，不要用 `text-slate-400`。
 - **隐私**：新增工具默认在浏览器本地处理；若确实需要服务端请求，必须在 `tools.ts` 的 `footer.mode` 标为 `"server"` 并如实说明，不要套用「不会上传任何服务器」。
 - **待办**：图片压缩与背景虚化的画布计算仍在主线程（已用像素上限 + 异步编码缓解），彻底 Worker 化需单独排期并做浏览器兼容验证。

@@ -20,6 +20,7 @@ import {
 } from "lucide-react";
 import ToolShell from "@/components/ToolShell";
 import { Button, Notice, OutputBlock, Segmented, Switch } from "@/components/ui/ToolUI";
+import { checkImageFile } from "@/lib/image-guard";
 
 type Tab = "generate" | "scan";
 type ContentKind = "text" | "wifi" | "vcard";
@@ -101,7 +102,8 @@ export default function QrCodePage() {
 
   const [level, setLevel] = useState<Level>("M");
   const [size, setSize] = useState(320);
-  const [margin, setMargin] = useState(2);
+  // QR 规范要求静区至少 4 模块，小于 4 时多数扫码器无法识别
+  const [margin, setMargin] = useState(4);
   const [fg, setFg] = useState("#0f172a");
   const [bg, setBg] = useState("#ffffff");
   const [logoName, setLogoName] = useState("");
@@ -113,6 +115,7 @@ export default function QrCodePage() {
   const [batchText, setBatchText] = useState("");
   const [batchUrl, setBatchUrl] = useState("");
   const [batchBusy, setBatchBusy] = useState(false);
+  const [batchError, setBatchError] = useState("");
 
   const [scanMode, setScanMode] = useState<ScanMode>("upload");
   const [scanResult, setScanResult] = useState("");
@@ -127,7 +130,8 @@ export default function QrCodePage() {
   const streamRef = useRef<MediaStream | null>(null);
 
   const content = useMemo(() => {
-    if (kind === "text") return text.trim();
+    // trim 只用于判空，编码必须用原文：静默丢掉首尾空格会改变二维码内容
+    if (kind === "text") return text.trim() ? text : "";
     if (kind === "wifi") {
       if (!ssid.trim()) return "";
       return `WIFI:T:${encryption};S:${escapeWifi(ssid)};P:${escapeWifi(password)};H:${hidden ? "true" : "false"};;`;
@@ -177,6 +181,8 @@ export default function QrCodePage() {
           setGenError("");
         }
       } catch (error) {
+        // 失败时必须擦掉上一张码，否则用户会把旧内容的二维码当成新结果下载
+        if (ctx) ctx.clearRect(0, 0, canvas.width, canvas.height);
         if (!cancelled) {
           setHasQr(false);
           setGenError(error instanceof Error ? error.message : "生成失败，请缩短内容或降低容错等级");
@@ -282,7 +288,7 @@ export default function QrCodePage() {
         await QRCode.toCanvas(tmp, lines[index], {
           errorCorrectionLevel: "M",
           width: cell,
-          margin: 1,
+          margin: 4,
           color: { dark: fg, light: bg },
         });
         const col = index % columns;
@@ -295,9 +301,10 @@ export default function QrCodePage() {
         ctx.fillText(lines[index].slice(0, 26), x, y + cell + 20, cell);
       }
       setBatchUrl(sheet.toDataURL("image/png"));
-      setScanError("");
+      setBatchError("");
     } catch (error) {
-      setScanError(error instanceof Error ? error.message : "批量生成失败");
+      // 生成 tab 里不渲染 scanError，之前错误被写进识别 tab 导致完全看不到提示
+      setBatchError(error instanceof Error ? error.message : "批量生成失败");
     } finally {
       setBatchBusy(false);
     }
@@ -311,6 +318,12 @@ export default function QrCodePage() {
     }
     if (file.size > 15 * 1024 * 1024) {
       setScanError("图片请控制在 15MB 以内");
+      setScanResult("");
+      return;
+    }
+    const guardError = await checkImageFile(file);
+    if (guardError) {
+      setScanError(guardError);
       setScanResult("");
       return;
     }
@@ -448,7 +461,7 @@ export default function QrCodePage() {
             )}
 
             {kind === "wifi" && (
-              <div className="grid gap-4 sm:grid-cols-2">
+              <div className="ui-form-grid">
                 <div className="space-y-2">
                   <label htmlFor="qr-ssid" className="ui-label text-sm">网络名称 SSID</label>
                   <input id="qr-ssid" value={ssid} onChange={(event) => setSsid(event.target.value)} placeholder="例如 Office-5G" className="ui-input" />
@@ -477,7 +490,7 @@ export default function QrCodePage() {
             )}
 
             {kind === "vcard" && (
-              <div className="grid gap-4 sm:grid-cols-2">
+              <div className="ui-form-grid">
                 {([
                   ["name", "姓名", "例如 张三"],
                   ["phone", "手机号", "例如 13800138000"],
@@ -512,7 +525,7 @@ export default function QrCodePage() {
                 <p className="text-xs text-slate-500">{LEVELS.find((item) => item.value === level)?.desc}</p>
               </div>
 
-              <div className="grid gap-4 sm:grid-cols-2">
+              <div className="ui-form-grid">
                 <div className="space-y-2">
                   <label htmlFor="qr-size" className="ui-label text-sm">图片尺寸：{size}px</label>
                   <input
@@ -531,7 +544,7 @@ export default function QrCodePage() {
                   <input
                     id="qr-margin"
                     type="range"
-                    min={0}
+                    min={4}
                     max={8}
                     step={1}
                     value={margin}
@@ -607,6 +620,7 @@ export default function QrCodePage() {
                 className="ui-textarea"
                 aria-label="批量内容，每行一条"
               />
+              {batchError && <Notice tone="error">{batchError}</Notice>}
               <div className="flex flex-wrap gap-2">
                 <Button variant="secondary" size="sm" onClick={() => void buildBatch()} disabled={batchBusy || !batchText.trim()}>
                   {batchBusy ? "生成中…" : "生成合并图"}

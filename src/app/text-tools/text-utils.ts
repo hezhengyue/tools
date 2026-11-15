@@ -70,7 +70,11 @@ export function toHexBytes(text: string): string {
 }
 
 export function fromHexBytes(text: string): string {
-  const clean = text.replace(/0x/gi, "").replace(/[^0-9a-f]/gi, "");
+  // 只剥离「0x 前缀」，不能全局删 0x 子串（"10x2" 会被误当成 "12"）；
+  // 其它非十六进制字符必须报错，静默吞掉会给出看似成功但错误的结果。
+  const normalized = text.replace(/\b0x/gi, " ").replace(/[\s,;_-]/g, "");
+  if (/[^0-9a-f]/i.test(normalized)) throw new Error("包含非法十六进制字符");
+  const clean = normalized;
   if (clean.length % 2 !== 0) throw new Error("十六进制字符数必须为偶数");
   const bytes = new Uint8Array(clean.length / 2);
   for (let i = 0; i < bytes.length; i += 1) {
@@ -90,7 +94,14 @@ export function toBase64(text: string): string {
 }
 
 export function fromBase64(text: string): string {
-  const binary = atob(text.replace(/\s/g, ""));
+  // 与 /base64 页保持一致：剥离 data URL 前缀、识别 URL-safe、补齐缺失的 padding
+  const cleaned = text
+    .replace(/^data:[^,]*;base64,/i, "")
+    .replace(/\s+/g, "")
+    .replace(/-/g, "+")
+    .replace(/_/g, "/");
+  const padded = cleaned + "=".repeat((4 - (cleaned.length % 4)) % 4);
+  const binary = atob(padded);
   const bytes = Uint8Array.from(binary, (char) => char.charCodeAt(0));
   return new TextDecoder("utf-8", { fatal: true }).decode(bytes);
 }

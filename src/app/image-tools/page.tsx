@@ -496,6 +496,8 @@ export default function ImageToolsPage() {
   const [notice, setNotice] = useState("");
   const sourceRef = useRef<ImageSource | null>(null);
   const replaceRef = useRef<HTMLInputElement>(null);
+  /** 粘贴与选文件可能并发，只让最后一次加载的结果生效 */
+  const loadGenRef = useRef(0);
 
   useEffect(() => { sourceRef.current = source; }, [source]);
   useEffect(() => () => {
@@ -503,14 +505,23 @@ export default function ImageToolsPage() {
   }, []);
 
   const handleFile = useCallback(async (file: File) => {
+    const gen = ++loadGenRef.current;
     try {
       const next = await loadImageFile(file);
-      if (sourceRef.current) URL.revokeObjectURL(sourceRef.current.url);
+      // 后发起的加载已抢先完成，丢弃这次结果，别 revoke 掉正在显示的那张
+      if (gen !== loadGenRef.current) {
+        URL.revokeObjectURL(next.url);
+        return;
+      }
+      const previous = sourceRef.current;
       sourceRef.current = next;
       setSource(next);
+      if (previous && previous.url !== next.url) URL.revokeObjectURL(previous.url);
       setNotice("");
     } catch (cause) {
-      setNotice(cause instanceof Error ? cause.message : "图片加载失败");
+      if (gen === loadGenRef.current) {
+        setNotice(cause instanceof Error ? cause.message : "图片加载失败");
+      }
     }
   }, []);
 

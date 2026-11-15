@@ -71,11 +71,16 @@ function applyTheme(theme: Theme) {
   const dark = theme === "dark"
     || (theme === "system" && window.matchMedia("(prefers-color-scheme: dark)").matches);
   const root = document.documentElement;
+  // 切换期间禁用过渡，避免全站颜色被 150~500ms 插值出低对比度中间态
+  root.classList.add("theme-switching");
   root.classList.toggle("dark", dark);
   root.style.colorScheme = dark ? "dark" : "light";
   document.querySelector('meta[name="theme-color"]')?.setAttribute(
     "content", dark ? "#0b1120" : "#f8fafc"
   );
+  requestAnimationFrame(() => requestAnimationFrame(() => {
+    root.classList.remove("theme-switching");
+  }));
 }
 
 interface PreferencesValue {
@@ -143,10 +148,12 @@ export default function PreferencesProvider({ children }: { children: ReactNode 
     });
   }, []);
 
-  // 主题应用到 <html>，与 theme-init.js 使用同一套判断
+  // 首屏已由 layout.tsx 的 THEME_INIT 按存储值写好 class，这里必须等读到存储后再应用，
+  // 否则会先用默认 "system" 覆盖一次，用户偏好与系统偏好相反时出现反向主题闪烁。
   useEffect(() => {
+    if (!ready) return;
     applyTheme(theme);
-  }, [theme]);
+  }, [theme, ready]);
 
   useEffect(() => {
     if (theme !== "system") return;
@@ -185,15 +192,22 @@ export default function PreferencesProvider({ children }: { children: ReactNode 
     return () => window.removeEventListener("storage", onStorage);
   }, []);
 
-  // 只记录清单内的工具页，避免把首页 / 接口路由写进历史
+  // 只记录清单内的工具页，避免把首页 / 接口路由写进历史；
+  // 同时保证侧栏在切页后一定展开当前工具所属分类（手动折叠过也不会把当前项藏起来）。
   useEffect(() => {
     if (!ready) return;
-    const known = toolsConfig.some((group) => group.tools.some((tool) => tool.href === pathname));
-    if (!known) return;
+    const group = toolsConfig.find((item) => item.tools.some((tool) => tool.href === pathname));
+    if (!group) return;
+    const category = group.category;
     queueMicrotask(() => {
       setRecent((prev) => {
         if (prev[0] === pathname) return prev;
         return [pathname, ...prev.filter((href) => href !== pathname)].slice(0, MAX_RECENT);
+      });
+      setCollapsed((prev) => {
+        const list = prev.sidebar;
+        if (!list || !list.includes(category)) return prev;
+        return { ...prev, sidebar: list.filter((item) => item !== category) };
       });
     });
   }, [pathname, ready]);

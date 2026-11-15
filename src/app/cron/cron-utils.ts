@@ -76,8 +76,10 @@ export function parseCron(expr: string): CronFields {
     day: parseField(day, "day"),
     month: parseField(month, "month"),
     dow: parseField(dow, "dow"),
-    dayWild: day === "*" || day === "?",
-    dowWild: dow === "*" || dow === "?",
+    // Vixie cron 以「字段是否以 * 开头」判断是否受限：*/2 同样不算受限，
+    // 否则 `0 9 */2 * 1` 会走 OR 变成「所有奇数日 + 所有周一」。
+    dayWild: day.startsWith("*") || day === "?",
+    dowWild: dow.startsWith("*") || dow === "?",
   };
 }
 

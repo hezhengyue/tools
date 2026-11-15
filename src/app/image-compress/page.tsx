@@ -9,6 +9,7 @@ import {
 } from "lucide-react";
 import ToolShell from "@/components/ToolShell";
 import { Notice } from "@/components/ui/ToolUI";
+import { checkImageFile } from "@/lib/image-guard";
 
 // 支持的输出格式
 type OutputFormat = "webp" | "avif" | "jpeg";
@@ -88,7 +89,7 @@ function OptionCard({
       </div>
       <div className="flex-1 min-w-0">
         <div className="flex items-center gap-2">
-          <Icon size={16} className={disabled ? "text-slate-300" : checked ? "text-indigo-600" : "text-slate-500"} />
+          <Icon size={16} className={disabled ? "text-slate-500 opacity-50" : checked ? "text-indigo-600" : "text-slate-500"} />
           <span className={`font-medium ${disabled ? "text-slate-500" : checked ? "text-slate-800" : "text-slate-600"}`}>
             {title}
           </span>
@@ -209,6 +210,12 @@ export default function ImageCompressPage() {
         }
         if (file.size > MAX_FILE_BYTES) {
           failed.push(`${file.name}（超过 40MB）`);
+          continue;
+        }
+        // createImageBitmap 会先全量解码，必须先按文件头尺寸拦截「解码炸弹」
+        const guardError = await checkImageFile(file);
+        if (guardError) {
+          failed.push(`${file.name}（${guardError}）`);
           continue;
         }
         try {
@@ -443,6 +450,7 @@ export default function ImageCompressPage() {
                       onClick={() => removeFile(index)}
                       className="ui-icon-btn text-red-600 hover:bg-red-50"
                       title="移除"
+                      aria-label="移除该文件"
                     >
                       <Trash2 size={16} />
                     </button>

@@ -14,12 +14,17 @@ import SHA384 from "crypto-js/sha384";
 import SHA512 from "crypto-js/sha512";
 import Hex from "crypto-js/enc-hex";
 import Base64 from "crypto-js/enc-base64";
+// crypto-js 的 SHA3 用的是 Keccak padding(0x01)，不是 NIST SHA-3 的 0x06；
+// 标准 SHA3-256/512 必须用专门实现，否则与 openssl / node crypto 的结果不一致。
+import { sha3_256, sha3_512 } from "@noble/hashes/sha3.js";
 import ToolShell from "@/components/ToolShell";
 import { Notice, CopyButton } from "@/components/ui/ToolUI";
 
 // ============ 类型定义 ============
 
-type HashAlgorithm = "MD5" | "SHA1" | "SHA256" | "SHA224" | "SHA512" | "SHA384" | "SHA3" | "RIPEMD160";
+type HashAlgorithm =
+  | "MD5" | "SHA1" | "SHA256" | "SHA224" | "SHA512" | "SHA384"
+  | "SHA3-256" | "SHA3-512" | "Keccak-512" | "RIPEMD160";
 type Encoding = "Hex" | "Base64" | "Base64url" | "Bin";
 type WordArray = CryptoJS.lib.WordArray;
 
@@ -30,8 +35,10 @@ const ALGORITHMS: { label: string; value: HashAlgorithm; color: string }[] = [
   { label: "SHA256", value: "SHA256", color: "emerald" },
   { label: "SHA384", value: "SHA384", color: "teal" },
   { label: "SHA512", value: "SHA512", color: "violet" },
-  { label: "SHA3", value: "SHA3", color: "purple" },
-  { label: "RIPEMD160", value: "RIPEMD160", color: "pink" },
+  { label: "SHA3-256", value: "SHA3-256", color: "purple" },
+  { label: "SHA3-512", value: "SHA3-512", color: "violet" },
+  { label: "Keccak-512", value: "Keccak-512", color: "pink" },
+  { label: "RIPEMD160", value: "RIPEMD160", color: "cyan" },
 ];
 
 const ENCODINGS: { label: string; value: Encoding }[] = [
@@ -56,11 +63,27 @@ function formatWithEncoding(wordArray: WordArray, encoding: Encoding): string {
   }
 }
 
+const CRYPTOJS_ALGORITHMS = {
+  MD5, SHA1, SHA256, SHA224, SHA512, SHA384,
+  "Keccak-512": SHA3, RIPEMD160,
+} satisfies Record<string, (text: string) => WordArray>;
+
+function bytesToHex(bytes: Uint8Array): string {
+  let hex = "";
+  for (const byte of bytes) hex += byte.toString(16).padStart(2, "0");
+  return hex;
+}
+
 function hashText(algorithm: HashAlgorithm, text: string, encoding: Encoding = "Hex"): string {
-  const algorithms: Record<HashAlgorithm, (text: string) => WordArray> = {
-    MD5, SHA1, SHA256, SHA224, SHA512, SHA384, SHA3, RIPEMD160,
-  };
-  return formatWithEncoding(algorithms[algorithm](text), encoding);
+  let wordArray: WordArray;
+  if (algorithm === "SHA3-256" || algorithm === "SHA3-512") {
+    const bytes = new TextEncoder().encode(text);
+    const digest = algorithm === "SHA3-256" ? sha3_256(bytes) : sha3_512(bytes);
+    wordArray = Hex.parse(bytesToHex(digest));
+  } else {
+    wordArray = CRYPTOJS_ALGORITHMS[algorithm](text);
+  }
+  return formatWithEncoding(wordArray, encoding);
 }
 
 // ============ 核心功能组件 ============
@@ -180,9 +203,13 @@ function HashTextCore() {
         })}
       </div>
 
+      <Notice tone="tip" className="mt-6">
+        SHA3-256 / SHA3-512 是 NIST 标准 SHA-3（可与 <code className="font-mono">openssl dgst -sha3-256</code> 校验）；Keccak-512 是旧版 Keccak 填充，与 SHA-3 结果不同，主要用于以太坊等场景。
+      </Notice>
+
       {/* 空状态提示 */}
       {!inputText && (
-        <Notice tone="tip" className="mt-6">
+        <Notice tone="tip" className="mt-3">
           在上方输入文本，即可实时生成各种哈希值。所有计算均在本地完成，数据不会上传。
         </Notice>
       )}

@@ -36,6 +36,10 @@ export default function UnitConverterPage() {
     : 0;
   const leftValue = side === "left" ? raw : formatNumber(leftUnit.fromBase(baseValue));
   const rightValue = side === "right" ? raw : formatNumber(rightUnit.fromBase(baseValue));
+  // 从右侧输入时 raw 是右单位的值，等式左右必须随之对调
+  const conversionSummary = side === "left"
+    ? `${raw} ${leftUnit.label} = ${rightValue} ${rightUnit.label}`
+    : `${leftValue} ${leftUnit.label} = ${raw} ${rightUnit.label}`;
 
   const baseResult = useMemo(() => {
     try {
@@ -207,7 +211,7 @@ export default function UnitConverterPage() {
                 onChange={(next) => setFromBase(Number(next))}
               />
             </div>
-            <div className="mt-4 grid grid-cols-1 sm:grid-cols-2 gap-x-8 gap-y-2">
+            <div className="ui-form-grid mt-4">
               {baseResult.common.map((item) => (
                 <KeyRow key={item.base} label={BASE_NAMES[item.base]} value={item.value} mono />
               ))}
@@ -222,7 +226,7 @@ export default function UnitConverterPage() {
       <div className="mt-5">
         <OutputBlock
           label="当前换算摘要"
-          value={`${valid ? raw : "—"} ${leftUnit.label} = ${rightValue} ${rightUnit.label}
+          value={`${valid ? conversionSummary : `— ${leftUnit.label} = — ${rightUnit.label}`}
 ${baseText} (${fromBase} 进制) = ${baseResult.main || "—"} (${toBase} 进制)`}
           filename="unit-converter.txt"
           textareaClassName="text-xs"

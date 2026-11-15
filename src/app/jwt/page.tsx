@@ -68,8 +68,14 @@ function parseJwt(token: string): Parsed {
   }
 }
 
-function toSeconds(value: unknown) {
-  return typeof value === "number" && Number.isFinite(value) ? value : null;
+function toSeconds(value: unknown): number | null {
+  // 有些实现把 exp/nbf/iat 写成数字字符串，不能因此判成「未声明」
+  if (typeof value === "number") return Number.isFinite(value) ? value : null;
+  if (typeof value === "string" && value.trim()) {
+    const parsed = Number(value);
+    return Number.isFinite(parsed) ? parsed : null;
+  }
+  return null;
 }
 
 function formatDateTime(seconds: number | null) {
@@ -120,6 +126,8 @@ export default function JwtPage() {
   const error = parsed && !parsed.ok ? parsed.error : "";
 
   const exp = result ? toSeconds(result.payload.exp) : null;
+  // 声明了 exp 但格式非法 ≠ 永不过期，两者必须区分
+  const expInvalid = !!result && "exp" in result.payload && exp === null;
   const iat = result ? toSeconds(result.payload.iat) : null;
   const nbf = result ? toSeconds(result.payload.nbf) : null;
   const alg = result ? stringify(result.header.alg ?? "（未提供）") : "";
@@ -183,6 +191,7 @@ export default function JwtPage() {
             <div className="flex flex-wrap items-center gap-2 p-4 bg-slate-50 border border-slate-200 rounded-2xl">
               <Badge className="bg-indigo-50 text-indigo-700"><KeyRound size={13} className="inline mr-1" />alg: {alg}</Badge>
               <Badge className="bg-slate-100 text-slate-700">typ: {stringify(result.header.typ ?? "（未提供）")}</Badge>
+              <Badge className="bg-amber-50 text-amber-700"><ShieldAlert size={13} className="inline mr-1" />未验证签名</Badge>
               {expired !== null && (
                 <Badge className={expired ? "bg-red-50 text-red-700" : "bg-emerald-50 text-emerald-700"}>
                   <Clock3 size={13} className="inline mr-1" />
@@ -190,8 +199,16 @@ export default function JwtPage() {
                 </Badge>
               )}
               {notYetValid && <Badge className="bg-amber-50 text-amber-700">尚未到 nbf 生效时间</Badge>}
-              {exp === null && <Badge className="bg-slate-100 text-slate-600">未声明 exp，永不过期</Badge>}
+              {exp === null && !expInvalid && <Badge className="bg-slate-100 text-slate-600">未声明 exp</Badge>}
+              {expInvalid && <Badge className="bg-red-50 text-red-700">exp 格式非法</Badge>}
             </div>
+
+            {!result.signature && (
+              <Notice tone="error">
+                <ShieldAlert size={15} className="inline mr-1" />
+                签名段为空：这不是一个有效的 JWT，任何人都能伪造其内容，请勿作为身份依据。
+              </Notice>
+            )}
 
             {alg.toLowerCase() === "none" && (
               <Notice tone="error">

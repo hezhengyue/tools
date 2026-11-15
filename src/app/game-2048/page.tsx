@@ -165,6 +165,16 @@ function Tile({ value }: { value: number }) {
 
 /* ================================================================ */
 
+interface GameState {
+  board: number[];
+  score: number;
+  best: number;
+  status: "playing" | "over";
+  achieved: boolean;
+  history: Snapshot[];
+  stamps: number[];
+}
+
 export default function Game2048Page() {
   const [board, setBoard] = useState<number[]>(() => Array<number>(CELLS).fill(0));
   const [score, setScore] = useState(0);
@@ -177,86 +187,121 @@ export default function Game2048Page() {
 
   const touchStart = useRef<{ x: number; y: number } | null>(null);
 
+  // React state 只作渲染镜像；真正的当前局面放在 ref 里同步更新。
+  // 否则同一帧内连续两个方向键会命中同一个旧闭包，导致丢步、得分与撤销链错乱。
+  const stateRef = useRef<GameState>({
+    board: Array<number>(CELLS).fill(0),
+    score: 0,
+    best: 0,
+    status: "playing",
+    achieved: false,
+    history: [],
+    stamps: Array<number>(CELLS).fill(0),
+  });
+  const commit = useCallback((next: GameState) => {
+    stateRef.current = next;
+    setBoard(next.board);
+    setScore(next.score);
+    setBest(next.best);
+    setStatus(next.status);
+    setAchieved(next.achieved);
+    setHistory(next.history);
+    setStamps(next.stamps);
+  }, []);
+
   // 首帧渲染空盘（服务端与客户端一致），挂载后再随机开局
   useEffect(() => {
     queueMicrotask(() => {
       const start = createStart();
-      setBoard(start.board);
-      setStamps(() => {
-        const next = Array<number>(CELLS).fill(0);
-        for (const index of start.indices) next[index] = 1;
-        return next;
-      });
+      const stamps = Array<number>(CELLS).fill(0);
+      for (const index of start.indices) stamps[index] = 1;
+      let best = 0;
       try {
         const raw = window.localStorage.getItem(BEST_KEY);
         const parsed = raw === null ? 0 : Number(raw);
-        if (Number.isFinite(parsed) && parsed > 0) setBest(parsed);
+        if (Number.isFinite(parsed) && parsed > 0) best = parsed;
       } catch {
         // 隐私模式禁用存储时忽略，本局仍可正常玩
       }
+      commit({
+        ...stateRef.current,
+        board: start.board,
+        stamps,
+        best,
+      });
     });
-  }, []);
+  }, [commit]);
 
   const applyMove = useCallback(
     (direction: Direction) => {
-      if (status !== "playing" || !board.some((value) => value !== 0)) return;
+      // 从同步镜像读取当前局面，连续按键不会基于同一份旧棋盘各算一次
+      const current = stateRef.current;
+      if (current.status !== "playing" || !current.board.some((value) => value !== 0)) return;
 
-      const result = moveBoard(board, direction);
+      const result = moveBoard(current.board, direction);
       if (!result.moved) return;
 
       const spawned = spawn(result.board);
       const nextBoard = spawned ? spawned.board : result.board;
-      const nextScore = score + result.gained;
-
-      setHistory((prev) => [...prev.slice(-9), { board, score, achieved }]);
-      setBoard(nextBoard);
-      setScore(nextScore);
-      setStamps((prev) => {
-        const next = [...prev];
-        for (const index of result.merged) next[index] += 1;
-        if (spawned) next[spawned.index] += 1;
-        return next;
-      });
-
-      if (nextScore > best) {
-        setBest(nextScore);
+      const nextScore = current.score + result.gained;
+      const nextBest = Math.max(current.best, nextScore);
+      if (nextBest > current.best) {
         try {
-          window.localStorage.setItem(BEST_KEY, String(nextScore));
+          window.localStorage.setItem(BEST_KEY, String(nextBest));
         } catch {
           // 写不进去不影响本局
         }
       }
-      if (!achieved && nextBoard.some((value) => value >= 2048)) setAchieved(true);
-      if (!canMove(nextBoard)) setStatus("over");
+      const stamps = [...current.stamps];
+      for (const index of result.merged) stamps[index] += 1;
+      if (spawned) stamps[spawned.index] += 1;
+
+      commit({
+        board: nextBoard,
+        score: nextScore,
+        best: nextBest,
+        status: canMove(nextBoard) ? "playing" : "over",
+        achieved: current.achieved || nextBoard.some((value) => value >= 2048),
+        history: [
+          ...current.history.slice(-9),
+          { board: current.board, score: current.score, achieved: current.achieved },
+        ],
+        stamps,
+      });
     },
-    [achieved, best, board, score, status]
+    [commit]
   );
 
   const undo = useCallback(() => {
-    const last = history[history.length - 1];
+    const current = stateRef.current;
+    const last = current.history[current.history.length - 1];
     if (!last) return;
-    setBoard(last.board);
-    setScore(last.score);
-    setAchieved(last.achieved);
-    setStatus("playing");
-    setHistory((prev) => prev.slice(0, -1));
-    // 撤销不播动画，整盘静默回退
-    setStamps(Array<number>(CELLS).fill(0));
-  }, [history]);
+    commit({
+      ...current,
+      board: last.board,
+      score: last.score,
+      achieved: last.achieved,
+      status: "playing",
+      history: current.history.slice(0, -1),
+      // 撤销不播动画，整盘静默回退
+      stamps: Array<number>(CELLS).fill(0),
+    });
+  }, [commit]);
 
   const newGame = useCallback(() => {
     const start = createStart();
-    setBoard(start.board);
-    setScore(0);
-    setStatus("playing");
-    setAchieved(false);
-    setHistory([]);
-    setStamps(() => {
-      const next = Array<number>(CELLS).fill(0);
-      for (const index of start.indices) next[index] = 1;
-      return next;
+    const stamps = Array<number>(CELLS).fill(0);
+    for (const index of start.indices) stamps[index] = 1;
+    commit({
+      ...stateRef.current,
+      board: start.board,
+      score: 0,
+      status: "playing",
+      achieved: false,
+      history: [],
+      stamps,
     });
-  }, []);
+  }, [commit]);
 
   // 方向键 / WASD；阻止方向键把页面滚走
   useEffect(() => {
@@ -277,6 +322,11 @@ export default function Game2048Page() {
     const onKeyDown = (event: KeyboardEvent) => {
       const direction = keyMap[event.key];
       if (!direction) return;
+      // 命令面板 / 任何输入框获得焦点时不驱动游戏，也不吞掉按键
+      const active = document.activeElement;
+      if (active instanceof HTMLElement
+        && (active.isContentEditable || /^(INPUT|TEXTAREA|SELECT)$/.test(active.tagName))) return;
+      if (event.metaKey || event.ctrlKey || event.altKey) return;
       event.preventDefault();
       applyMove(direction);
     };

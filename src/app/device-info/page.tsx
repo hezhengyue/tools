@@ -45,51 +45,50 @@ interface DeviceInfo {
 }
 
 function parseBrowser(ua: string) {
-  if (ua.includes("Edg/")) {
-    return {
-      name: "Microsoft Edge",
-      version: ua.match(/Edg\/([\d.]+)/)?.[1] || "-",
-    };
+  // 各类 Chromium 分支 / iOS 版浏览器必须在通用 "Chrome/"、"Safari/" 之前判断，
+  // 否则 Opera、Samsung Internet、iOS 版 Chrome 都会被误报成 Chrome 或 Safari。
+  const brands: [RegExp, string][] = [
+    [/OPR\/([\d.]+)/, "Opera"],
+    [/EdgiOS\/([\d.]+)/, "Edge (iOS)"],
+    [/CriOS\/([\d.]+)/, "Chrome (iOS)"],
+    [/FxiOS\/([\d.]+)/, "Firefox (iOS)"],
+    [/EdgA?\/([\d.]+)/, "Microsoft Edge"],
+    [/SamsungBrowser\/([\d.]+)/, "Samsung Internet"],
+    [/QQBrowser\/([\d.]+)/, "QQ 浏览器"],
+    [/MicroMessenger\/([\d.]+)/, "微信内置浏览器"],
+    [/Electron\/([\d.]+)/, "Electron"],
+  ];
+  for (const [pattern, name] of brands) {
+    const match = ua.match(pattern);
+    if (match) return { name, version: match[1] || "-" };
   }
 
   if (ua.includes("Chrome/")) {
-    return {
-      name: "Google Chrome",
-      version: ua.match(/Chrome\/([\d.]+)/)?.[1] || "-",
-    };
+    return { name: "Google Chrome", version: ua.match(/Chrome\/([\d.]+)/)?.[1] || "-" };
   }
-
   if (ua.includes("Firefox/")) {
-    return {
-      name: "Mozilla Firefox",
-      version: ua.match(/Firefox\/([\d.]+)/)?.[1] || "-",
-    };
+    return { name: "Mozilla Firefox", version: ua.match(/Firefox\/([\d.]+)/)?.[1] || "-" };
   }
-
-  if (ua.includes("Safari/") && !ua.includes("Chrome")) {
-    return {
-      name: "Safari",
-      version: ua.match(/Version\/([\d.]+)/)?.[1] || "-",
-    };
+  if (ua.includes("Safari/")) {
+    return { name: "Safari", version: ua.match(/Version\/([\d.]+)/)?.[1] || "-" };
   }
-
-  return {
-    name: navigator.appName,
-    version: "-",
-  };
+  return { name: "未知浏览器", version: "-" };
 }
 
 function parseOS(ua: string) {
   // iOS 的 UA 含 "like Mac OS X"，必须先于 macOS 判断，否则一律误报成 macOS
   if (/iPhone|iPad|iPod/.test(ua)) return "iOS";
-  // iPadOS 13+ 伪装成 Mac，但带 Mobile 标识
-  if (ua.includes("Mac") && /Mobile\/\w+/.test(ua)) return "iPadOS";
   if (ua.includes("Android")) return "Android";
+  if (ua.includes("CrOS")) return "ChromeOS";
   if (ua.includes("Windows")) return "Windows";
-  if (ua.includes("Mac")) return "macOS";
+  if (ua.includes("Mac")) {
+    // iPadOS 13+ 伪装成 Mac：带 Mobile 标识或多点触控
+    if (/Mobile\/\w+/.test(ua)) return "iPadOS";
+    if (typeof navigator !== "undefined" && navigator.maxTouchPoints > 1) return "iPadOS";
+    return "macOS";
+  }
   if (ua.includes("Linux")) return "Linux";
-
-  return "Unknown";
+  return "未知系统";
 }
 
 function getGpuInfo() {

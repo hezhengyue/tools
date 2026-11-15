@@ -90,10 +90,23 @@ function buildToc(source: string): TocItem[] {
 }
 
 const SANITIZE_CONFIG = {
-  ADD_ATTR: ["id", "target"],
   FORBID_TAGS: ["script", "iframe", "object", "embed", "form", "style"],
   FORBID_ATTR: ["style", "onerror", "onload"],
 };
+
+let purifyHooksReady = false;
+/** DOMPurify 默认允许 target / id，需要补上 rel 并限制 id，防止反向标签劫持与大纲 id 冲突 */
+function ensurePurifyHooks() {
+  if (purifyHooksReady) return;
+  DOMPurify.addHook("afterSanitizeAttributes", (node) => {
+    if (node.nodeName === "A" && node.getAttribute("target") === "_blank") {
+      node.setAttribute("rel", "noopener noreferrer");
+    }
+    const id = node.getAttribute("id");
+    if (id && !/^md-heading-\d+$/.test(id)) node.removeAttribute("id");
+  });
+  purifyHooksReady = true;
+}
 
 export default function MarkdownPage() {
   const [mode, setMode] = useState<Mode>("preview");
@@ -112,6 +125,7 @@ export default function MarkdownPage() {
   useEffect(() => {
     queueMicrotask(() => {
       try {
+        ensurePurifyHooks();
         if (mode === "preview") {
           const engine = new Marked({ gfm, breaks });
           if (!allowHtml) {
@@ -125,6 +139,26 @@ export default function MarkdownPage() {
           const service = new TurndownService({
             headingStyle: "atx", codeBlockStyle: "fenced", bulletListMarker: "-",
             emDelimiter: "*", strongDelimiter: "**",
+          });
+          // 默认规则不认 GFM 常见结构，补几条常用转换，避免删除线/语言标注被静默丢弃
+          service.addRule("strikethrough", {
+            filter: ["del", "s"],
+            replacement: (content) => `~~${content}~~`,
+          });
+          service.addRule("fencedCodeWithLang", {
+            filter: (node) => node.nodeName === "PRE"
+              && node.firstElementChild?.nodeName === "CODE",
+            replacement: (_content, node) => {
+              const code = node.firstElementChild as HTMLElement;
+              const lang = (code.className || "").match(/language-([\w+-]+)/)?.[1] || "";
+              const body = (code.textContent || "").replace(/\n$/, "");
+              return `\n\n\`\`\`${lang}\n${body}\n\`\`\`\n\n`;
+            },
+          });
+          service.addRule("taskListItem", {
+            filter: (node) => node.nodeName === "INPUT"
+              && (node as HTMLInputElement).type === "checkbox",
+            replacement: (_content, node) => (node as HTMLInputElement).checked ? "[x] " : "[ ] ",
           });
           setResultMd(service.turndown(clean));
         }

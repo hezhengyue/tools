@@ -36,8 +36,11 @@ export default function HomeCategories() {
               </button>
             </h2>
 
-            {isExpanded && (
-              <div id={`category-grid-${index}`} className="ui-card-grid">
+            {/* 网格常驻 DOM，折叠时只隐藏，保证 aria-controls 始终有目标 */}
+            <div
+              id={`category-grid-${index}`}
+              className={isExpanded ? "ui-card-grid" : "ui-card-grid hidden"}
+            >
                 {category.tools.map((tool) => (
                   <Link
                     key={tool.href}
@@ -45,7 +48,7 @@ export default function HomeCategories() {
                     className="group block p-5 md:p-6 bg-white rounded-2xl border border-slate-200/60 shadow-sm hover:shadow-xl hover:-translate-y-1 transition-all duration-300 relative overflow-hidden"
                   >
                     <div className="absolute top-0 right-0 p-4 md:p-6 opacity-0 group-hover:opacity-100 transition-opacity">
-                      <ArrowRight className="text-slate-300 group-hover:text-indigo-500 transition-colors w-4 h-4 md:w-5 md:h-5" />
+                      <ArrowRight className="text-slate-500 group-hover:text-indigo-500 transition-colors w-4 h-4 md:w-5 md:h-5" />
                     </div>
                     <div className="w-12 h-12 md:w-14 md:h-14 bg-indigo-50 text-indigo-600 rounded-2xl flex items-center justify-center mb-4 md:mb-6 shadow-inner">
                       <tool.icon size={24} strokeWidth={1.5} />
@@ -58,8 +61,7 @@ export default function HomeCategories() {
                     </p>
                   </Link>
                 ))}
-              </div>
-            )}
+            </div>
           </section>
         );
       })}

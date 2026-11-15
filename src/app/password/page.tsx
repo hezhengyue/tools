@@ -239,7 +239,7 @@ function PasswordGeneratorCore() {
     <>
       {/* 密码展示 */}
       <div className="relative mb-6 group">
-        <div className="w-full bg-slate-50 border border-slate-200 rounded-2xl p-6 text-center break-all text-2xl md:text-3xl font-mono text-slate-800 min-h-[100px] flex items-center justify-center shadow-inner relative overflow-hidden">
+        <div className="w-full bg-slate-50 border border-slate-200 rounded-2xl p-6 text-center break-all text-2xl md:text-3xl font-mono text-slate-800 flex items-center justify-center shadow-inner relative overflow-hidden">
           {password || "请至少选择一种字符类型"}
 
           {copied && (

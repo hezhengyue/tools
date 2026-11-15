@@ -193,10 +193,58 @@ function toLineColumn(text: string, index: number): { line: number; column: numb
   return { line: before.split("\n").length, column: index - before.lastIndexOf("\n") };
 }
 
+const NUMBER_TOKEN = /-?\d+(?:\.\d+)?(?:[eE][+-]?\d+)?/y;
+
+/**
+ * JSON.parse → JSON.stringify 会静默改写超出 2^53 的整数（12345678901234567890
+ * 变成 12345678901234567000）并把 1e400 变成 null。格式化工具不能悄悄给出错误结果，
+ * 因此在原始文本里预检数字字面量（跳过字符串内部），命中就拒绝转换并说明原因。
+ */
+function findLossyNumber(text: string): string | null {
+  let inString = false;
+  let escaped = false;
+  for (let i = 0; i < text.length; i += 1) {
+    const ch = text[i];
+    if (inString) {
+      if (escaped) escaped = false;
+      else if (ch === "\\") escaped = true;
+      else if (ch === '"') inString = false;
+      continue;
+    }
+    if (ch === '"') {
+      inString = true;
+      continue;
+    }
+    if (ch !== "-" && (ch < "0" || ch > "9")) continue;
+    NUMBER_TOKEN.lastIndex = i;
+    const match = NUMBER_TOKEN.exec(text);
+    if (!match) continue;
+    const token = match[0];
+    i += token.length - 1;
+    const value = Number(token);
+    if (!Number.isFinite(value)) return token;
+    if (/^-?\d+$/.test(token) && !Number.isSafeInteger(value)) return token;
+  }
+  return null;
+}
+
 function parseJson(text: string): ParseState {
   if (!text.trim()) return { ok: false, filled: false };
   try {
-    return { ok: true, value: JSON.parse(text) as unknown, filled: true };
+    const value = JSON.parse(text) as unknown;
+    const lossy = findLossyNumber(text);
+    if (lossy) {
+      return {
+        ok: false,
+        filled: true,
+        error: {
+          message: `数字 ${lossy} 超出 JavaScript 安全范围，重新序列化会静默改写数值，已阻止输出。请改用字符串保存该值。`,
+          line: 0,
+          column: 0,
+        },
+      };
+    }
+    return { ok: true, value, filled: true };
   } catch (err) {
     const raw = err instanceof Error ? err.message : "无法解析";
     // V8 的报错尾巴很长，去掉 "in JSON at position 12 (line 1 column 13)"
@@ -315,7 +363,7 @@ const VALUE_CLASS: Record<string, string> = {
   string: "text-emerald-600",
   number: "text-blue-600",
   boolean: "text-purple-600",
-  null: "text-slate-400",
+  null: "text-slate-500",
 };
 
 function previewOf(value: unknown): string {
@@ -365,7 +413,7 @@ function JsonNode({
         >
           {text}
         </button>
-        {!isLast && <span className="text-slate-400">,</span>}
+        {!isLast && <span className="text-slate-500">,</span>}
       </div>
     );
   }
@@ -382,7 +430,7 @@ function JsonNode({
           onClick={() => setOpen((prev) => !prev)}
           aria-expanded={open}
           aria-label={open ? "折叠" : "展开"}
-          className="w-3 shrink-0 text-slate-400 hover:text-indigo-600"
+          className="w-3 shrink-0 text-slate-500 hover:text-indigo-600"
         >
           {open ? <ChevronDown size={12} /> : <ChevronRight size={12} />}
         </button>
@@ -395,7 +443,7 @@ function JsonNode({
           {previewOf(value)}
           {entries.length === 0 && (isArray ? "[]" : "{}")}
         </button>
-        {!isLast && <span className="text-slate-400">,</span>}
+        {!isLast && <span className="text-slate-500">,</span>}
       </div>
       {open && entries.length > 0 && (
         <div className="ml-1.5 pl-3 border-l border-slate-200">

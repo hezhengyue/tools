@@ -26,7 +26,7 @@ export default function HomeSearch() {
           搜索工具、功能或关键词…
         </span>
         <ShortcutHint />
-        <ArrowRight className="w-4 h-4 shrink-0 text-slate-300 group-hover:text-indigo-500 transition-colors" />
+        <ArrowRight className="w-4 h-4 shrink-0 text-slate-500 group-hover:text-indigo-500 transition-colors" />
       </button>
     </header>
   );

@@ -70,16 +70,16 @@ export default function RegexPage() {
       worker?.terminate();
     };
 
-    if (!pattern) {
-      // 放到微任务里，避免在 effect 体内同步 setState 触发级联渲染
-      queueMicrotask(() => {
-        if (!cancelled) {
-          setResult(null);
-          setTimedOut(false);
-        }
-      });
-      return cleanup;
-    }
+    // 依赖一变就作废旧结果：否则防抖 + Worker 计算期间会用「新 text」配「旧 matches」
+    // 的 index/value 切片，高亮整体错位，替换结果与命中数也是上一段文本的。
+    queueMicrotask(() => {
+      if (!cancelled) {
+        setResult(null);
+        setTimedOut(false);
+      }
+    });
+
+    if (!pattern) return cleanup;
 
     // 输入防抖 + 独立线程 + 超时终止，三者一起杜绝灾难性回溯锁死页面
     timer = setTimeout(() => {

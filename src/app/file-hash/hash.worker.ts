@@ -50,6 +50,8 @@ self.onmessage = async (event: MessageEvent<HashRequest>) => {
     let offset = 0;
     while (offset < file.size) {
       const buffer = await file.slice(offset, offset + CHUNK).arrayBuffer();
+      // 文件在计算过程中被外部截断时 slice 可能返回 0 字节，不防护会死循环刷进度
+      if (buffer.byteLength === 0) throw new Error("文件读取中断，请重新选择文件");
       const wordArray = toWordArray(buffer);
       for (const algo of HASH_ALGOS) hashers[algo].update(wordArray);
       offset += buffer.byteLength;

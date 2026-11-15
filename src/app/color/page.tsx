@@ -6,6 +6,7 @@ import type { ChangeEvent, DragEvent } from "react";
 import { Contrast, Droplet, ImagePlus, Palette, Pipette, Sparkles, Trash2 } from "lucide-react";
 import ToolShell from "@/components/ToolShell";
 import { Badge, Button, CopyButton, Notice, Segmented } from "@/components/ui/ToolUI";
+import { checkImageFile } from "@/lib/image-guard";
 import {
   contrastRatio,
   extractPalette,
@@ -101,6 +102,11 @@ export default function ColorPage() {
       setPaletteError("图片请控制在 15MB 以内");
       return;
     }
+    const guardError = await checkImageFile(file);
+    if (guardError) {
+      setPaletteError(guardError);
+      return;
+    }
     let bitmap: ImageBitmap | null = null;
     try {
       bitmap = await createImageBitmap(file);
@@ -189,7 +195,7 @@ export default function ColorPage() {
               />
             ))}
           </div>
-          {!rgb && <Notice tone="error">无法识别色值。支持 <code className="font-mono">#ABC</code>、<code className="font-mono">#AABBCC</code> 或 <code className="font-mono">rgb(1, 2, 3)</code>。</Notice>}
+          {!rgb && <Notice tone="error">无法识别色值。支持 <code className="font-mono">#ABC</code>、<code className="font-mono">#AABBCC</code> 或 <code className="font-mono">rgb(1, 2, 3)</code>；带透明度的 <code className="font-mono">rgba()</code> 与颜色名不支持，请先转成 HEX。</Notice>}
           {dropStatus && <Notice tone="info">{dropStatus}</Notice>}
         </div>
 
@@ -202,7 +208,7 @@ export default function ColorPage() {
               <span className="text-2xl font-mono font-semibold tracking-wide" style={{ color: readableText(rgb) }}>{hex}</span>
             </div>
 
-            <div className="grid gap-2 sm:grid-cols-2">
+            <div className="ui-form-grid gap-2">
               {formats.map((format) => <ColorRow key={format.label} {...format} />)}
             </div>
 
@@ -224,7 +230,7 @@ export default function ColorPage() {
                     />
                   </div>
                 </div>
-                <div className="flex-1 min-w-[180px] p-4 rounded-xl border border-slate-200" style={{ backgroundColor: contrastBg }}>
+                <div className="flex-1 min-w-[180px] p-4 rounded-xl border border-slate-200" style={{ backgroundColor: bgHex }}>
                   <div className="text-base font-semibold" style={{ color: hex }}>示例文字 Aa 中文 123</div>
                 </div>
               </div>

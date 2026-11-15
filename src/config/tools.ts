@@ -189,7 +189,7 @@ export const toolsConfig: ToolCategory[] = [
         name: "设备检测",
         href: "/device-info",
         icon: MonitorSmartphone,
-        desc: "查看当前公网IP、浏览器、系统、GPU、屏幕等信息。",
+        desc: "查看浏览器、系统、GPU、屏幕等设备信息，公网 IP 请用 IP 地理位置工具。",
         footer: { mode: "local", subject: "设备信息" }
       },
       {

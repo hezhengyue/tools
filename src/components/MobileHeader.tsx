@@ -1,6 +1,6 @@
 // src/components/MobileHeader.tsx
 // 移动端顶栏 + 导航抽屉。抽屉按模态对话框处理：Esc 关闭、焦点循环、
-// 背景滚动锁定；点抽屉内任意工具链接后自动关闭（事件委托，新增链接无需再改）。
+// 背景滚动锁定；点抽屉内任意工具链接或打开命令面板后自动关闭。
 "use client";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { usePathname } from "next/navigation";
@@ -10,15 +10,7 @@ import ThemeToggle from "./ThemeToggle";
 import Link from "next/link";
 import { SITE_NAME } from "@/config/site";
 import { openCommandPalette, toolsByHref } from "@/config/search";
-
-const FOCUSABLE = [
-  "a[href]",
-  "button:not([disabled])",
-  "input:not([disabled])",
-  "select:not([disabled])",
-  "textarea:not([disabled])",
-  '[tabindex]:not([tabindex="-1"])',
-].join(",");
+import { trapTabFocus } from "./ui/focus";
 
 export default function MobileHeader() {
   const pathname = usePathname();
@@ -29,10 +21,19 @@ export default function MobileHeader() {
 
   const currentName = toolsByHref.get(pathname)?.name ?? SITE_NAME;
 
+  /** 被命令面板顶掉时只收起抽屉，不抢回焦点（由面板接管） */
+  const dismissDrawer = useCallback(() => setShowSidebar(false), []);
   const closeDrawer = useCallback(() => {
     setShowSidebar(false);
     queueMicrotask(() => triggerRef.current?.focus());
   }, []);
+
+  // 命令面板与抽屉都是 aria-modal，同时存在会互相劫持 Tab / Esc。
+  // 所有打开面板的入口最终都派发 tools:open-search，这里统一让位。
+  useEffect(() => {
+    window.addEventListener("tools:open-search", dismissDrawer);
+    return () => window.removeEventListener("tools:open-search", dismissDrawer);
+  }, [dismissDrawer]);
 
   useEffect(() => {
     if (!showSidebar) return;
@@ -49,25 +50,7 @@ export default function MobileHeader() {
         closeDrawer();
         return;
       }
-      if (event.key !== "Tab") return;
-      const drawer = drawerRef.current;
-      if (!drawer) return;
-      const nodes = Array.from(drawer.querySelectorAll<HTMLElement>(FOCUSABLE))
-        .filter((node) => node.offsetParent !== null);
-      if (nodes.length === 0) return;
-      const first = nodes[0];
-      const last = nodes[nodes.length - 1];
-      const active = document.activeElement;
-      if (!drawer.contains(active)) {
-        event.preventDefault();
-        first.focus();
-      } else if (event.shiftKey && active === first) {
-        event.preventDefault();
-        last.focus();
-      } else if (!event.shiftKey && active === last) {
-        event.preventDefault();
-        first.focus();
-      }
+      trapTabFocus(event, drawerRef.current);
     };
 
     window.addEventListener("keydown", onKeyDown);

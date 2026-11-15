@@ -80,7 +80,9 @@ self.onmessage = function (e: MessageEvent<DiffRequest>) {
 
     const stats = diffParts.reduce(
       (acc, part) => {
-        const len = part.count ?? part.value.length;
+        // count 是 token 数（行/词/字符随 mode 变化），三种模式统一按字符数统计，
+        // 否则 UI 的「+N 新增」会在按行/按字符之间含义漂移
+        const len = part.value.length;
         if (part.added) acc.added += len;
         else if (part.removed) acc.removed += len;
         else acc.unchanged += len;

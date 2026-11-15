@@ -61,9 +61,25 @@ function formatRelative(date: Date, base: number): string {
   return future ? `${text}后` : `${text}前`;
 }
 
-/** 把输入的时间戳归一到毫秒：≤ 1e11 视为秒 */
-function toMs(raw: number): number {
-  return Math.abs(raw) < 1e11 ? raw * 1000 : raw;
+type UnitMode = "auto" | "sec" | "ms";
+
+/**
+ * 旧规则「abs < 1e11 视为秒」会把 1970-01-01～1973-03-03 的合法毫秒戳
+ * （如 86400000）误当成秒再乘 1000。改为按量级判断，并允许用户显式指定单位；
+ * 1e8~1e11 是秒/毫秒重叠区间，自动模式给出提示而不是静默猜错。
+ */
+function resolveUnit(raw: number, mode: UnitMode): {
+  unit: string; multiplier: number; ambiguous: boolean;
+} {
+  if (mode === "sec") return { unit: "秒", multiplier: 1000, ambiguous: false };
+  if (mode === "ms") return { unit: "毫秒", multiplier: 1, ambiguous: false };
+  const abs = Math.abs(raw);
+  if (abs >= 1e11) return { unit: "毫秒", multiplier: 1, ambiguous: false };
+  return { unit: "秒", multiplier: 1000, ambiguous: abs >= 1e8 };
+}
+
+function toMs(raw: number, unit: ReturnType<typeof resolveUnit>): number {
+  return raw * unit.multiplier;
 }
 
 /** datetime-local 值（本地时间）→ Date */
@@ -99,6 +115,7 @@ function TimestampCore() {
   const [now, setNow] = useState(0);
   const [raw, setRaw] = useState("");
   const [dateInput, setDateInput] = useState("");
+  const [unitMode, setUnitMode] = useState<UnitMode>("auto");
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   // 实时时钟：首帧用微任务填充，避免在 effect 里同步 setState
@@ -116,28 +133,42 @@ function TimestampCore() {
   /** 输入解析：纯数字按时间戳，其它尝试按日期字符串 */
   const parsedTs = useMemo(() => {
     const text = raw.trim();
-    if (!text) return { date: null as Date | null, unit: "", error: "" };
+    if (!text) return { date: null as Date | null, unit: "", error: "", ambiguous: false, multiplier: 1 };
     if (/^-?\d+(\.\d+)?$/.test(text)) {
       const num = Number(text);
-      const date = new Date(toMs(num));
-      if (Number.isNaN(date.getTime())) return { date: null, unit: "", error: "这个时间戳超出范围了" };
-      return { date, unit: Math.abs(num) < 1e11 ? "秒" : "毫秒", error: "" };
+      const unit = resolveUnit(num, unitMode);
+      const date = new Date(toMs(num, unit));
+      if (Number.isNaN(date.getTime())) {
+        return { date: null, unit: "", error: "这个时间戳超出范围了", ambiguous: false, multiplier: 1 };
+      }
+      return { date, unit: unit.unit, error: "", ambiguous: unit.ambiguous, multiplier: unit.multiplier };
     }
     const date = new Date(text);
-    if (!Number.isNaN(date.getTime())) return { date, unit: "日期", error: "" };
-    return { date: null, unit: "", error: "既不是时间戳也不是可识别的日期" };
-  }, [raw]);
+    if (!Number.isNaN(date.getTime())) {
+      return { date, unit: "日期", error: "", ambiguous: false, multiplier: 1 };
+    }
+    return { date: null, unit: "", error: "既不是时间戳也不是可识别的日期", ambiguous: false, multiplier: 1 };
+  }, [raw, unitMode]);
 
   const inputDate = parseLocalInput(dateInput);
 
-  const setNowInput = () => {
-    const date = new Date();
-    setRaw(String(Math.floor(date.getTime() / 1000)));
+  /** 写回时使用当前识别到的单位，避免「毫秒输入 + 偏移」被写成秒 */
+  const writeTimestamp = (ms: number) => {
+    const multiplier = parsedTs.multiplier;
+    setRaw(String(multiplier === 1 ? Math.floor(ms) : Math.floor(ms / 1000)));
   };
 
+  const setNowInput = () => writeTimestamp(Date.now());
+
   const shiftInput = (ms: number) => {
-    const base = parsedTs.date ?? new Date();
-    setRaw(String(Math.floor((base.getTime() + ms) / 1000)));
+    writeTimestamp((parsedTs.date ?? new Date()).getTime() + ms);
+  };
+
+  /** 跨日按本地日历推进，夏令时切换日只有 23/25 小时也不会把时刻带偏 */
+  const shiftDays = (days: number) => {
+    const next = new Date(parsedTs.date ?? new Date());
+    next.setDate(next.getDate() + days);
+    writeTimestamp(next.getTime());
   };
 
   const applyToDateInput = (date: Date) => {
@@ -193,6 +224,16 @@ function TimestampCore() {
             aria-label="时间戳输入"
             className="ui-input font-mono flex-1"
           />
+          <select
+            aria-label="时间戳单位"
+            value={unitMode}
+            onChange={(e) => setUnitMode(e.target.value as UnitMode)}
+            className="ui-select font-mono sm:w-32 shrink-0"
+          >
+            <option value="auto">自动识别</option>
+            <option value="sec">秒</option>
+            <option value="ms">毫秒</option>
+          </select>
           <Button variant="secondary" icon={RefreshCw} onClick={setNowInput}>
             现在
           </Button>
@@ -215,14 +256,14 @@ function TimestampCore() {
           </button>
           <button
             type="button"
-            onClick={() => shiftInput(86_400_000)}
+            onClick={() => shiftDays(1)}
             className="ui-btn ui-btn-ghost ui-btn-sm"
           >
             +1 天
           </button>
           <button
             type="button"
-            onClick={() => shiftInput(604_800_000)}
+            onClick={() => shiftDays(7)}
             className="ui-btn ui-btn-ghost ui-btn-sm"
           >
             +7 天
@@ -232,6 +273,11 @@ function TimestampCore() {
         {parsedTs.error && (
           <Notice tone="error" className="mt-3">
             {parsedTs.error}
+          </Notice>
+        )}
+        {parsedTs.ambiguous && unitMode === "auto" && (
+          <Notice tone="tip" className="mt-3">
+            这个数值既可能是秒级时间戳，也可能是 1970–1973 年的毫秒级时间戳；已按秒处理，可在上方「单位」中手动指定。
           </Notice>
         )}
 

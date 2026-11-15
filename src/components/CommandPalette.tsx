@@ -10,6 +10,7 @@ import { useRouter } from "next/navigation";
 import { ArrowRight, Clock3, Search, Star, X } from "lucide-react";
 import { searchEntries, searchTools, toolsByHref, type SearchEntry } from "@/config/search";
 import { usePreferences } from "./PreferencesProvider";
+import { trapTabFocus } from "./ui/focus";
 
 interface PaletteItem {
   entry: SearchEntry;
@@ -69,7 +70,7 @@ function ResultRow({
         aria-pressed={favorite}
         title={favorite ? "取消收藏" : "收藏"}
         className={`shrink-0 p-1.5 rounded-lg transition-all ${
-          favorite ? "text-amber-500" : "text-slate-400 hover:text-amber-500"
+          favorite ? "text-amber-500" : "text-slate-500 hover:text-amber-500"
         } ${active || favorite ? "opacity-100" : "opacity-0 group-hover:opacity-100"}`}
       >
         <Star className="w-4 h-4" fill={favorite ? "currentColor" : "none"} />
@@ -85,12 +86,18 @@ export default function CommandPalette() {
   const [query, setQuery] = useState("");
   const [active, setActive] = useState(0);
   const inputRef = useRef<HTMLInputElement>(null);
+  const dialogRef = useRef<HTMLDivElement>(null);
   const activeRowRef = useRef<HTMLButtonElement | null>(null);
   const lastFocusRef = useRef<HTMLElement | null>(null);
 
   const closePalette = useCallback(() => {
     setOpen(false);
-    queueMicrotask(() => lastFocusRef.current?.focus());
+    queueMicrotask(() => {
+      const previous = lastFocusRef.current;
+      // 抽屉让位 / 路由跳转后原焦点节点可能已卸载，退化到主内容区而不是掉到 body
+      if (previous?.isConnected) previous.focus();
+      else document.querySelector<HTMLElement>("main")?.focus();
+    });
   }, []);
 
   const openPalette = useCallback(() => {
@@ -105,7 +112,8 @@ export default function CommandPalette() {
       if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === "k") {
         event.preventDefault();
         if (open) closePalette();
-        else openPalette();
+        // 统一走事件，让 MobileHeader 抽屉先让位，避免两个 aria-modal 并存
+        else window.dispatchEvent(new Event("tools:open-search"));
       } else if (event.key === "Escape" && open) {
         event.preventDefault();
         closePalette();
@@ -120,7 +128,12 @@ export default function CommandPalette() {
   }, [open, openPalette, closePalette]);
 
   useEffect(() => {
-    if (open) queueMicrotask(() => inputRef.current?.focus());
+    if (!open) return;
+    queueMicrotask(() => inputRef.current?.focus());
+    // aria-modal 必须让背景真正不可交互，否则 Tab 会落到被遮罩盖住的侧栏/工具页
+    const backgrounds = document.querySelectorAll<HTMLElement>("main, aside");
+    backgrounds.forEach((node) => { node.inert = true; });
+    return () => backgrounds.forEach((node) => { node.inert = false; });
   }, [open]);
 
   const items = useMemo<PaletteItem[]>(() => {
@@ -153,8 +166,8 @@ export default function CommandPalette() {
 
   const select = useCallback((entry: SearchEntry) => {
     router.push(entry.href);
-    setOpen(false);
-  }, [router]);
+    closePalette();
+  }, [router, closePalette]);
 
   const onInputKeyDown = (event: ReactKeyboardEvent<HTMLInputElement>) => {
     if (event.key === "ArrowDown") {
@@ -175,9 +188,11 @@ export default function CommandPalette() {
     <div className="fixed inset-0 z-[100] flex items-start justify-center px-4 pt-[8vh] sm:pt-[12vh]">
       <div className="cmd-backdrop absolute inset-0" onClick={closePalette} aria-hidden="true" />
       <div
+        ref={dialogRef}
         role="dialog"
         aria-modal="true"
         aria-label="搜索工具"
+        onKeyDown={(event) => trapTabFocus(event, dialogRef.current)}
         className="relative w-full max-w-xl bg-white border border-slate-200 rounded-2xl shadow-2xl overflow-hidden animate-in fade-in zoom-in-95 duration-150"
       >
         <div className="flex items-center gap-3 px-4 border-b border-slate-200">
@@ -208,7 +223,7 @@ export default function CommandPalette() {
           id="cmd-listbox"
           role="listbox"
           aria-label="工具列表"
-          className="max-h-[min(60vh,420px)] overflow-y-auto custom-scrollbar p-2"
+          className="max-h-[60vh] overflow-y-auto custom-scrollbar p-2"
         >
           {items.length === 0 && (
             <p className="ui-empty py-10">没有匹配的工具，换个关键词试试</p>

@@ -8,7 +8,7 @@ import { Badge, Button, Notice, OutputBlock, Segmented, Switch } from "@/compone
 
 type IdKind = "v4" | "v7" | "nanoid" | "custom";
 
-const NANOID_ALPHABET = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789_-";
+const NANOID_ALPHABET = Array.from("ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789_-");
 const DEFAULT_CUSTOM_ALPHABET = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";
 const HISTORY_KEY = "tools.uuid.history";
 
@@ -53,25 +53,29 @@ function uuidV7() {
   return bytes;
 }
 
-/** 去重并限制到 256 个字符，保证拒绝采样的分母有效 */
-function cleanAlphabet(raw: string) {
-  return Array.from(new Set(Array.from(raw))).slice(0, 256).join("");
+/**
+ * 去重并限制到 256 个字符。返回码点数组而非字符串：emoji 等 astral 字符占两个
+ * UTF-16 code unit，用 string.length / string[i] 会让分母与索引不一致（极端情况下
+ * limit 变成 0、所有字节被丢弃，循环永不结束）。
+ */
+function cleanAlphabet(raw: string): string[] {
+  return Array.from(new Set(Array.from(raw))).slice(0, 256);
 }
 
 /** 拒绝采样：丢掉 >= floor(256/n)*n 的字节，避免取模造成字符概率偏差 */
-function randomFromAlphabet(alphabet: string, length: number): string {
-  if (!alphabet || length <= 0) return "";
+function randomFromAlphabet(alphabet: string[], length: number): string {
+  if (!alphabet.length || length <= 0) return "";
   const limit = Math.floor(256 / alphabet.length) * alphabet.length;
-  let output = "";
+  const output: string[] = [];
   while (output.length < length) {
     const bytes = randomBytes(Math.max(16, length - output.length));
     for (const byte of bytes) {
       if (byte >= limit) continue;
-      output += alphabet[byte % alphabet.length];
+      output.push(alphabet[byte % alphabet.length]);
       if (output.length >= length) break;
     }
   }
-  return output;
+  return output.join("");
 }
 
 export default function UuidPage() {
@@ -158,7 +162,7 @@ export default function UuidPage() {
           <p className="text-xs text-slate-500">{KIND_DESC[kind]}</p>
         </div>
 
-        <div className="grid gap-4 sm:grid-cols-2">
+        <div className="ui-form-grid">
           <div className="space-y-2">
             <label htmlFor="uuid-count" className="ui-label text-sm">生成数量（1–100）</label>
             <input

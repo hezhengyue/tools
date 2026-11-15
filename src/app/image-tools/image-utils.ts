@@ -1,6 +1,8 @@
 // app/image-tools/image-utils.ts
 // 图片处理的底层能力：加载、canvas 绘制、编码、下载、ICO 封装、SVG 光栅化。
 
+import { checkImageFile } from "@/lib/image-guard";
+
 export const MAX_FILE_SIZE = 20 * 1024 * 1024;
 export const MAX_PIXELS = 16_000_000;
 
@@ -21,6 +23,9 @@ export function formatBytes(bytes: number): string {
 export async function loadImageFile(file: File): Promise<ImageSource> {
   if (!file.type.startsWith("image/")) throw new Error("请选择图片文件（PNG / JPG / WebP / SVG 等）");
   if (file.size > MAX_FILE_SIZE) throw new Error("文件超过 20 MB，请先压缩后再处理");
+  // 解码前先读文件头尺寸：几百 KB 的高压缩 PNG 也能解码成上亿像素
+  const guardError = await checkImageFile(file);
+  if (guardError) throw new Error(guardError);
   const url = URL.createObjectURL(file);
   try {
     const img = new Image();
@@ -270,13 +275,18 @@ export async function renderSquare(img: HTMLImageElement, size: number): Promise
 /* ---------------- SVG 光栅化 ---------------- */
 
 function parseSvgSize(svg: string): { width: number; height: number } {
+  // 只接受「纯数字」的 width/height。width="100%" / 10cm 这类带单位的值
+  // 旧正则会截成 100 / 10，导致按错误的宽高比拉伸输出。
   const viewBox = svg.match(/viewBox\s*=\s*["']\s*[-\d.]+\s+[-\d.]+\s+([\d.]+)\s+([\d.]+)/i);
-  const width = svg.match(/<svg[^>]*\bwidth\s*=\s*["']\s*([\d.]+)/i);
-  const height = svg.match(/<svg[^>]*\bheight\s*=\s*["']\s*([\d.]+)/i);
-  return {
-    width: Number(width?.[1] ?? viewBox?.[1] ?? 512) || 512,
-    height: Number(height?.[1] ?? viewBox?.[2] ?? 512) || 512,
-  };
+  const width = svg.match(/<svg[^>]*\bwidth\s*=\s*["']\s*([\d.]+)\s*["']/i);
+  const height = svg.match(/<svg[^>]*\bheight\s*=\s*["']\s*([\d.]+)\s*["']/i);
+  const w = Number(width?.[1]);
+  const h = Number(height?.[1]);
+  if (w > 0 && h > 0) return { width: w, height: h };
+  const vbW = Number(viewBox?.[1]);
+  const vbH = Number(viewBox?.[2]);
+  if (vbW > 0 && vbH > 0) return { width: vbW, height: vbH };
+  return { width: w > 0 ? w : 512, height: h > 0 ? h : 512 };
 }
 
 export async function svgToPng(svg: string, targetWidth: number): Promise<Blob> {

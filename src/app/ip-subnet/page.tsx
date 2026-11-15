@@ -240,6 +240,10 @@ export default function IpSubnetPage() {
           </Panel>
 
           <Panel icon={Network} title="子网划分" className="mt-5">
+            {result.info.prefix >= 32 ? (
+              <Notice tone="info">/32 是单主机路由，只包含一个地址，无法再划分子网。把前缀调小即可查看划分结果。</Notice>
+            ) : (
+            <>
             <div className="flex flex-wrap items-center gap-3 mb-4">
               <label htmlFor="target-prefix" className="text-sm text-slate-600">划分为</label>
               <select
@@ -275,6 +279,8 @@ export default function IpSubnetPage() {
                 </tbody>
               </table>
             </div>
+            </>
+            )}
           </Panel>
 
           <div className="mt-5">

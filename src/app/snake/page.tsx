@@ -431,6 +431,11 @@ export default function SnakePage() {
       D: "right",
     };
     const onKeyDown = (event: KeyboardEvent) => {
+      // 命令面板 / 任何输入框获得焦点时不驱动游戏，尤其不能吞掉空格
+      const active = document.activeElement;
+      if (active instanceof HTMLElement
+        && (active.isContentEditable || /^(INPUT|TEXTAREA|SELECT)$/.test(active.tagName))) return;
+      if (event.metaKey || event.ctrlKey || event.altKey) return;
       if (event.key === " ") {
         event.preventDefault();
         togglePause();
