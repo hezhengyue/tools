@@ -19,6 +19,8 @@ const eslintConfig = defineConfig([
     "out/**",
     "build/**",
     "next-env.d.ts",
+    // 本地调试脚本（CDP 探测、构建日志等）不属于站点代码
+    ".workbuddy/**",
   ]),
 ]);
 

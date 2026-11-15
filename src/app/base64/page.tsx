@@ -2,12 +2,13 @@
 
 // src/app/base64/page.tsx
 // Base64 编解码：文本（UTF-8 安全）/ 文件双模式，支持 URL-safe、Data URL 前缀与 MIME 换行。
+// 布局为左右对照：左边是转换前的内容，右边是转换后的结果。
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import type { DragEvent } from "react";
+import type { DragEvent, ReactNode } from "react";
 import { ArrowLeftRight, Binary, FileUp, Info, X } from "lucide-react";
 import ToolShell from "@/components/ToolShell";
-import { Notice, OutputBlock } from "@/components/ui/ToolUI";
+import { CopyButton, DownloadButton, Notice } from "@/components/ui/ToolUI";
 import { checkImageFile } from "@/lib/image-guard";
 
 /* ============================ 编解码 ============================ */
@@ -59,6 +60,36 @@ interface PickedFile {
   size: number;
   type: string;
   dataUrl: string;
+}
+
+/* ============================ 小部件 ============================ */
+
+function PaneHead({
+  label,
+  htmlFor,
+  meta,
+  children,
+}: {
+  label: string;
+  htmlFor?: string;
+  meta?: string;
+  children?: ReactNode;
+}) {
+  return (
+    // 固定 32px 行高：右侧有图标按钮（p-2 + 16px）撑到 32px，左侧只有文字，
+    // 不锁高度会让左右两个输入框错开 12px
+    <div className="flex h-8 items-center justify-between gap-2 mb-2">
+      {htmlFor ? (
+        <label htmlFor={htmlFor} className="ui-label text-sm truncate">{label}</label>
+      ) : (
+        <span className="ui-label text-sm truncate">{label}</span>
+      )}
+      <div className="flex items-center gap-2 shrink-0">
+        {meta && <span className="text-xs text-slate-500">{meta}</span>}
+        {children}
+      </div>
+    </div>
+  );
 }
 
 /* ============================ 页面 ============================ */
@@ -189,6 +220,9 @@ function Base64Core() {
   const output = source === "text" ? textOutput : fileOutput;
   const originalBytes = source === "text" ? new TextEncoder().encode(text).length : file?.size ?? 0;
   const encodedBytes = output.length;
+  const overhead = originalBytes
+    ? Math.max(0, Math.round((encodedBytes / originalBytes - 1) * 100))
+    : 0;
 
   return (
     <div className="space-y-5">
@@ -258,185 +292,216 @@ function Base64Core() {
 
       {mode === "encode" ? (
         <>
+          {/* 左：转换前 / 右：转换后 */}
+          <div className="grid gap-4 md:grid-cols-2">
+            <div className="flex flex-col min-w-0">
+              <PaneHead
+                htmlFor={source === "text" ? "b64-text" : undefined}
+                label={source === "text" ? "原始文本" : "原始文件"}
+                meta={
+                  source === "text"
+                    ? `${text.length} 字符 · ${formatBytes(originalBytes)}`
+                    : file
+                      ? formatBytes(file.size)
+                      : undefined
+                }
+              />
 
-          {source === "text" ? (
-            <div>
-              <div className="flex items-center justify-between mb-2">
-                <label htmlFor="b64-text" className="ui-label text-sm">
-                  原始文本
+              {source === "text" ? (
+                <textarea
+                  id="b64-text"
+                  value={text}
+                  onChange={(e) => setText(e.target.value)}
+                  placeholder="支持中文与 emoji，按 UTF-8 编码后转 Base64"
+                  spellCheck={false}
+                  autoComplete="off"
+                  className="ui-textarea font-mono ui-editor"
+                />
+              ) : (
+                <div className="flex flex-col gap-3">
+                  <div
+                    onDragOver={(e) => {
+                      e.preventDefault();
+                      setDragging(true);
+                    }}
+                    onDragLeave={() => setDragging(false)}
+                    onDrop={handleDrop}
+                    className={`ui-editor flex flex-col items-center justify-center rounded-xl border-2 border-dashed p-6 text-center transition-colors ${
+                      dragging
+                        ? "border-indigo-400 bg-indigo-50/60"
+                        : "border-slate-200 bg-slate-50/60"
+                    }`}
+                  >
+                    <FileUp size={22} className="mx-auto text-slate-500 mb-2" />
+                    <p className="text-sm text-slate-600">
+                      把文件拖到这里，或
+                      <button
+                        type="button"
+                        onClick={() => fileInputRef.current?.click()}
+                        className="text-indigo-600 font-medium hover:underline mx-1"
+                      >
+                        选择文件
+                      </button>
+                    </p>
+                    <p className="text-xs text-slate-500 mt-1">上限 {formatBytes(MAX_FILE_BYTES)}</p>
+                    <input
+                      ref={fileInputRef}
+                      type="file"
+                      className="hidden"
+                      onChange={(e) => {
+                        void pickFile(e.target.files?.[0]);
+                        e.target.value = "";
+                      }}
+                    />
+                  </div>
+
+                  {fileError && <Notice tone="error">{fileError}</Notice>}
+
+                  {file && (
+                    <div className="flex items-center gap-3 p-3 rounded-xl border border-slate-200 bg-white">
+                      {file.type.startsWith("image/") && (
+                        // 本地 FileReader 读出的 data URL 预览，不走 next/image
+                        <img
+                          src={file.dataUrl}
+                          alt=""
+                          className="w-12 h-12 rounded-lg object-cover border border-slate-200 shrink-0"
+                        />
+                      )}
+                      <div className="min-w-0 flex-1">
+                        <p className="text-sm font-medium text-slate-700 truncate">{file.name}</p>
+                        <p className="text-xs text-slate-500 mt-0.5">
+                          {formatBytes(file.size)} · {file.type || "未知类型"}
+                        </p>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => setFile(null)}
+                        className="ui-icon-btn text-red-600 hover:bg-red-50"
+                        title="移除文件"
+                        aria-label="移除文件"
+                      >
+                        <X size={16} />
+                      </button>
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {/* 编码选项 */}
+              <div className="space-y-2 mt-3">
+                {source === "file" && (
+                  <label className="flex items-center gap-2 cursor-pointer text-sm text-slate-700">
+                    <input
+                      type="checkbox"
+                      checked={withPrefix}
+                      onChange={(e) => setWithPrefix(e.target.checked)}
+                      className="ui-checkbox"
+                    />
+                    保留 Data URL 前缀
+                    <span className="text-xs text-slate-500">（可直接写进 img 的 src）</span>
+                  </label>
+                )}
+                <label className="flex items-center gap-2 cursor-pointer text-sm text-slate-700">
+                  <input
+                    type="checkbox"
+                    checked={urlSafe}
+                    onChange={(e) => setUrlSafe(e.target.checked)}
+                    className="ui-checkbox"
+                  />
+                  URL-safe 变体
+                  <span className="text-xs text-slate-500">
+                    （<span className="font-mono">+ /</span> 换成{" "}
+                    <span className="font-mono">- _</span>，去掉结尾的{" "}
+                    <span className="font-mono">=</span>）
+                  </span>
                 </label>
-                <span className="text-xs text-slate-500">
-                  {text.length} 字符 · {formatBytes(originalBytes)}
-                </span>
+                <label className="flex items-center gap-2 cursor-pointer text-sm text-slate-700">
+                  <input
+                    type="checkbox"
+                    checked={mimeWrap}
+                    onChange={(e) => setMimeWrap(e.target.checked)}
+                    className="ui-checkbox"
+                    disabled={urlSafe}
+                  />
+                  每 76 字符换行
+                  <span className="text-xs text-slate-500">（MIME 规范；与 URL-safe 互斥）</span>
+                </label>
               </div>
+            </div>
+
+            <div className="flex flex-col min-w-0">
+              <PaneHead
+                htmlFor="b64-output"
+                label="Base64"
+                meta={output ? `${encodedBytes.toLocaleString()} 字符 · 约多 ${overhead}%` : undefined}
+              >
+                <CopyButton value={output} label="复制 Base64" />
+                <DownloadButton
+                  value={output}
+                  filename={`${source === "file" && file ? file.name : "text"}.base64.txt`}
+                />
+              </PaneHead>
               <textarea
-                id="b64-text"
-                value={text}
-                onChange={(e) => setText(e.target.value)}
-                placeholder="支持中文与 emoji，按 UTF-8 编码后转 Base64"
+                id="b64-output"
+                readOnly
+                value={output}
+                placeholder="编码结果会显示在这里"
                 spellCheck={false}
-                autoComplete="off"
                 className="ui-textarea font-mono ui-editor"
               />
             </div>
-          ) : (
-            <div>
-              <div
-                onDragOver={(e) => {
-                  e.preventDefault();
-                  setDragging(true);
-                }}
-                onDragLeave={() => setDragging(false)}
-                onDrop={handleDrop}
-                className={`rounded-xl border-2 border-dashed p-6 text-center transition-colors ${
-                  dragging
-                    ? "border-indigo-400 bg-indigo-50/60"
-                    : "border-slate-200 bg-slate-50/60"
-                }`}
-              >
-                <FileUp size={22} className="mx-auto text-slate-500 mb-2" />
-                <p className="text-sm text-slate-600">
-                  把文件拖到这里，或
-                  <button
-                    type="button"
-                    onClick={() => fileInputRef.current?.click()}
-                    className="text-indigo-600 font-medium hover:underline mx-1"
-                  >
-                    选择文件
-                  </button>
-                </p>
-                <p className="text-xs text-slate-500 mt-1">
-                  上限 {formatBytes(MAX_FILE_BYTES)}
-                </p>
-                <input
-                  ref={fileInputRef}
-                  type="file"
-                  className="hidden"
-                  onChange={(e) => {
-                    void pickFile(e.target.files?.[0]);
-                    e.target.value = "";
-                  }}
-                />
-              </div>
-
-              {fileError && (
-                <Notice tone="error" className="mt-3">
-                  {fileError}
-                </Notice>
-              )}
-
-              {file && (
-                <div className="flex items-center gap-3 mt-3 p-3 rounded-xl border border-slate-200 bg-white">
-                  {file.type.startsWith("image/") && (
-                    // 本地 FileReader 读出的 data URL 预览，不走 next/image
-                    <img
-                      src={file.dataUrl}
-                      alt=""
-                      className="w-12 h-12 rounded-lg object-cover border border-slate-200 shrink-0"
-                    />
-                  )}
-                  <div className="min-w-0 flex-1">
-                    <p className="text-sm font-medium text-slate-700 truncate">{file.name}</p>
-                    <p className="text-xs text-slate-500 mt-0.5">
-                      {formatBytes(file.size)} · {file.type || "未知类型"}
-                    </p>
-                  </div>
-                  <button
-                    type="button"
-                    onClick={() => setFile(null)}
-                    className="ui-icon-btn text-red-600 hover:bg-red-50"
-                    title="移除文件"
-                    aria-label="移除文件"
-                  >
-                    <X size={16} />
-                  </button>
-                </div>
-              )}
-            </div>
-          )}
-
-          {/* 编码选项 */}
-          <div className="space-y-2">
-            {source === "file" && (
-              <label className="flex items-center gap-2 cursor-pointer text-sm text-slate-700">
-                <input
-                  type="checkbox"
-                  checked={withPrefix}
-                  onChange={(e) => setWithPrefix(e.target.checked)}
-                  className="ui-checkbox"
-                />
-                保留 Data URL 前缀
-                <span className="text-xs text-slate-500">（可直接写进 img 的 src）</span>
-              </label>
-            )}
-            <label className="flex items-center gap-2 cursor-pointer text-sm text-slate-700">
-              <input
-                type="checkbox"
-                checked={urlSafe}
-                onChange={(e) => setUrlSafe(e.target.checked)}
-                className="ui-checkbox"
-              />
-              URL-safe 变体
-              <span className="text-xs text-slate-500">
-                （<span className="font-mono">+ /</span> 换成 <span className="font-mono">- _</span>
-                ，去掉结尾的 <span className="font-mono">=</span>）
-              </span>
-            </label>
-            <label className="flex items-center gap-2 cursor-pointer text-sm text-slate-700">
-              <input
-                type="checkbox"
-                checked={mimeWrap}
-                onChange={(e) => setMimeWrap(e.target.checked)}
-                className="ui-checkbox"
-                disabled={urlSafe}
-              />
-              每 76 字符换行
-              <span className="text-xs text-slate-500">
-                （MIME 规范；与 URL-safe 互斥）
-              </span>
-            </label>
           </div>
-
-          <OutputBlock
-            label="Base64"
-            hint={
-              output
-                ? `${encodedBytes.toLocaleString()} 字符 · 比原始数据约多 ${originalBytes ? Math.max(0, Math.round((encodedBytes / originalBytes - 1) * 100)) : 0}%`
-                : undefined
-            }
-            value={output}
-            filename={`${source === "file" && file ? file.name : "text"}.base64.txt`}
-            placeholder="编码结果会显示在这里"
-            textareaClassName="font-mono"
-          />
 
           {!output && (
             <Notice tone="tip">
-              输入文本或选择文件后自动编码，结果可以直接复制或下载。中文、emoji 都按 UTF-8 字节处理，不会乱码。
+              输入文本或选择文件后自动编码。中文、emoji 都按 UTF-8 字节处理，不会乱码。
             </Notice>
           )}
         </>
       ) : (
         <>
-          <div>
-            <div className="flex items-center justify-between mb-2">
-              <label htmlFor="b64-source" className="ui-label text-sm">
-                Base64 内容
-              </label>
-              <span className="text-xs text-slate-500">{encoded.trim().length} 字符</span>
+          <div className="grid gap-4 md:grid-cols-2">
+            <div className="flex flex-col min-w-0">
+              <PaneHead
+                htmlFor="b64-source"
+                label="Base64 内容"
+                meta={`${encoded.trim().length} 字符`}
+              />
+              <textarea
+                id="b64-source"
+                value={encoded}
+                onChange={(e) => setEncoded(e.target.value)}
+                placeholder="粘贴 Base64 字符串，可带 data:image/png;base64, 前缀"
+                spellCheck={false}
+                autoComplete="off"
+                className="ui-textarea font-mono ui-editor"
+              />
+              {decodeError && (
+                <div className="mt-3">
+                  <Notice tone="error">{decodeError}</Notice>
+                </div>
+              )}
             </div>
-            <textarea
-              id="b64-source"
-              value={encoded}
-              onChange={(e) => setEncoded(e.target.value)}
-              placeholder="粘贴 Base64 字符串，可带 data:image/png;base64, 前缀"
-              spellCheck={false}
-              autoComplete="off"
-              className="ui-textarea font-mono ui-editor"
-            />
-          </div>
 
-          {decodeError && <Notice tone="error">{decodeError}</Notice>}
+            <div className="flex flex-col min-w-0">
+              <PaneHead
+                htmlFor="b64-decoded"
+                label="解码结果"
+                meta={decoded ? `${new TextEncoder().encode(decoded).length} 字节` : undefined}
+              >
+                <CopyButton value={decoded} label="复制解码结果" />
+                <DownloadButton value={decoded} filename="decoded.txt" />
+              </PaneHead>
+              <textarea
+                id="b64-decoded"
+                readOnly
+                value={decoded}
+                placeholder="解码后的文本会显示在这里"
+                spellCheck={false}
+                className="ui-textarea font-mono ui-editor"
+              />
+            </div>
+          </div>
 
           {lossy && (
             <Notice tone="info">
@@ -444,17 +509,9 @@ function Base64Core() {
             </Notice>
           )}
 
-          <OutputBlock
-            label="解码结果"
-            hint={decoded ? `${new TextEncoder().encode(decoded).length} 字节` : undefined}
-            value={decoded}
-            filename="decoded.txt"
-            placeholder="解码后的文本会显示在这里"
-          />
-
           {!encoded.trim() && (
             <Notice tone="tip">
-              粘贴 Base64 后自动解码。换行、空格、缺失的 <span className="font-mono">=</span>
+              粘贴 Base64 后自动解码。换行、空格、缺失的 <span className="font-mono">=</span>{" "}
               会被自动忽略，<span className="font-mono">-_</span> 也能正确识别。
             </Notice>
           )}
@@ -464,8 +521,8 @@ function Base64Core() {
       <div className="flex items-center gap-2 pt-4 border-t border-slate-100 text-xs text-slate-500">
         <Info size={14} className="shrink-0" />
         <p className="leading-relaxed">
-          中文、emoji 都按 UTF-8 字节编码，不会出现乱码；<span className="font-mono">atob</span> 直接处理
-          Unicode 字符串是常见的乱码原因。
+          中文、emoji 都按 UTF-8 字节编码，不会出现乱码；<span className="font-mono">atob</span>{" "}
+          直接处理 Unicode 字符串是常见的乱码原因。
         </p>
       </div>
     </div>

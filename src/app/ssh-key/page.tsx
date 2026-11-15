@@ -18,6 +18,7 @@ function SshKeyCore() {
   const [keySize, setKeySize] = useState<KeySize>(2048);
   const [keyPair, setKeyPair] = useState<KeyPair | null>(null);
   const [loading, setLoading] = useState(false);
+  const [elapsed, setElapsed] = useState(0);
   const [genError, setGenError] = useState("");
 
   const workerRef = useRef<Worker | null>(null);
@@ -87,6 +88,16 @@ function SshKeyCore() {
     };
   }, [setupWorker]);
 
+  // 生成期间显示已用时：4096 位在慢设备上要等几秒，没有进度提示会像卡死
+  useEffect(() => {
+    if (!loading) return;
+    const startedAt = Date.now();
+    const timer = setInterval(() => {
+      setElapsed(Math.floor((Date.now() - startedAt) / 1000));
+    }, 500);
+    return () => clearInterval(timer);
+  }, [loading]);
+
   // =========================
   // size change
   // =========================
@@ -108,6 +119,7 @@ function SshKeyCore() {
     generatingRef.current = true;
     const requestId = ++requestIdRef.current;
     clearTimeoutTimer();
+    setElapsed(0);
     setGenError("");
     // 生成中不再展示上一把私钥，避免误把旧密钥当成新生成的复制
     setKeyPair(null);
@@ -176,8 +188,14 @@ function SshKeyCore() {
         className="ui-btn ui-btn-primary w-full py-3"
       >
         <RefreshCw size={18} className={loading ? "animate-spin" : ""} />
-        {loading ? "生成中..." : "生成 RSA SSH Key"}
+        {loading ? `生成中… ${elapsed}s` : "生成 RSA SSH Key"}
       </button>
+
+      {loading && (
+        <Notice tone="info">
+          正在用浏览器原生加密接口生成密钥，2048 位通常 1 秒内完成，4096 位约几秒，请勿关闭页面。
+        </Notice>
+      )}
 
       {genError && <Notice tone="error" role="alert">{genError}</Notice>}
 

@@ -43,6 +43,25 @@ function describePosition(text: string, index: number): string {
   return `第 ${before.split("\n").length} 行第 ${index - lastBreak} 列`;
 }
 
+/** 示例：覆盖嵌套对象、数组、布尔、null、中文与长文本，方便一键看 YAML 的实际形态 */
+const SAMPLE_JSON = `{
+  "service": "正月工具箱",
+  "version": "1.0.0",
+  "enabled": true,
+  "port": 8080,
+  "deprecated": null,
+  "owner": {
+    "name": "dev",
+    "email": "dev@example.com"
+  },
+  "tools": ["json-format", "json-yaml", "base64"],
+  "limits": {
+    "maxUploadMB": 15,
+    "timeoutSeconds": 30
+  },
+  "description": "纯前端工具站，所有处理都在浏览器本地完成。"
+}`;
+
 function parseJsonLossless(text: string): unknown {
   const unsafe = findUnsafeInteger(text);
   if (unsafe !== null) {
@@ -92,6 +111,12 @@ function JsonYamlCore() {
     setError("");
   };
 
+  // 填入示例
+  const handleLoadSample = () => {
+    setJsonInput(SAMPLE_JSON);
+    setError("");
+  };
+
   // 格式化 JSON（美化输入）
   const handleFormatJson = () => {
     try {
@@ -115,6 +140,12 @@ function JsonYamlCore() {
       {/* 工具栏 */}
       <div className="flex flex-wrap items-center justify-between gap-3 mb-4">
         <div className="flex items-center gap-2">
+          <button
+            onClick={handleLoadSample}
+            className="ui-btn ui-btn-ghost ui-btn-sm"
+          >
+            示例
+          </button>
           <button
             onClick={handleFormatJson}
             disabled={!jsonInput.trim()}

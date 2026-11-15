@@ -1,6 +1,7 @@
 /// <reference lib="webworker" />
 
 import * as forge from "node-forge";
+import { generateRsaKeyPair } from "../../lib/rsa-keypair";
 
 interface GenerateRequest {
   requestId: string;
@@ -94,24 +95,12 @@ function createSerialNumber(): string {
 function createKeyPair(
   bits: 2048 | 4096
 ): Promise<forge.pki.rsa.KeyPair> {
-  return new Promise(
-    (resolve, reject) => {
-      forge.pki.rsa.generateKeyPair(
-        {
-          bits,
-          workers: 2,
-        },
-        (err, keypair) => {
-          if (err) {
-            reject(err);
-            return;
-          }
-
-          resolve(keypair);
-        }
-      );
-    }
-  );
+  // 走统一的生成器：WebCrypto 优先，避免 forge 内部 new Worker('forge/prime.worker.js')
+  // 取不到脚本导致回调永不触发（页面表现就是一直「生成中」）
+  return generateRsaKeyPair(bits).then((pair) => ({
+    publicKey: pair.publicKey,
+    privateKey: pair.privateKey,
+  }));
 }
 self.onmessage = async (
   event: MessageEvent

@@ -64,10 +64,163 @@ export default function FileHashPage() {
   // 同步记账：React state 要等下一次渲染才更新，连点/连续拖拽时不能拿它做守卫
   const runningRef = useRef(false);
   const countRef = useRef(0);
+  // 每次计算一个 token，停止/重开时自增，用来作废还在跑的主线程任务
+  const runTokenRef = useRef(0);
+  const watchdogRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const clearWatchdog = () => {
+    if (watchdogRef.current) clearTimeout(watchdogRef.current);
+    watchdogRef.current = null;
+  };
 
   useEffect(() => () => {
+    clearWatchdog();
+    runTokenRef.current += 1;
     workerRef.current?.terminate();
   }, []);
+
+  const setItem = (key: number, patch: Partial<FileItem>) => {
+    setItems((prev) => prev.map((item) => (item.key === key ? { ...item, ...patch } : item)));
+  };
+
+  /**
+   * 主线程兜底：Worker 建不起来、脚本取不到或迟迟不响应时接管。
+   * 大部分部署环境用不到，但 EdgeOne 等平台上 Worker 脚本可能加载失败，
+   * 没有兜底就会永远停在 0%（用户侧表现就是「点击后没反应」）。
+   */
+  const runOnMainThread = async (queue: FileItem[], token: number) => {
+    let hashFile: typeof import("./hash-core").hashFile;
+    try {
+      ({ hashFile } = await import("./hash-core"));
+    } catch {
+      setNotice("哈希模块加载失败，请刷新页面重试");
+      runningRef.current = false;
+      setRunning(false);
+      return;
+    }
+
+    for (const item of queue) {
+      if (runTokenRef.current !== token) return;
+      setItem(item.key, { status: "running", progress: 0, error: undefined });
+      try {
+        const hashes = await hashFile(item.file, {
+          // 主线程用更小的块 + 每块让出，避免长任务把页面卡住
+          chunkSize: 1024 * 1024,
+          yieldToUi: true,
+          shouldStop: () => runTokenRef.current !== token,
+          onProgress: ({ loaded, total }) => {
+            if (runTokenRef.current !== token) return;
+            const percent = total ? Math.round((loaded / total) * 100) : 100;
+            setItem(item.key, { progress: percent });
+          },
+        });
+        if (runTokenRef.current !== token) return;
+        setItem(item.key, { status: "done", hashes, progress: 100, error: undefined });
+      } catch (error) {
+        if (runTokenRef.current !== token) return;
+        setItem(item.key, {
+          status: "error",
+          error: error instanceof Error ? error.message : "计算失败",
+        });
+      }
+    }
+
+    if (runTokenRef.current !== token) return;
+    runningRef.current = false;
+    setRunning(false);
+  };
+
+  const start = () => {
+    if (runningRef.current || !items.length) return;
+    runningRef.current = true;
+    const queue = items;
+    const token = runTokenRef.current + 1;
+    runTokenRef.current = token;
+    // 正常只有一条线程；仍先收掉残留引用，避免异常路径下重复创建
+    workerRef.current?.terminate();
+    clearWatchdog();
+
+    let index = 0;
+    let worker: Worker;
+    try {
+      worker = new Worker(new URL("./hash.worker.ts", import.meta.url));
+    } catch {
+      setRunning(true);
+      setNotice("当前环境无法创建计算线程，已切换到主线程计算，速度会慢一些。");
+      void runOnMainThread(queue, token);
+      return;
+    }
+    workerRef.current = worker;
+    setRunning(true);
+    setNotice("");
+
+    const fallback = (reason: string) => {
+      if (runTokenRef.current !== token) return;
+      clearWatchdog();
+      worker.terminate();
+      workerRef.current = null;
+      setNotice(reason);
+      // 已算完的项不重算，从当前这一项继续
+      void runOnMainThread(queue.slice(index), token);
+    };
+
+    const runNext = () => {
+      if (runTokenRef.current !== token) return;
+      if (index >= queue.length) {
+        clearWatchdog();
+        worker.terminate();
+        workerRef.current = null;
+        runningRef.current = false;
+        setRunning(false);
+        return;
+      }
+      const key = queue[index].key;
+      setItem(key, { status: "running", progress: 0, error: undefined });
+      worker.postMessage({ id: key, file: queue[index].file });
+    };
+
+    // 线程脚本若加载失败（CDN 路径被改写、MIME 不对等），消息永远不会回来，
+    // 用一个首包看门狗兜住：超时就切主线程，而不是一直显示 0%
+    watchdogRef.current = setTimeout(() => {
+      fallback("计算线程响应超时，已切换到主线程计算，速度会慢一些。");
+    }, 6000);
+
+    worker.onmessage = (event: MessageEvent<HashResponse>) => {
+      const message = event.data;
+      // 只接受当前队列项的消息，迟到/串扰的旧消息直接丢弃
+      if (runTokenRef.current !== token || message.id !== queue[index]?.key) return;
+      if (message.type === "progress") {
+        clearWatchdog();
+        const percent = message.total ? Math.round((message.loaded / message.total) * 100) : 100;
+        setItem(message.id, { progress: percent });
+        return;
+      }
+      clearWatchdog();
+      if (message.type === "done") {
+        setItem(message.id, { status: "done", hashes: message.hashes, progress: 100, error: undefined });
+      } else {
+        setItem(message.id, { status: "error", error: message.message });
+      }
+      index += 1;
+      runNext();
+    };
+    worker.onerror = () => {
+      fallback("计算线程启动失败，已切换到主线程计算，速度会慢一些。");
+    };
+    runNext();
+  };
+
+  const stop = () => {
+    clearWatchdog();
+    runTokenRef.current += 1;
+    workerRef.current?.terminate();
+    workerRef.current = null;
+    runningRef.current = false;
+    setRunning(false);
+    setItems((prev) =>
+      prev.map((item) => (item.status === "running" ? { ...item, status: "pending", progress: 0 } : item))
+    );
+  };
 
   const addFiles = (files: FileList | File[]) => {
     if (runningRef.current) return;
@@ -101,85 +254,6 @@ export default function FileHashPage() {
   const onDrop = (event: DragEvent<HTMLButtonElement>) => {
     event.preventDefault();
     if (event.dataTransfer.files.length) addFiles(event.dataTransfer.files);
-  };
-
-  const start = () => {
-    if (runningRef.current || !items.length) return;
-    runningRef.current = true;
-    const queue = items;
-    // 正常只有一条线程；仍先收掉残留引用，避免异常路径下重复创建
-    workerRef.current?.terminate();
-    const worker = new Worker(new URL("./hash.worker.ts", import.meta.url));
-    workerRef.current = worker;
-    let index = 0;
-    setRunning(true);
-    setNotice("");
-
-    const runNext = () => {
-      if (index >= queue.length) {
-        worker.terminate();
-        workerRef.current = null;
-        runningRef.current = false;
-        setRunning(false);
-        return;
-      }
-      const key = queue[index].key;
-      setItems((prev) =>
-        prev.map((item) => item.key === key ? { ...item, status: "running", progress: 0, error: undefined } : item)
-      );
-      worker.postMessage({ id: key, file: queue[index].file });
-    };
-
-    worker.onmessage = (event: MessageEvent<HashResponse>) => {
-      const message = event.data;
-      // 只接受当前队列项的消息，迟到/串扰的旧消息直接丢弃
-      if (message.id !== queue[index]?.key) return;
-      if (message.type === "progress") {
-        const percent = message.total ? Math.round((message.loaded / message.total) * 100) : 100;
-        setItems((prev) =>
-          prev.map((item) => item.key === message.id ? { ...item, progress: percent } : item)
-        );
-        return;
-      }
-      if (message.type === "done") {
-        setItems((prev) =>
-          prev.map((item) =>
-            item.key === message.id
-              ? { ...item, status: "done", hashes: message.hashes, progress: 100, error: undefined }
-              : item
-          )
-        );
-      } else {
-        setItems((prev) =>
-          prev.map((item) =>
-            item.key === message.id ? { ...item, status: "error", error: message.message } : item
-          )
-        );
-      }
-      index += 1;
-      runNext();
-    };
-    worker.onerror = () => {
-      setNotice("计算线程异常，已停止；请刷新页面后重试");
-      worker.terminate();
-      workerRef.current = null;
-      runningRef.current = false;
-      setRunning(false);
-      setItems((prev) =>
-        prev.map((item) => item.status === "running" ? { ...item, status: "pending" } : item)
-      );
-    };
-    runNext();
-  };
-
-  const stop = () => {
-    workerRef.current?.terminate();
-    workerRef.current = null;
-    runningRef.current = false;
-    setRunning(false);
-    setItems((prev) =>
-      prev.map((item) => item.status === "running" ? { ...item, status: "pending" } : item)
-    );
   };
 
   const remove = (key: number) => {
