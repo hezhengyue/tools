@@ -141,6 +141,7 @@ export default function XxxPage() {
 - **深色模式**：靠 `html.dark` 上重定义 Tailwind v4 的 `--color-*` 变量实现。Tailwind v4 把纯色类编译为 `var(--color-xxx)`、透明度类编译为 `color-mix(... var(--color-xxx) ...)`，**两者都会自动跟随变量**。因此「不要在新页面里写死 `#fff` / 固定浅色底」，也**禁止再按 `[class*="bg-xxx/"]` 逐类兜底**（会漏掉新类并覆盖正确透明度）。只有三类例外允许覆盖：`text-white`、主按钮 `bg-indigo-600/700`、黑底视频容器 `bg-slate-900`。
 - **分类折叠**：侧栏与首页共用 `useCategoryExpansion(scope, defaults)`（在 `PreferencesProvider.tsx` 导出）。视图只传 scope（`"sidebar"` / `"home"`）和「默认展开哪些分类」（侧栏 = 当前工具所属分类，首页 = 全部分类），不要自己读写折叠状态、不要另建 state。两个 scope 的状态**按视图隔离**，否则「侧栏只展开当前分类」会把首页也折掉；读写仍只有这一个 hook 与 `tools.collapsedCategories` 一个 key。
 - **命令面板 / 抽屉**：任何组件都可以调用 `openCommandPalette()` 打开；全局快捷键与 `tools:open-search` 事件由 `CommandPalette.tsx` 统一监听，平台快捷键文案统一用 `ShortcutHint`。`MobileHeader` 的移动端抽屉是模态对话框：点链接自动关闭（事件委托，新增链接无需再改）、Esc 关闭、Tab 焦点循环、关闭后焦点回到菜单按钮、打开时锁定主区滚动。改抽屉时这些行为都要保留。
+- **最近使用只在首页**：首页 `RecentBar`（标题「继续上次」）展示 `tools.recent`；**侧栏只保留「我的收藏」**，不要再加「最近使用」—— 侧栏高度有限，历史记录会把分类导航挤下去。`tools.recent` 本身仍由 Provider 正常记录。
 - **PWA**：`public/sw.js` 的导航请求是 network-first（在线永远拿最新版），`/_next/static/` 带内容哈希走 cache-first，**无哈希的图标 / manifest / CSS 也必须 network-first**（否则老用户在线也永远看旧文件），RSC 与 `/api/` 及未匹配动态请求完全不缓存。修改缓存策略或替换 public 静态资源必须提升 `CACHE_NAME`。`PwaRegister.tsx` 只在生产 + 非 localhost 注册，避免本地验证被缓存干扰。
 
 # 工程与质量约定
@@ -155,7 +156,9 @@ export default function XxxPage() {
 - **全局键盘监听**：挂在 `window` 上的游戏/快捷键监听，开头必须跳过 `INPUT` / `TEXTAREA` / `SELECT` / `contenteditable` 焦点和 `metaKey/ctrlKey/altKey`，否则命令面板打字会驱动游戏、空格会被吞掉。
 - **游戏状态**：连续输入可能落在同一帧，棋盘/分数/撤销栈要放在同步更新的 `ref` 里（React state 只作渲染镜像），不要基于闭包中的旧 state 累加。
 - **哈希算法**：`crypto-js/sha3` 用的是 Keccak padding(0x01)，**不是** NIST SHA-3；标准 `SHA3-256` / `SHA3-512` 必须用 `@noble/hashes/sha3.js`，旧实现单独标为 `Keccak-512`。别把两者混用。
-- **JSON 精度**：`JSON.parse` 会静默舍入超过 `Number.MAX_SAFE_INTEGER` 的整数。转换类页面必须先扫描字面量并明确报错（json-yaml 的 `parseJsonLossless`），禁止给出「已转换」却改坏了 ID / 金额。
+- **JSON / YAML 精度**：`JSON.parse` 会静默舍入超过 `Number.MAX_SAFE_INTEGER` 的整数。转换类页面必须先扫描字面量并明确报错（`/json-yaml` 的 `parseJsonLossless` 与 `findUnsafeYamlInteger` 两条路径都要扫），禁止给出「已转换」却改坏了 ID / 金额。
+- **格式转换一律双向**：同一对格式只做一个工具（`/json-yaml` 用方向切换，不拆成两个页面），新增转换要同时给出反向路径与反向示例。YAML 侧解析用 `yaml.JSON_SCHEMA`（时间戳 / `yes` 保持字符串，不被悄悄改写），**不要传 `json: true`** —— 那会让重复键后者覆盖前者，默认行为才是报错。
+- **证书 / 密钥输入**：`/self-cert` 的证书名称支持英文逗号分隔多个，第一个写 CN、其余进 SAN（X.509 的 CN 只有一个字段，现代浏览器也不看它）。改这一段时注意两个入口（普通与 localhost）共用 `validate()`，别让其中一个跳过校验。
 - **可访问性**：允许用户缩放（viewport 不设 `userScalable: false`）；独立 `<label>` 必须用 `htmlFor` 关联控件 id；图标按钮必须有 `aria-label`；上传区支持键盘触发；动态提示用 `Notice`（自带 `role=status/alert`）；小字最低 `text-slate-500`，不要用 `text-slate-400`。
 - **隐私**：新增工具默认在浏览器本地处理；底部固定隐私句由 ToolShell 渲染，页面内不要再重复写「本地处理 / 不会上传 / 纯前端」。若确实需要服务端请求，把它加进 `ToolShell.tsx` 的 `SERVER_ROUTES` 并如实说明，不要改文案、不要给单个工具开小灶。
 - **待办**：图片压缩与背景虚化的画布计算仍在主线程（已用像素上限 + 异步编码缓解），彻底 Worker 化需单独排期并做浏览器兼容验证。

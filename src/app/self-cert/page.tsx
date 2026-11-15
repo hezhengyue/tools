@@ -66,6 +66,27 @@ function validSan(entry: SanEntry): boolean {
   return /^(\*\.)?[a-z0-9]([a-z0-9-]*[a-z0-9])?(\.[a-z0-9]([a-z0-9-]*[a-z0-9])?)*$/i.test(value);
 }
 
+/** 域名 / IP 都算合法；不给类型，由内容自己判断 */
+function validName(value: string): boolean {
+  return validSan({
+    id: "__",
+    type: isIPv4Literal(value) || isIPv6Literal(value) ? "IP" : "DNS",
+    value,
+  });
+}
+
+/**
+ * 证书名称支持一次填多个，用英文逗号分隔（顺带兼容中文逗号）。
+ * X.509 的 CN 只有一个字段，所以第一个作为 CN，其余全部写进 SAN ——
+ * 这也是多域名证书的实际做法，CN 本身在现代浏览器里已不参与校验。
+ */
+function splitNames(value: string): string[] {
+  return value
+    .split(/[,，]/)
+    .map((part) => part.trim())
+    .filter(Boolean);
+}
+
 export default function SelfCertPage() {
   const {
     result,
@@ -115,30 +136,26 @@ export default function SelfCertPage() {
     );
   };
 
-  const autoSan = useMemo(() => {
-    const value = commonName.trim();
+  const names = useMemo(() => splitNames(commonName), [commonName]);
 
-    if (!value) {
-      return null;
-    }
-
-    // 旧判断把任意含冒号的 hex 串（dead:beef、a:b）当成 IPv6，
-    // node-forge 会静默写入垃圾字节，生成出浏览器无法校验的证书
-    const isIP = isIPv4Literal(value) || isIPv6Literal(value);
-
-    return {
-      id: "auto-cn",
-      type: isIP ? "IP" : "DNS",
-      value,
-    } as SanEntry;
-  }, [commonName]);
+  const autoSans = useMemo<SanEntry[]>(
+    () =>
+      names.map((value, index) => ({
+        id: `auto-${index}`,
+        // 旧判断把任意含冒号的 hex 串（dead:beef、a:b）当成 IPv6，
+        // node-forge 会静默写入垃圾字节，生成出浏览器无法校验的证书
+        type: isIPv4Literal(value) || isIPv6Literal(value) ? "IP" : "DNS",
+        value,
+      })),
+    [names]
+  );
 
   const finalSan = useMemo(() => {
     const map = new Map<string, SanEntry>();
 
-    if (autoSan) {
-      map.set(`${autoSan.type}:${autoSan.value}`.toLowerCase(), autoSan);
-    }
+    autoSans.forEach((item) => {
+      map.set(`${item.type}:${item.value}`.trim().toLowerCase(), item);
+    });
 
     sanEntries.forEach((item) => {
       const key = `${item.type}:${item.value}`.trim().toLowerCase();
@@ -149,15 +166,17 @@ export default function SelfCertPage() {
     });
 
     return Array.from(map.values());
-  }, [autoSan, sanEntries]);
+  }, [autoSans, sanEntries]);
 
   /** 两个生成入口共用同一套校验，避免「localhost 开发证书」跳过国家代码检查 */
-  const validate = (cn: string): string | null => {
-    if (!cn.trim()) return "请输入证书名称";
+  const validate = (cnList: string[]): string | null => {
+    if (!(cnList[0] ?? "").trim()) return "请输入证书名称";
     if (country.trim() && !/^[A-Za-z]{2}$/.test(country.trim())) {
       return "国家代码必须为 2 位字母，例如 CN、US、KR";
     }
-    const invalid = finalSan.find((entry) => !validSan(entry));
+    const invalidName = cnList.find((name) => !validName(name));
+    if (invalidName) return `「${invalidName}」不是合法的域名或 IP 地址`;
+    const invalid = sanEntries.find((entry) => entry.value.trim() && !validSan(entry));
     if (invalid) return `SAN「${invalid.type}: ${invalid.value}」不是合法的域名或 IP 地址`;
     return null;
   };
@@ -171,8 +190,9 @@ export default function SelfCertPage() {
   });
 
   const generate = () => {
-    const cn = commonName.trim();
-    const message = validate(cn);
+    // 多个名称时 CN 只取第一个（单个字段放不下，也不参与现代浏览器校验）
+    const cn = names[0] ?? "";
+    const message = validate(names);
     if (message) {
       setFormError(message);
       return;
@@ -187,7 +207,7 @@ export default function SelfCertPage() {
   };
 
   const generateLocalhost = () => {
-    const message = validate("localhost");
+    const message = validate(["localhost"]);
     if (message) {
       setFormError(message);
       return;
@@ -216,9 +236,14 @@ export default function SelfCertPage() {
               id="cert-cn"
               value={commonName}
               onChange={(e) => setCommonName(e.target.value)}
-              placeholder="example.com、*.example.com、192.168.1.100"
+              placeholder="example.com，或用英文逗号填多个：example.com, www.example.com, 192.168.1.100"
               className="ui-input mt-2"
             />
+            {names.length > 1 && (
+              <p className="ui-prose mt-2 text-xs text-slate-500 leading-relaxed">
+                已识别 {names.length} 个名称：CN 取第一个「{names[0]}」，其余全部写入 SAN。
+              </p>
+            )}
           </div>
 
           <div>
@@ -230,18 +255,19 @@ export default function SelfCertPage() {
             </div>
 
             <div className="space-y-2">
-              {autoSan && (
-                <div className="flex gap-2">
+              {autoSans.map((item, index) => (
+                <div key={item.id} className="flex gap-2">
                   <Badge className="ui-badge-success w-20 shrink-0 justify-center">
-                    AUTO
+                    {index === 0 ? "CN" : "SAN"}
                   </Badge>
                   <input
                     readOnly
-                    value={`${autoSan.type}: ${autoSan.value}`}
+                    value={`${item.type}: ${item.value}`}
+                    aria-label={index === 0 ? "由证书名称自动生成的 CN" : "由证书名称自动生成的 SAN"}
                     className="ui-input ui-input-sm bg-slate-50"
                   />
                 </div>
-              )}
+              ))}
 
               {sanEntries.map((item) => (
                 <div key={item.id} className="flex gap-2">

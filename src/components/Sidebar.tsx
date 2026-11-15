@@ -5,7 +5,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { toolsConfig } from "../config/tools";
 import { openCommandPalette, toolsByHref, type SearchEntry } from "../config/search";
-import { Home, Search, ChevronDown, ChevronRight, Clock3, Star } from "lucide-react";
+import { Home, Search, ChevronDown, ChevronRight, Star } from "lucide-react";
 import { SITE_NAME } from "@/config/site";
 import { usePreferences, useCategoryExpansion } from "./PreferencesProvider";
 import ThemeToggle from "./ThemeToggle";
@@ -60,7 +60,7 @@ function QuickGroup({
 
 export default function Sidebar({ className = "" }: SidebarProps) {
   const pathname = usePathname();
-  const { recent, favorites, ready } = usePreferences();
+  const { favorites, ready } = usePreferences();
   const navRef = useRef<HTMLElement>(null);
   const activeRef = useRef<HTMLAnchorElement>(null);
 
@@ -117,12 +117,8 @@ export default function Sidebar({ className = "" }: SidebarProps) {
           首页控制台
         </Link>
 
-        {ready && (
-          <>
-            <QuickGroup title="最近使用" hrefs={recent} icon={Clock3} />
-            <QuickGroup title="我的收藏" hrefs={favorites} icon={Star} />
-          </>
-        )}
+        {/* 「最近使用」只在首页控制台展示；侧栏左侧空间有限，跳转历史会挤掉分类导航 */}
+        {ready && <QuickGroup title="我的收藏" hrefs={favorites} icon={Star} />}
 
         {/* 动态渲染分类与工具 */}
         {toolsConfig.map((category) => {

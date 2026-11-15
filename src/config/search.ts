@@ -23,7 +23,7 @@ const ALIASES: Record<string, string> = {
   "/self-cert": "ssl tls x509 pem san csr 证书 自签名",
   "/jwt": "token bearer jsonwebtoken 解码 decode exp 过期",
   "/json-format": "json pretty 格式化 校验 压缩 ts interface",
-  "/json-yaml": "yaml yml 转换 convert",
+  "/json-yaml": "yaml yml 转换 convert 互转 双向 yaml转json json转yaml",
   "/timestamp": "unix epoch 时间戳 毫秒 秒 日期 date",
   "/base64": "b64 encode decode dataurl 编码 解码",
   "/uuid": "guid nanoid 随机 id 唯一标识 v4 v7",

@@ -113,10 +113,10 @@ export const toolsConfig: ToolCategory[] = [
         layout: "full"
       },
       {
-        name: "JSON 转 YAML",
+        name: "JSON ⇄ YAML",
         href: "/json-yaml",
         icon: FileJson,
-        desc: "将复杂的 JSON 数据快速转换为结构清晰的 YAML 格式。",
+        desc: "JSON 与 YAML 双向互转：粘贴任意一侧自动转换，还能一键反向把 YAML 转回 JSON。",
         layout: "full"
       },
       {
