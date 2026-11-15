@@ -753,7 +753,7 @@ export default function GomokuPage() {
           </div>
         </div>
 
-        <p className="text-xs text-slate-500 text-center leading-relaxed">
+        <p className="ui-note text-center">
           {mode === "ai"
             ? `你执${sideName(humanSide)}，${sideName(aiSide)}由 AI 走。难度：${LEVELS[level].desc}。`
             : "两人轮流在同一块棋盘上下，黑先白后。"}

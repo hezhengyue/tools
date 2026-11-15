@@ -18,7 +18,7 @@ import Base64 from "crypto-js/enc-base64";
 // 标准 SHA3-256/512 必须用专门实现，否则与 openssl / node crypto 的结果不一致。
 import { sha3_256, sha3_512 } from "@noble/hashes/sha3.js";
 import ToolShell from "@/components/ToolShell";
-import { Notice, CopyButton } from "@/components/ui/ToolUI";
+import { CopyButton } from "@/components/ui/ToolUI";
 
 // ============ 类型定义 ============
 
@@ -203,15 +203,15 @@ function HashTextCore() {
         })}
       </div>
 
-      <Notice tone="tip" className="mt-6">
+      <p className="ui-note mt-6">
         SHA3-256 / SHA3-512 是 NIST 标准 SHA-3（可与 <code className="font-mono">openssl dgst -sha3-256</code> 校验）；Keccak-512 是旧版 Keccak 填充，与 SHA-3 结果不同，主要用于以太坊等场景。
-      </Notice>
+      </p>
 
       {/* 空状态提示 */}
       {!inputText && (
-        <Notice tone="tip" className="mt-3">
+        <p className="ui-note mt-3">
           在上方输入文本，即可实时生成各种哈希值，结果随输入自动更新。
-        </Notice>
+        </p>
       )}
 
       {/* 重新生成按钮 */}

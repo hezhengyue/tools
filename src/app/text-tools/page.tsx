@@ -179,9 +179,9 @@ export default function TextToolsPage() {
         <StatGrid stats={stats} />
       </Panel>
 
-      <Notice tone="tip" className="mt-5">
+      <p className="ui-note mt-5">
         所有转换都只改文本、不改动原始输入；想连续处理多步，点结果右上角的「写回输入框」即可。URL 编码默认用 %20，表单编码会把空格写成 +。
-      </Notice>
+      </p>
     </ToolShell>
   );
 }

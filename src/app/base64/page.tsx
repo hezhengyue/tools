@@ -453,9 +453,9 @@ function Base64Core() {
           </div>
 
           {!output && (
-            <Notice tone="tip">
+            <p className="ui-note">
               输入文本或选择文件后自动编码。中文、emoji 都按 UTF-8 字节处理，不会乱码。
-            </Notice>
+            </p>
           )}
         </>
       ) : (
@@ -510,17 +510,17 @@ function Base64Core() {
           )}
 
           {!encoded.trim() && (
-            <Notice tone="tip">
+            <p className="ui-note">
               粘贴 Base64 后自动解码。换行、空格、缺失的 <span className="font-mono">=</span>{" "}
               会被自动忽略，<span className="font-mono">-_</span> 也能正确识别。
-            </Notice>
+            </p>
           )}
         </>
       )}
 
-      <div className="flex items-center gap-2 pt-4 border-t border-slate-100 text-xs text-slate-500">
-        <Info size={14} className="shrink-0" />
-        <p className="leading-relaxed">
+      <div className="flex items-start gap-2 pt-4 border-t border-slate-100">
+        <Info size={14} className="shrink-0 mt-0.5 text-slate-500" />
+        <p className="ui-note">
           中文、emoji 都按 UTF-8 字节编码，不会出现乱码；<span className="font-mono">atob</span>{" "}
           直接处理 Unicode 字符串是常见的乱码原因。
         </p>

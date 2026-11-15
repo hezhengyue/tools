@@ -402,10 +402,10 @@ function JsonYamlCore() {
 
       {/* 空状态提示 */}
       {!input && !output && (
-        <Notice tone="tip" className="mt-6">
+        <p className="ui-note mt-6">
           左侧粘贴{isJsonSource ? " JSON" : " YAML"}，<strong>实时自动转换</strong>为
           {isJsonSource ? " YAML" : " JSON"}；切换上方方向即可反向转换。
-        </Notice>
+        </p>
       )}
 
       {/* 加载状态（解析中） */}

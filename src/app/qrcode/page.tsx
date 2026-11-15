@@ -697,9 +697,9 @@ export default function QrCodePage() {
               placeholder="识别到的内容会出现在这里…"
             />
 
-            <Notice tone="tip">
+            <p className="ui-note">
               识别由 <code className="font-mono">jsQR</code> 在本地完成。若失败，请裁剪掉多余背景、保证码完整且不过度模糊。
-            </Notice>
+            </p>
           </>
         )}
       </div>

@@ -183,9 +183,9 @@ function TextDiffCore() {
 
       {/* 空状态提示 */}
       {!oldText && !newText && (
-        <Notice tone="tip">
+        <p className="ui-note">
           在左右两侧分别输入原文本和新文本，<strong>自动实时对比</strong>差异。支持按行/词/字符三种模式。
-        </Notice>
+        </p>
       )}
 
       {/* 手动触发按钮（备用） */}

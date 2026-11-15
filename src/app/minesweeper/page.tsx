@@ -500,7 +500,7 @@ export default function MinesweeperPage() {
             {flagMode ? "标记模式：点击即插旗" : "切换标记模式（触屏用）"}
           </button>
 
-          <p className="text-xs text-slate-500 leading-relaxed">
+          <p className="ui-note">
             左键翻开 · 右键插旗 · 点已翻开的数字可快速展开周围
           </p>
         </div>

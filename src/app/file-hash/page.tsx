@@ -340,9 +340,9 @@ export default function FileHashPage() {
           textareaClassName="text-xs"
         />
 
-        <Notice tone="tip">
+        <p className="ui-note">
           计算在浏览器本地分块进行，内存占用恒定，适合校验镜像、安装包等大文件；计算超大文件时页面可能有轻微卡顿。MD5 与 SHA-1 已不适合作为安全凭证，仅用于完整性校验。
-        </Notice>
+        </p>
       </div>
     </ToolShell>
   );

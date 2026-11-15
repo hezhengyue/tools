@@ -180,9 +180,9 @@ export default function JwtPage() {
         {error && <Notice tone="error">解析失败：{error}</Notice>}
 
         {!token.trim() && (
-          <Notice tone="tip">
+          <p className="ui-note">
             粘贴一个 JWT 即可查看 Header、Payload 与过期状态；也可以先点「载入示例」看看效果。
-          </Notice>
+          </p>
         )}
 
         {result && (

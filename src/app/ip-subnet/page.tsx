@@ -294,9 +294,9 @@ export default function IpSubnetPage() {
         </>
       )}
 
-      <Notice tone="tip" className="mt-5">
+      <p className="ui-note mt-5">
         仅支持 IPv4。所有计算在本机完成，不会向任何服务查询你的 IP；这里输入的地址只是计算样本，与你的真实公网 IP 无关。
-      </Notice>
+      </p>
     </ToolShell>
   );
 }

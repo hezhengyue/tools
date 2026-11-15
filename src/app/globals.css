@@ -119,6 +119,14 @@
     max-width: 100ch;
   }
 
+  /* 工具页内的静态说明（语法说明、行为解释、空状态引导）：
+     只用排版，不画框、不加底色。带框的说明在不同档位下宽度对不齐内容边缘，
+     需要强调的提醒才用 .ui-notice。 */
+  .ui-note {
+    @apply text-xs leading-relaxed text-slate-500;
+    max-width: 100ch;
+  }
+
   /* 首页卡片网格：列数由视口自动决定，卡片宽度始终稳定 */
   .ui-card-grid {
     display: grid;
@@ -298,9 +306,10 @@
   }
 
   /* ---- 提示条 / 状态 ---- */
+  /* 状态反馈框（错误 / 成功 / 提醒）：铺满内容宽度，与上方控件左右边缘对齐。
+     静态说明不要用它，改用 .ui-note。 */
   .ui-notice {
     @apply p-3 rounded-2xl border text-sm flex items-start gap-2;
-    max-width: 100ch;
   }
   .ui-notice-tip {
     @apply bg-amber-50 border-amber-200 text-amber-700;

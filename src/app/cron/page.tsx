@@ -260,9 +260,9 @@ export default function CronPage() {
         )}
       </Panel>
 
-      <Notice tone="tip" className="mt-5">
+      <p className="ui-note mt-5">
         采用标准 5 段 Linux cron 语法，支持 <code>* , - /</code>。当「日」和「周」都受限时按任一满足执行（Vixie cron 行为）；不支持 Quartz 的 L / W / # 等扩展。执行时间按浏览器本地时区计算，不含秒字段。
-      </Notice>
+      </p>
     </ToolShell>
   );
 }

@@ -406,7 +406,7 @@ export default function Game2048Page() {
           </div>
         </div>
 
-        <p className="text-xs text-slate-500 text-center leading-relaxed">
+        <p className="ui-note text-center">
           方向键 / WASD 移动，手机上直接在棋盘上滑动；同值方块相撞会合并，每步随机生成一个新方块。
         </p>
       </div>

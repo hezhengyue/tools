@@ -505,9 +505,9 @@ export default function ImageBackgroundBlurPage() {
           </div>
         )}
 
-        <Notice tone="info">
+        <p className="ui-note">
           涂抹红色区域将保持清晰，其余背景自动虚化，可用橡皮擦修正。
-        </Notice>
+        </p>
       </div>
     </ToolShell>
   );

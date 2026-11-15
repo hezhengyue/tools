@@ -703,10 +703,10 @@ function JsonFormatCore() {
       )}
 
       {!parsed.filled && (
-        <Notice tone="tip">
-          粘贴或输入 JSON 后自动校验并转换。<b>键名重复、尾随逗号、单引号</b>是三种最常见的错误，错误提示会直接指出行号和列号。需要反向转换（JSON → YAML）请用
-          「JSON 转 YAML」。
-        </Notice>
+        <p className="ui-note">
+          粘贴或输入 JSON 后自动校验并转换。<b>键名重复、尾随逗号、单引号</b>是三种最常见的错误，错误提示会直接指出行号和列号。需要与 YAML 互相转换请用
+          「JSON ⇄ YAML」。
+        </p>
       )}
     </div>
   );

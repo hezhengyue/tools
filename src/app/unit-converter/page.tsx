@@ -233,9 +233,9 @@ ${baseText} (${fromBase} 进制) = ${baseResult.main || "—"} (${toBase} 进制
         />
       </div>
 
-      <Notice tone="tip" className="mt-5">
+      <p className="ui-note mt-5">
         时间类别的「月 / 年」按平均长度换算（月 30.44 天、儒略年 365.25 天），不用于日历日期计算；存储单位明确区分十进制（KB）与二进制（KiB）；马赫按海平面 15°C 音速 340.29 m/s 估算。
-      </Notice>
+      </p>
     </ToolShell>
   );
 }

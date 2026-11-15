@@ -290,9 +290,9 @@ ${html}
 
       {error && <Notice tone="error" className="mt-5">{error}</Notice>}
 
-      <Notice tone="tip" className="mt-5">
+      <p className="ui-note mt-5">
         预览与转换全部在本机完成：HTML 经 DOMPurify 净化后渲染，默认不执行文档里内嵌的 HTML。打印按钮会调用浏览器打印，选择「另存为 PDF」即可导出。
-      </Notice>
+      </p>
     </ToolShell>
   );
 }

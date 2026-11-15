@@ -38,7 +38,7 @@ export default function XxxPage() {
           <KeyRow label="名称" value="值" />
         </div>
       </Panel>
-      <Notice tone="tip">提示内容</Notice>
+      <p className="ui-note">这一段是这个工具的语法 / 行为说明，纯文字、不带框。</p>
       <ToolActions>
         <Button variant="secondary">次要操作</Button>
         <Button>主操作</Button>
@@ -73,6 +73,20 @@ export default function XxxPage() {
 - 例外：整页级主操作按钮组（如「复制全部 / 重新检测」）与图片文件导出不属于文本输出块，继续用 `Button` / `ToolActions`。
 
 设计约定：主色 `indigo-600`；成功 `emerald`；提示 `amber`；错误 `red`；卡片 `rounded-2xl`，按钮 `rounded-xl`，小控件 `rounded-lg`；边框统一 `border-slate-200`；次级底色 `bg-slate-50`。语义色（哈希算法标签、密码强度、增删高亮、私钥警示）可保留。
+
+## 静态说明：不带框，用 `.ui-note`（强制）
+
+工具页里那些**固定的解释性文字**（语法说明、算法差异、行为解释、空状态引导）一律写成纯文字，**不要套 `Notice` 或任何带边框 / 底色的容器**：
+
+```tsx
+<p className="ui-note">采用标准 5 段 Linux cron 语法，不支持 Quartz 的 L / W / #。</p>
+<p className="ui-note mt-5">与上方容器分隔时用 mt-*，不要额外包 div。</p>
+```
+
+- 原因：带框的说明会画出可见右边缘，而 `.ui-note` 限宽 100ch，两者一叠加就变成「框没铺满、文字提前换行」，看起来像布局坏了。纯文字没有边缘，行长收窄是正常排版。
+- `Notice` **只用于状态反馈与需要强调的提醒**：错误、成功、动态提示（没有结果、文件不合法、测速中）、以及真正的风险警告（隐私条款、敏感信息）。它现在铺满内容宽度，与上方控件左右对齐。
+- 需要小标题 + 多段时，用 `<div className="ui-note">` 包若干 `<p>`，不要为了一段说明新建 `Panel`。
+- 空状态引导同样用 `.ui-note`，不用 `EmptyState`（后者用于「上传前」这类占位区）。
 
 ## 页脚：框架固定的一句话（不可自定义）
 
@@ -126,7 +140,7 @@ export default function XxxPage() {
 - **禁止**在工具页、`ToolShell`、任何组件里写页面级宽度类（`max-w-4xl` / `max-w-6xl` / `w-[calc(100%-18rem)]` 等），也不要在别处覆盖 `--ui-page-max` / `--ui-layout-*`。
 - 主编辑区统一用 `.ui-editor`，主预览区统一用 `.ui-viewer`，棋盘统一用 `.ui-board`（内含「不超过可视高度」保护，保证整盘完整可见）。**不要自己写 `min-h-[420px]` / `max-w-[520px]` 这类一次性数值**。
 - **表单 / 选项字段组统一用 `.ui-form-grid`**（`auto-fit minmax(min(100%, 16rem), 1fr)`，列数随容器自动算）。不要写死 `grid grid-cols-2` / `sm:grid-cols-2`——那会让 2K / 4K 屏上只剩两列、每个输入被拉成一条。固定 2 列的按钮组、A/交换/B 三列输入、Markdown / Diff 双栏编辑区属于有语义的布局，保留原写法。
-- 面包屑 `.ui-breadcrumb`、快捷键 `.ui-shortcut`、侧栏阴影 `.ui-sidebar` 也都在 `globals.css`，不要在组件里另写一套。
+- 面包屑 `.ui-breadcrumb`、快捷键 `.ui-shortcut`、侧栏阴影 `.ui-sidebar`、静态说明 `.ui-note` 也都在 `globals.css`，不要在组件里另写一套。
 - 局部元素（文字截断、按钮组、小控件）仍可用 `max-w-[10rem]`，但不得用在页面或主内容容器上。
 - 滚动区上限统一用视口相对值（`max-h-[70vh]` / `max-h-[calc(100vh_-_240px)]`），不要写死 `max-h-[400px]` 这类在 4K 屏上显得很小的数值。
 - 需要「更大 / 显示更多」时**只改 `globals.css` 里的变量与语义类**，不要逐页改；首页卡片网格用 `.ui-card-grid`，不要写死断点列数。

@@ -739,16 +739,18 @@ export default function ScreenshotPage() {
           </Panel>
         )}
 
-        <Notice tone="info">
-          <span className="flex items-center gap-1.5 font-medium text-slate-700 mb-1">
-            <Keyboard size={14} />
+        <div className="ui-note">
+          <p className="flex items-center gap-1.5 font-medium text-slate-600">
+            <Keyboard size={14} aria-hidden="true" />
             关于快捷键
-          </span>
-          网页只能注册「页面内」快捷键：本页处于焦点时按{" "}
-          <span className="font-mono">{HOTKEY_LABEL}</span> 即可截图，框选时按{" "}
-          <span className="font-mono">Enter</span> 保存整张、按{" "}
-          <span className="font-mono">Esc</span> 取消。要截其它程序，请在共享弹窗里直接选那个窗口，或选「整个屏幕」并设 3 秒延迟后切过去。
-        </Notice>
+          </p>
+          <p className="mt-1">
+            网页只能注册「页面内」快捷键：本页处于焦点时按{" "}
+            <span className="font-mono">{HOTKEY_LABEL}</span> 即可截图，框选时按{" "}
+            <span className="font-mono">Enter</span> 保存整张、按{" "}
+            <span className="font-mono">Esc</span> 取消。要截其它程序，请在共享弹窗里直接选那个窗口，或选「整个屏幕」并设 3 秒延迟后切过去。
+          </p>
+        </div>
       </div>
 
       {/* 框选遮罩：冻结帧铺满，拖动框选，松开即完成 */}
