@@ -306,7 +306,7 @@ function Base64Core() {
                   </button>
                 </p>
                 <p className="text-xs text-slate-500 mt-1">
-                  上限 {formatBytes(MAX_FILE_BYTES)}，文件不会离开你的浏览器
+                  上限 {formatBytes(MAX_FILE_BYTES)}
                 </p>
                 <input
                   ref={fileInputRef}

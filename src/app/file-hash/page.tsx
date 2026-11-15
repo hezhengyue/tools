@@ -233,7 +233,7 @@ export default function FileHashPage() {
           >
             <UploadCloud size={28} className="mx-auto text-indigo-600 mb-2" />
             <div className="text-sm font-semibold text-slate-700">点击选择或拖拽文件到这里</div>
-            <div className="text-xs text-slate-500 mt-1">可分块处理超大文件，最多 {MAX_FILES} 个，全程不上传</div>
+            <div className="text-xs text-slate-500 mt-1">可分块处理超大文件，最多 {MAX_FILES} 个</div>
           </button>
         </div>
 

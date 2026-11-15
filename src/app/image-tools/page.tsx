@@ -582,7 +582,7 @@ export default function ImageToolsPage() {
       {mode === "svg" && <div className="mt-5"><SvgPanel /></div>}
 
       <Notice tone="tip" className="mt-5">
-        所有处理都在浏览器本地的 canvas 上完成，图片不会上传。超大图会先校验文件大小（20 MB）与总像素（1600 万），避免卡死；切图与图标套件以 ZIP 打包，一次下载全部结果。
+        超大图会先校验文件大小（20 MB）与总像素（1600 万），避免卡死；切图与图标套件以 ZIP 打包，一次下载全部结果。
       </Notice>
     </ToolShell>
   );

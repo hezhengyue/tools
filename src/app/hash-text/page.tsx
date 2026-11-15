@@ -210,7 +210,7 @@ function HashTextCore() {
       {/* 空状态提示 */}
       {!inputText && (
         <Notice tone="tip" className="mt-3">
-          在上方输入文本，即可实时生成各种哈希值。所有计算均在本地完成，数据不会上传。
+          在上方输入文本，即可实时生成各种哈希值，结果随输入自动更新。
         </Notice>
       )}
 

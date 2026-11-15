@@ -2,7 +2,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { Check, RefreshCw, ShieldCheck } from "lucide-react";
+import { Check, RefreshCw } from "lucide-react";
 import ToolShell from "@/components/ToolShell";
 import { CopyButton } from "@/components/ui/ToolUI";
 
@@ -472,11 +472,6 @@ function PasswordGeneratorCore() {
         <RefreshCw size={18} className="mr-2" />
         重新生成密码
       </button>
-
-      <p className="flex items-start gap-2 text-xs text-slate-500 mt-4 leading-relaxed">
-        <ShieldCheck size={14} className="shrink-0 mt-0.5 text-emerald-600" />
-        使用浏览器 crypto.getRandomValues 生成，随机性来自系统熵源，且完全在本地计算，密码不会离开这台设备。
-      </p>
     </>
   );
 }

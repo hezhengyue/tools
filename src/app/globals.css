@@ -1,6 +1,11 @@
 /* 适配最新的 Tailwind v4 语法 */
 @import "tailwindcss";
 
+/* 全站唯一的页面宽度上限（详见下方 .ui-page 注释）：要调整宽窄只改这一个数 */
+:root {
+  --ui-page-max: 1440px;
+}
+
 /* ============ 全局底色与排版 ============ */
 @layer base {
   body {
@@ -49,15 +54,17 @@
      布局尺寸：全站唯一来源
      ----------------------------------------------------------------
      页面宽度只在这里定义，由 src/app/layout.tsx 的主内容容器使用。
-     .ui-page 刻意不设 max-width：随分辨率自适应铺满，2K / 4K 屏都能
-     用满宽度。工具页 / ToolShell / 组件里禁止再写页面级 max-w-*。
-     超宽屏的可读性由下面的组件级限宽统一兜底，页面不需要做任何判断：
-     说明文字 .ui-prose、页脚 .ui-footer、提示条 .ui-notice 限 100ch，
-     单行输入 .ui-input / .ui-select 限 48rem；编辑器 / 预览 / 表格 /
-     画布仍完整铺满。规范见 AGENTS.md「布局尺寸：唯一规则」。
+     --ui-page-max 是全站唯一的宽度上限：视口比它窄时自然铺满，比它宽时
+     居中留白，避免 2K / 4K 屏把内容拉得过大。调整宽窄只改这一个数，
+     工具页 / ToolShell / 组件里禁止再写页面级 max-w-*。
+     超宽屏的可读性由组件级限宽统一兜底，页面不需要做任何判断：
+     说明文字 .ui-prose、提示条 .ui-notice 限 100ch，单行输入
+     .ui-input / .ui-select 限 48rem；编辑器 / 预览 / 表格 / 画布仍完整
+     铺满可用宽度。规范见 AGENTS.md「布局尺寸：唯一规则」。
      ================================================================ */
   .ui-page {
-    @apply mx-auto w-full px-4 py-4 sm:px-6 sm:py-6 lg:px-8 lg:py-8 xl:px-10 xl:py-10;
+    @apply mx-auto w-full px-4 py-4 sm:px-6 sm:py-5 lg:px-8 lg:py-7 xl:px-10 xl:py-8;
+    max-width: var(--ui-page-max);
   }
 
   /* 说明文字：超宽屏下限制行长，避免一行几百字难以阅读 */
@@ -103,12 +110,12 @@
 
   /* 主编辑区：大屏给足高度，内容显示更多 */
   .ui-editor {
-    @apply min-h-[320px] lg:min-h-[420px] xl:min-h-[520px];
+    @apply min-h-[300px] lg:min-h-[380px] xl:min-h-[440px];
   }
 
   /* 主预览区：同样给足高度，但不超过可视区域，超长内容在区内滚动 */
   .ui-viewer {
-    @apply min-h-[320px] lg:min-h-[420px] xl:min-h-[520px] overflow-y-auto;
+    @apply min-h-[300px] lg:min-h-[380px] xl:min-h-[440px] overflow-y-auto;
     max-height: calc(100vh - 180px);
   }
 
@@ -121,7 +128,7 @@
 
   /* 输出块高度：OutputBlock 内部统一使用，页面不再传 minHeight */
   .ui-output-min {
-    @apply min-h-[160px] xl:min-h-[220px];
+    @apply min-h-[140px] xl:min-h-[180px];
   }
 
   /* ---- 卡片与信息展示 ---- */
@@ -269,13 +276,20 @@
     @apply bg-emerald-50 text-emerald-700 border-emerald-200;
   }
 
-  /* ---- 页脚说明（所有工具页共用） ---- */
-  .ui-footer {
-    @apply mt-6 md:mt-8 p-4 bg-slate-50 rounded-2xl border border-slate-200/60 flex items-start gap-2 text-sm text-slate-600;
-    max-width: 100ch;
+  /* ---- 页脚隐私说明（所有工具页共用的一行小字） ----
+     固定文案由 ToolShell 渲染，工具只在确有必要时用 note 补一句。
+     刻意不做成卡片 / 警告图标：底部说明不该和上方内容卡抢视觉，
+     也不重复工具页内部已有的介绍。 */
+  .ui-privacy {
+    @apply mt-5 flex flex-wrap items-center gap-x-2 gap-y-1 border-t border-slate-200 pt-4 text-xs text-slate-500;
   }
-  .ui-footer-icon {
-    @apply w-4 h-4 mt-0.5 shrink-0 text-amber-500;
+  .ui-privacy-icon {
+    @apply w-3.5 h-3.5 shrink-0 text-emerald-600;
+  }
+  .ui-privacy-note::before {
+    content: "·";
+    margin-right: 0.5rem;
+    color: var(--color-slate-400);
   }
 
   /* ---- Markdown 预览排版（未引入 typography 插件，样式集中在此） ---- */

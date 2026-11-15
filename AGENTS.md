@@ -20,7 +20,7 @@ This version has breaking changes — APIs, conventions, and file structure may 
 - `src/app/globals.css` → `@layer components` 里的 `.ui-*` 语义类（设计令牌）。
 - `src/components/ui/ToolUI.tsx` → 结构组件：`Panel` / `KeyRow` / `DisplayBox` / `Button` / `IconButton` / `Notice` / `EmptyState` / `Field` / `ToolActions` / `Badge`，以及输出块 `OutputBlock` / `CopyButton` / `DownloadButton` 与剪贴板工具 `writeClipboard`。
 - `src/config/site.ts` → 站点名称与描述的唯一来源（metadata / 侧栏 / 移动端顶栏共用）。
-- `src/components/ToolShell.tsx` → 所有工具页统一外壳（面包屑、标题、图标、描述、收藏、内容卡、页脚）。全部工具页都用它包裹，面包屑的分类从 `tools.ts` 派生，页面不要自己写。
+- `src/components/ToolShell.tsx` → 所有工具页统一外壳（面包屑、标题、图标、描述、收藏、内容卡、底部一行固定隐私说明）。全部工具页都用它包裹，面包屑的分类从 `tools.ts` 派生，页面不要自己写。
 - 首页 / 导航组件：`HomeSearch`（搜索主入口）、`RecentBar`（最近 + 收藏快捷入口）、`HomeCategories`（可折叠分类）、`Sidebar`、`MobileHeader`（模态抽屉）、`CommandPalette`、`ShortcutHint`（Mac 显示 ⌘K）。
 
 新工具页骨架：
@@ -47,7 +47,7 @@ export default function XxxPage() {
   );
 }
 ```
-然后在 `src/config/tools.ts` 注册工具（名称、图标、描述、分类）并填 `footer`。
+然后在 `src/config/tools.ts` 注册工具（名称、图标、描述、分类）。`footer` 默认不填；只有确实需要服务端请求的工具才填 `{ mode: "server" }`。
 
 ## 输出块：复制 / 下载统一交互（强制）
 
@@ -72,26 +72,37 @@ export default function XxxPage() {
 
 设计约定：主色 `indigo-600`；成功 `emerald`；提示 `amber`；错误 `red`；卡片 `rounded-2xl`，按钮 `rounded-xl`，小控件 `rounded-lg`；边框统一 `border-slate-200`；次级底色 `bg-slate-50`。语义色（哈希算法标签、密码强度、增删高亮、私钥警示）可保留。
 
-页脚说明是**结构化数据**，不是 HTML：
+## 页脚：一行固定隐私说明（强制）
+
+底部说明由 `ToolShell` 的 `PrivacyLine` 统一渲染为 `.ui-privacy`（一小行灰字 + 上分隔线，不是卡片、不用警告图标）。**文案全站固定、不随工具变化**：
+
+- 默认：「所有处理均在浏览器本地完成，数据不会上传到服务器。」
+- `footer: { mode: "server" }`：「归属地需由服务端接口查询，仅将你的公网 IP 发送给公共 IP 库，不收集或存储个人信息。」（目前仅 IP 地理位置）
+
+`tools.ts` 里的 `footer` **是可选的，绝大多数工具不要填**：
+
 ```ts
-footer: { mode: "local", subject: "文本", extra: "补充说明（可选）" }
+footer?: { mode?: "local" | "server"; note?: string }
 ```
-`mode: "local"` 生成「所有处理在浏览器本地完成，{subject}不会上传到任何服务器。」；`mode: "server"` 用于确实需要服务端查询的工具（目前仅 IP 地理位置），生成「归属地由服务端接口查询…」。ToolShell 统一渲染，**禁止 `dangerouslySetInnerHTML`、禁止页脚写自由 HTML、禁止在页面里自写 `<h1>` 重复标题**。
+
+`note` 只允许填「页面内部没写、又必须让用户在底部看到」的一条补充说明（如 JWT 不验签、自签证书不受信任），不要写工具介绍、用法、算法说明、限制说明——**这些一律写在工具自己的页面里**（`Notice` / `Field` / 说明文字），避免底部与页面内重复。页脚只允许纯文本结构化数据，**禁止 `dangerouslySetInnerHTML`、禁止自由 HTML、禁止在页面里自写 `<h1>` 或另写一份隐私说明**。
+
+理由：以前每个工具都在底部拼一段「主句 + 自定义补充」，30 多页格式各异、和上方内容卡视觉冲突，还经常和页面内自带的介绍重复。现在底部只承担「声明数据流向」这一件事。
 
 ## 布局尺寸：唯一规则（强制）
 
-**全站宽度只在 `src/app/globals.css` 的 `.ui-page` 定义**：`width: 100%`、**没有 max-width 上限**，随分辨率自适应铺满，由 `src/app/layout.tsx` 的主内容容器使用。不要再给页面加宽度上限、档位或覆盖属性。
+**全站宽度只在 `src/app/globals.css` 定义**，由 `src/app/layout.tsx` 的主内容容器使用：`.ui-page { width: 100%; max-width: var(--ui-page-max); margin-inline: auto; }`。`--ui-page-max`（当前 **1440px**）是**唯一可调的数字**：视口比它窄时自然铺满，比它宽时居中留白，避免 2K / 4K 屏把内容拉得过大。整体要变宽 / 变窄只改这一个变量，不要逐页改、不要加档位。
 
-  超宽屏可读性由组件级规则统一兜底，页面无需判断：说明文字用 `.ui-prose`（100ch），页脚 `.ui-footer` 与提示条 `.ui-notice` 自带 100ch 上限，单行输入 `.ui-input` / `.ui-select` 上限 48rem；编辑器、预览、表格、画布仍然完整铺满。首页卡片列数由 `.ui-card-grid`（auto-fill minmax）自动决定。
+  超宽屏可读性由组件级规则统一兜底，页面无需判断：说明文字用 `.ui-prose`（100ch），提示条 `.ui-notice` 自带 100ch 上限，单行输入 `.ui-input` / `.ui-select` 上限 48rem；编辑器、预览、表格、画布仍铺满可用宽度。首页卡片列数由 `.ui-card-grid`（auto-fill minmax）自动决定。
 
-- **禁止**在工具页、`ToolShell`、任何组件里写页面级宽度类（`max-w-4xl` / `max-w-6xl` / `w-[calc(100%-18rem)]` 等）。新增页面只写内容，宽度自动继承，不需要也不允许做选择。
+- **禁止**在工具页、`ToolShell`、任何组件里写页面级宽度类（`max-w-4xl` / `max-w-6xl` / `w-[calc(100%-18rem)]` 等），也不要在别处覆盖 `--ui-page-max`。新增页面只写内容，宽度自动继承，不需要也不允许做选择。
 - 主编辑区统一用 `.ui-editor`，主预览区统一用 `.ui-viewer`，棋盘统一用 `.ui-board`（内含「不超过可视高度」保护，保证整盘完整可见）。**不要自己写 `min-h-[420px]` / `max-w-[520px]` 这类一次性数值**。
 - **表单 / 选项字段组统一用 `.ui-form-grid`**（`auto-fit minmax(22rem, 1fr)`，列数随视口自动算）。不要写死 `grid grid-cols-2` / `sm:grid-cols-2`——那会让 2K / 4K 屏上只剩两列、每个输入被拉成一条。固定 2 列的按钮组、A/交换/B 三列输入、Markdown / Diff 双栏编辑区属于有语义的布局，保留原写法。
 - 面包屑 `.ui-breadcrumb`、快捷键 `.ui-shortcut`、侧栏阴影 `.ui-sidebar` 也都在 `globals.css`，不要在组件里另写一套。
 - 局部元素（文字截断、按钮组、小控件）仍可用 `max-w-[10rem]`，但不得用在页面或主内容容器上。
 - 滚动区上限统一用视口相对值（`max-h-[70vh]` / `max-h-[calc(100vh_-_240px)]`），不要写死 `max-h-[400px]` 这类在 4K 屏上显得很小的数值。
-- 需要「更大 / 显示更多」时**只改 `globals.css` 里的这几个语义类**，不要逐页改；首页卡片网格用 `.ui-card-grid`，不要写死断点列数。
-- 理由：多档位、每页 `wide` 属性、可覆盖宽度，会让后续维护者（包括 AI）每建一页都要判断一次用哪档，必然出现不一致。唯一规则 = 零判断 = 不会写错。
+- 需要「更大 / 显示更多」时**只改 `globals.css` 里的 `--ui-page-max` 与这几个语义类**，不要逐页改；首页卡片网格用 `.ui-card-grid`，不要写死断点列数。
+- 理由：多档位、每页 `wide` 属性、可覆盖宽度，会让后续维护者（包括 AI）每建一页都要判断一次用哪档，必然出现不一致。唯一变量 + 唯一规则 = 零判断 = 不会写错。
 
 # 站点级能力约定
 
@@ -118,7 +129,7 @@ footer: { mode: "local", subject: "文本", extra: "补充说明（可选）" }
 - **哈希算法**：`crypto-js/sha3` 用的是 Keccak padding(0x01)，**不是** NIST SHA-3；标准 `SHA3-256` / `SHA3-512` 必须用 `@noble/hashes/sha3.js`，旧实现单独标为 `Keccak-512`。别把两者混用。
 - **JSON 精度**：`JSON.parse` 会静默舍入超过 `Number.MAX_SAFE_INTEGER` 的整数。转换类页面必须先扫描字面量并明确报错（json-yaml 的 `parseJsonLossless`），禁止给出「已转换」却改坏了 ID / 金额。
 - **可访问性**：允许用户缩放（viewport 不设 `userScalable: false`）；独立 `<label>` 必须用 `htmlFor` 关联控件 id；图标按钮必须有 `aria-label`；上传区支持键盘触发；动态提示用 `Notice`（自带 `role=status/alert`）；小字最低 `text-slate-500`，不要用 `text-slate-400`。
-- **隐私**：新增工具默认在浏览器本地处理；若确实需要服务端请求，必须在 `tools.ts` 的 `footer.mode` 标为 `"server"` 并如实说明，不要套用「不会上传任何服务器」。
+- **隐私**：新增工具默认在浏览器本地处理；底部固定隐私句由 ToolShell 渲染，页面内不要再重复写「本地处理 / 不会上传」。若确实需要服务端请求，必须在 `tools.ts` 的 `footer.mode` 标为 `"server"` 并如实说明，不要套用「不会上传任何服务器」。
 - **待办**：图片压缩与背景虚化的画布计算仍在主线程（已用像素上限 + 异步编码缓解），彻底 Worker 化需单独排期并做浏览器兼容验证。
 
 # 提交前检查

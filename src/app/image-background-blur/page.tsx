@@ -506,7 +506,7 @@ export default function ImageBackgroundBlurPage() {
         )}
 
         <Notice tone="info">
-          涂抹红色区域将保持清晰，其余背景自动虚化。所有处理在本地完成。
+          涂抹红色区域将保持清晰，其余背景自动虚化，可用橡皮擦修正。
         </Notice>
       </div>
     </ToolShell>
