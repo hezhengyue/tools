@@ -5,20 +5,18 @@
    全站尺寸的唯一来源（要调大小只改这里，不要在页面里写具体数值）
    ----------------------------------------------------------------
    1) --ui-page-max   页面整体宽度上限；视口更宽时居中留白
-   2) --ui-layout-*   工具内容的「布局原型」宽度，与分辨率无关：
-         form  760  —— 表单 / 选项 / 单值结果（默认）
-         table 1040 —— 键值信息行、哈希结果、参数表
-         board 720  —— 棋类与游戏
-         wide  不设上限 —— 双栏编辑、图片、媒体预览
+   2) --ui-layout-*   工具内容的「布局档位」宽度，与分辨率无关，只有三档：
+         narrow  740  —— 默认档：单列输入、极简结果、单值换算、棋盘
+         medium 1040 —— 多行条目 / 键值清单 / 参数表
+         full    不限 —— 左右并排对照、图片与媒体画布
    3) --ui-*          密度令牌：内边距 / 间距 / 字段最小宽，全站一套
    控件尺寸恒定，只让容器宽度弹性变化 —— 这是控制「框太大」的关键。
    ================================================================ */
 :root {
   --ui-page-max: 1440px;
 
-  --ui-layout-form: 760px;
-  --ui-layout-table: 1040px;
-  --ui-layout-board: 720px;
+  --ui-layout-narrow: 740px;
+  --ui-layout-medium: 1040px;
 
   --ui-gap: 0.75rem;
   --ui-gap-lg: 1.25rem;
@@ -79,12 +77,12 @@
      居中留白。调整宽窄只改这一个数，工具页 / ToolShell / 组件里禁止
      再写页面级 max-w-*。
 
-     工具内容宽度由「布局原型」决定，在 config/tools.ts 里为每个工具
-     声明一次，ToolShell 渲染 .ui-layout-*，页面本身不做任何宽度判断：
-       form  760px  表单 / 选项 / 单值结果（默认，未声明即用它）
-       table 1040px 键值信息行、哈希结果、参数表
-       board 720px  棋类与游戏
-       wide  不限   双栏编辑、图片、媒体预览
+     工具内容宽度由「布局档位」决定，只有三档，在 config/tools.ts 里为
+     每个工具声明一次（不声明 = narrow 默认档），ToolShell 渲染
+     .ui-layout-*，页面本身不做任何宽度判断：
+       narrow  740px  默认档：单列输入、极简结果、单值换算、棋盘
+       medium 1040px  多行条目 / 键值清单 / 参数表
+       full    不限   左右并排对照、图片与媒体画布
      屏幕只决定容器能有多宽，不决定控件该有多大 —— 所以 2K / 4K 屏
      不会再把输入框与滑杆拉成一条。
      ================================================================ */
@@ -93,33 +91,27 @@
     max-width: var(--ui-page-max);
   }
 
-  .ui-layout-form {
-    max-width: var(--ui-layout-form);
+  .ui-layout-narrow {
+    max-width: var(--ui-layout-narrow);
     margin-inline: auto;
   }
-  .ui-layout-table {
-    max-width: var(--ui-layout-table);
+  .ui-layout-medium {
+    max-width: var(--ui-layout-medium);
     margin-inline: auto;
   }
-  .ui-layout-board {
-    max-width: var(--ui-layout-board);
-    margin-inline: auto;
-  }
-  .ui-layout-wide {
+  .ui-layout-full {
     max-width: none;
   }
 
-  /* 页面宽度跟着原型一起收：卡片两侧始终留约 120px，
+  /* 页面宽度跟着档位一起收：卡片两侧始终留约 120px，
      宽屏不会出现「一张小卡片孤零零浮在 1440 中间」。
-     :has() 不被支持时自动退回上面的 --ui-page-max，只是留白多一点。 */
-  .ui-page:has(.ui-layout-form) {
-    max-width: calc(var(--ui-layout-form) + 15rem);
+     full 不收，回落到上面的 --ui-page-max。
+     :has() 不被支持时自动退回 --ui-page-max，只是留白多一点。 */
+  .ui-page:has(.ui-layout-narrow) {
+    max-width: calc(var(--ui-layout-narrow) + 15rem);
   }
-  .ui-page:has(.ui-layout-table) {
-    max-width: calc(var(--ui-layout-table) + 15rem);
-  }
-  .ui-page:has(.ui-layout-board) {
-    max-width: calc(var(--ui-layout-board) + 15rem);
+  .ui-page:has(.ui-layout-medium) {
+    max-width: calc(var(--ui-layout-medium) + 15rem);
   }
 
   /* 说明文字：超宽屏下限制行长，避免一行几百字难以阅读 */
@@ -135,7 +127,7 @@
   }
 
   /* 表单 / 选项字段组：列数随容器宽度自动算，单列最小 16rem，
-     配合 .ui-layout-form 的 760px 上限，字段不会再被拉成一条 */
+     配合 narrow 740 / medium 1040 的上限，字段不会被拉成一条 */
   .ui-form-grid {
     display: grid;
     grid-template-columns: repeat(auto-fit, minmax(min(100%, var(--ui-field-min)), 1fr));

@@ -17,12 +17,11 @@ interface ToolShellProps {
   extraContent?: ReactNode;
 }
 
-/** 布局原型 → globals.css 里的宽度类。原型在 config/tools.ts 里声明，页面不传宽度 */
+/** 宽度档位 → globals.css 里的宽度类。档位在 config/tools.ts 声明，页面不传宽度 */
 const LAYOUT_CLASS: Record<ToolLayout, string> = {
-  form: "ui-layout-form",
-  table: "ui-layout-table",
-  board: "ui-layout-board",
-  wide: "ui-layout-wide",
+  narrow: "ui-layout-narrow",
+  medium: "ui-layout-medium",
+  full: "ui-layout-full",
 };
 
 /** 全站固定的一行隐私说明：格式一致、文案不随工具变化，note 才由工具自定义 */
@@ -54,7 +53,7 @@ export default function ToolShell({ children, extraContent }: ToolShellProps) {
   if (!current) {
     return (
       <div className="w-full">
-        <div className="ui-panel ui-layout-form md:p-5">{children}</div>
+        <div className="ui-panel ui-layout-narrow md:p-5">{children}</div>
         <PrivacyLine />
       </div>
     );
@@ -101,8 +100,8 @@ export default function ToolShell({ children, extraContent }: ToolShellProps) {
         <p className="ui-prose text-slate-500 text-sm md:text-base break-words">{currentTool.desc}</p>
       </div>
 
-      {/* 内容卡片：宽度由 tools.ts 的 layout 原型决定，页面不做宽度判断 */}
-      <div className={`ui-panel ${LAYOUT_CLASS[currentTool.layout ?? "form"]} md:p-5`}>
+      {/* 内容卡片：宽度由 tools.ts 的 layout 档位决定，页面不做宽度判断 */}
+      <div className={`ui-panel ${LAYOUT_CLASS[currentTool.layout ?? "narrow"]} md:p-5`}>
         {children}
       </div>
 
