@@ -1,9 +1,30 @@
 /* 适配最新的 Tailwind v4 语法 */
 @import "tailwindcss";
 
-/* 全站唯一的页面宽度上限（详见下方 .ui-page 注释）：要调整宽窄只改这一个数 */
+/* ================================================================
+   全站尺寸的唯一来源（要调大小只改这里，不要在页面里写具体数值）
+   ----------------------------------------------------------------
+   1) --ui-page-max   页面整体宽度上限；视口更宽时居中留白
+   2) --ui-layout-*   工具内容的「布局原型」宽度，与分辨率无关：
+         form  760  —— 表单 / 选项 / 单值结果（默认）
+         table 1040 —— 键值信息行、哈希结果、参数表
+         board 720  —— 棋类与游戏
+         wide  不设上限 —— 双栏编辑、图片、媒体预览
+   3) --ui-*          密度令牌：内边距 / 间距 / 字段最小宽，全站一套
+   控件尺寸恒定，只让容器宽度弹性变化 —— 这是控制「框太大」的关键。
+   ================================================================ */
 :root {
   --ui-page-max: 1440px;
+
+  --ui-layout-form: 760px;
+  --ui-layout-table: 1040px;
+  --ui-layout-board: 720px;
+
+  --ui-gap: 0.75rem;
+  --ui-gap-lg: 1.25rem;
+  --ui-pad: 1rem;
+  --ui-cta-py: 0.5rem;
+  --ui-field-min: 16rem;
 }
 
 /* ============ 全局底色与排版 ============ */
@@ -54,17 +75,51 @@
      布局尺寸：全站唯一来源
      ----------------------------------------------------------------
      页面宽度只在这里定义，由 src/app/layout.tsx 的主内容容器使用。
-     --ui-page-max 是全站唯一的宽度上限：视口比它窄时自然铺满，比它宽时
-     居中留白，避免 2K / 4K 屏把内容拉得过大。调整宽窄只改这一个数，
-     工具页 / ToolShell / 组件里禁止再写页面级 max-w-*。
-     超宽屏的可读性由组件级限宽统一兜底，页面不需要做任何判断：
-     说明文字 .ui-prose、提示条 .ui-notice 限 100ch，单行输入
-     .ui-input / .ui-select 限 48rem；编辑器 / 预览 / 表格 / 画布仍完整
-     铺满可用宽度。规范见 AGENTS.md「布局尺寸：唯一规则」。
+     --ui-page-max 是页面级宽度上限：视口比它窄时自然铺满，比它宽时
+     居中留白。调整宽窄只改这一个数，工具页 / ToolShell / 组件里禁止
+     再写页面级 max-w-*。
+
+     工具内容宽度由「布局原型」决定，在 config/tools.ts 里为每个工具
+     声明一次，ToolShell 渲染 .ui-layout-*，页面本身不做任何宽度判断：
+       form  760px  表单 / 选项 / 单值结果（默认，未声明即用它）
+       table 1040px 键值信息行、哈希结果、参数表
+       board 720px  棋类与游戏
+       wide  不限   双栏编辑、图片、媒体预览
+     屏幕只决定容器能有多宽，不决定控件该有多大 —— 所以 2K / 4K 屏
+     不会再把输入框与滑杆拉成一条。
      ================================================================ */
   .ui-page {
     @apply mx-auto w-full px-4 py-4 sm:px-6 sm:py-5 lg:px-8 lg:py-7 xl:px-10 xl:py-8;
     max-width: var(--ui-page-max);
+  }
+
+  .ui-layout-form {
+    max-width: var(--ui-layout-form);
+    margin-inline: auto;
+  }
+  .ui-layout-table {
+    max-width: var(--ui-layout-table);
+    margin-inline: auto;
+  }
+  .ui-layout-board {
+    max-width: var(--ui-layout-board);
+    margin-inline: auto;
+  }
+  .ui-layout-wide {
+    max-width: none;
+  }
+
+  /* 页面宽度跟着原型一起收：卡片两侧始终留约 120px，
+     宽屏不会出现「一张小卡片孤零零浮在 1440 中间」。
+     :has() 不被支持时自动退回上面的 --ui-page-max，只是留白多一点。 */
+  .ui-page:has(.ui-layout-form) {
+    max-width: calc(var(--ui-layout-form) + 15rem);
+  }
+  .ui-page:has(.ui-layout-table) {
+    max-width: calc(var(--ui-layout-table) + 15rem);
+  }
+  .ui-page:has(.ui-layout-board) {
+    max-width: calc(var(--ui-layout-board) + 15rem);
   }
 
   /* 说明文字：超宽屏下限制行长，避免一行几百字难以阅读 */
@@ -79,11 +134,12 @@
     gap: 1.25rem;
   }
 
-  /* 表单 / 选项字段组：列数随视口自动算，超宽屏不会只剩两列把输入拉成一条 */
+  /* 表单 / 选项字段组：列数随容器宽度自动算，单列最小 16rem，
+     配合 .ui-layout-form 的 760px 上限，字段不会再被拉成一条 */
   .ui-form-grid {
     display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(min(100%, 22rem), 1fr));
-    gap: 1rem 1.5rem;
+    grid-template-columns: repeat(auto-fit, minmax(min(100%, var(--ui-field-min)), 1fr));
+    gap: var(--ui-gap) var(--ui-gap-lg);
     align-items: start;
   }
 
@@ -133,19 +189,19 @@
 
   /* ---- 卡片与信息展示 ---- */
   .ui-panel {
-    @apply bg-white border border-slate-200 rounded-2xl p-5;
+    @apply bg-white border border-slate-200 rounded-2xl p-4;
   }
   .ui-panel-muted {
-    @apply bg-slate-50 border border-slate-200 rounded-2xl p-5;
+    @apply bg-slate-50 border border-slate-200 rounded-2xl p-4;
   }
   .ui-panel-title {
-    @apply flex items-center font-semibold text-slate-700 mb-4;
+    @apply flex items-center font-semibold text-slate-700 mb-3;
   }
   .ui-panel-icon {
     @apply w-5 h-5 mr-2 text-indigo-600 shrink-0;
   }
   .ui-display {
-    @apply bg-slate-50 border border-slate-200 rounded-2xl p-6 text-center shadow-inner;
+    @apply bg-slate-50 border border-slate-200 rounded-2xl p-4 text-center shadow-inner;
   }
   .ui-empty {
     @apply text-slate-500 text-center py-4 text-sm;
@@ -153,7 +209,7 @@
 
   /* ---- 键值信息行 ---- */
   .ui-kv-list {
-    @apply space-y-3 text-sm;
+    @apply space-y-2 text-sm;
   }
   .ui-kv {
     @apply flex justify-between gap-4;
@@ -167,7 +223,7 @@
 
   /* ---- 按钮 ---- */
   .ui-btn {
-    @apply inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl font-semibold text-sm transition-all disabled:opacity-50 disabled:cursor-not-allowed;
+    @apply inline-flex items-center justify-center gap-2 px-4 py-2 rounded-xl font-semibold text-sm transition-all disabled:opacity-50 disabled:cursor-not-allowed;
   }
   .ui-btn-primary {
     @apply bg-indigo-600 text-white hover:bg-indigo-700 shadow-md shadow-indigo-600/20;
@@ -196,11 +252,11 @@
     @apply font-semibold text-slate-700;
   }
   .ui-input {
-    @apply w-full p-3 bg-white border border-slate-200 rounded-xl text-sm text-slate-800 outline-none transition-all focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500;
+    @apply w-full px-3 py-2.5 bg-white border border-slate-200 rounded-xl text-sm text-slate-800 outline-none transition-all focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500;
     max-width: 48rem;
   }
   .ui-textarea {
-    @apply w-full p-4 bg-slate-50 border border-slate-200 rounded-xl font-mono text-sm text-slate-800 outline-none transition-all resize-y focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500;
+    @apply w-full p-3 bg-slate-50 border border-slate-200 rounded-xl font-mono text-sm text-slate-800 outline-none transition-all resize-y focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500;
   }
   .ui-textarea[readonly] {
     @apply bg-slate-100 shadow-inner;
@@ -209,7 +265,7 @@
     @apply w-4 h-4 accent-indigo-600 rounded;
   }
   .ui-select {
-    @apply w-full p-3 bg-white border border-slate-200 rounded-xl text-sm text-slate-800 outline-none transition-all focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500;
+    @apply w-full px-3 py-2.5 bg-white border border-slate-200 rounded-xl text-sm text-slate-800 outline-none transition-all focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500;
     max-width: 48rem;
   }
   .ui-input-sm {
@@ -251,7 +307,7 @@
 
   /* ---- 提示条 / 状态 ---- */
   .ui-notice {
-    @apply p-4 rounded-2xl border text-sm flex items-start gap-2;
+    @apply p-3 rounded-2xl border text-sm flex items-start gap-2;
     max-width: 100ch;
   }
   .ui-notice-tip {

@@ -8,7 +8,7 @@
 import { ReactNode } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { toolsConfig, type ToolFooter } from "@/config/tools";
+import { toolsConfig, type ToolFooter, type ToolLayout } from "@/config/tools";
 import { ChevronRight, Server, ShieldCheck, Star } from "lucide-react";
 import { usePreferences } from "./PreferencesProvider";
 
@@ -16,6 +16,14 @@ interface ToolShellProps {
   children: ReactNode;
   extraContent?: ReactNode;
 }
+
+/** 布局原型 → globals.css 里的宽度类。原型在 config/tools.ts 里声明，页面不传宽度 */
+const LAYOUT_CLASS: Record<ToolLayout, string> = {
+  form: "ui-layout-form",
+  table: "ui-layout-table",
+  board: "ui-layout-board",
+  wide: "ui-layout-wide",
+};
 
 /** 全站固定的一行隐私说明：格式一致、文案不随工具变化，note 才由工具自定义 */
 function PrivacyLine({ footer }: { footer?: ToolFooter }) {
@@ -46,7 +54,7 @@ export default function ToolShell({ children, extraContent }: ToolShellProps) {
   if (!current) {
     return (
       <div className="w-full">
-        <div className="ui-panel md:p-6">{children}</div>
+        <div className="ui-panel ui-layout-form md:p-5">{children}</div>
         <PrivacyLine />
       </div>
     );
@@ -67,8 +75,8 @@ export default function ToolShell({ children, extraContent }: ToolShellProps) {
       </nav>
 
       {/* 头部：响应式排版 */}
-      <div className="mb-5 md:mb-6">
-        <div className="flex items-center space-x-3 md:space-x-4 mb-2 md:mb-3">
+      <div className="mb-4 md:mb-5">
+        <div className="flex items-center space-x-3 md:space-x-4 mb-1.5 md:mb-2">
           <div className="w-10 h-10 md:w-11 md:h-11 bg-indigo-50 text-indigo-600 rounded-2xl flex items-center justify-center shadow-inner shrink-0">
             <Icon size={20} strokeWidth={1.5} className="w-5 h-5" />
           </div>
@@ -93,8 +101,10 @@ export default function ToolShell({ children, extraContent }: ToolShellProps) {
         <p className="ui-prose text-slate-500 text-sm md:text-base break-words">{currentTool.desc}</p>
       </div>
 
-      {/* 内容卡片：移动端内边距减小 */}
-      <div className="ui-panel md:p-6">{children}</div>
+      {/* 内容卡片：宽度由 tools.ts 的 layout 原型决定，页面不做宽度判断 */}
+      <div className={`ui-panel ${LAYOUT_CLASS[currentTool.layout ?? "form"]} md:p-5`}>
+        {children}
+      </div>
 
       {/* 底部说明：全站一行固定隐私句，不再重复工具介绍 */}
       <PrivacyLine footer={currentTool.footer} />

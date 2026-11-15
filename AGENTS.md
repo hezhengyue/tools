@@ -47,7 +47,7 @@ export default function XxxPage() {
   );
 }
 ```
-然后在 `src/config/tools.ts` 注册工具（名称、图标、描述、分类）。`footer` 默认不填；只有确实需要服务端请求的工具才填 `{ mode: "server" }`。
+然后在 `src/config/tools.ts` 注册工具（名称、图标、描述、分类、`layout` 布局原型）。`layout` 不填即 `form`；`footer` 默认不填，只有确实需要服务端请求的工具才填 `{ mode: "server" }`。
 
 ## 输出块：复制 / 下载统一交互（强制）
 
@@ -91,18 +91,33 @@ footer?: { mode?: "local" | "server"; note?: string }
 
 ## 布局尺寸：唯一规则（强制）
 
-**全站宽度只在 `src/app/globals.css` 定义**，由 `src/app/layout.tsx` 的主内容容器使用：`.ui-page { width: 100%; max-width: var(--ui-page-max); margin-inline: auto; }`。`--ui-page-max`（当前 **1440px**）是**唯一可调的数字**：视口比它窄时自然铺满，比它宽时居中留白，避免 2K / 4K 屏把内容拉得过大。整体要变宽 / 变窄只改这一个变量，不要逐页改、不要加档位。
+**尺寸分两层，两层的值都只在 `src/app/globals.css` 定义，页面不做任何判断。**
 
-  超宽屏可读性由组件级规则统一兜底，页面无需判断：说明文字用 `.ui-prose`（100ch），提示条 `.ui-notice` 自带 100ch 上限，单行输入 `.ui-input` / `.ui-select` 上限 48rem；编辑器、预览、表格、画布仍铺满可用宽度。首页卡片列数由 `.ui-card-grid`（auto-fill minmax）自动决定。
+第一层「页面宽度」：`.ui-page { width: 100%; max-width: var(--ui-page-max); margin-inline: auto; }`（当前 **1440px**），由 `src/app/layout.tsx` 的主内容容器使用。
 
-- **禁止**在工具页、`ToolShell`、任何组件里写页面级宽度类（`max-w-4xl` / `max-w-6xl` / `w-[calc(100%-18rem)]` 等），也不要在别处覆盖 `--ui-page-max`。新增页面只写内容，宽度自动继承，不需要也不允许做选择。
+第二层「内容宽度」＝**布局原型**。每个工具在 `src/config/tools.ts` 里声明一次 `layout`，`ToolShell` 据此渲染 `.ui-layout-*`，页面本身不写任何宽度：
+
+| `layout` | 卡片宽度 | 适用 |
+|---|---|---|
+| `form`（默认，不填就是它） | 760px | 表单、选项、单值结果 |
+| `table` | 1040px | 键值信息行、哈希结果、参数表 |
+| `board` | 720px | 棋类与游戏 |
+| `wide` | 不限 | 双栏编辑、图片、媒体预览 |
+
+配套的 `.ui-page:has(.ui-layout-*)` 会让页面宽度同步收窄，保证卡片两侧始终留约 120px —— 宽屏不会出现「一张小卡片孤零零浮在 1440 中间」。
+
+**核心原则：控件尺寸恒定，只让容器宽度弹性变化。** 屏幕只决定容器能有多宽，不决定输入框该有多大；否则 2K / 4K 屏会把滑杆、分段器、输入框一律拉成一条，控件看着又大又空。
+
+- 新增工具：在 `tools.ts` 里回答一个问题——「内容是一堆表单，还是一大片编辑/预览区？」——从四个原型里挑一个语义最接近的。**不要写具体宽度，不要在页面里写 `max-w-*`**。
+- 密度令牌 `--ui-gap` / `--ui-gap-lg` / `--ui-pad` / `--ui-field-min` 管间距与字段最小宽。要整体变紧/变松只改这几个变量，不要逐页调 `p-*` / `gap-*`。
+- **禁止**在工具页、`ToolShell`、任何组件里写页面级宽度类（`max-w-4xl` / `max-w-6xl` / `w-[calc(100%-18rem)]` 等），也不要在别处覆盖 `--ui-page-max` / `--ui-layout-*`。
 - 主编辑区统一用 `.ui-editor`，主预览区统一用 `.ui-viewer`，棋盘统一用 `.ui-board`（内含「不超过可视高度」保护，保证整盘完整可见）。**不要自己写 `min-h-[420px]` / `max-w-[520px]` 这类一次性数值**。
-- **表单 / 选项字段组统一用 `.ui-form-grid`**（`auto-fit minmax(22rem, 1fr)`，列数随视口自动算）。不要写死 `grid grid-cols-2` / `sm:grid-cols-2`——那会让 2K / 4K 屏上只剩两列、每个输入被拉成一条。固定 2 列的按钮组、A/交换/B 三列输入、Markdown / Diff 双栏编辑区属于有语义的布局，保留原写法。
+- **表单 / 选项字段组统一用 `.ui-form-grid`**（`auto-fit minmax(min(100%, 16rem), 1fr)`，列数随容器自动算）。不要写死 `grid grid-cols-2` / `sm:grid-cols-2`——那会让 2K / 4K 屏上只剩两列、每个输入被拉成一条。固定 2 列的按钮组、A/交换/B 三列输入、Markdown / Diff 双栏编辑区属于有语义的布局，保留原写法。
 - 面包屑 `.ui-breadcrumb`、快捷键 `.ui-shortcut`、侧栏阴影 `.ui-sidebar` 也都在 `globals.css`，不要在组件里另写一套。
 - 局部元素（文字截断、按钮组、小控件）仍可用 `max-w-[10rem]`，但不得用在页面或主内容容器上。
 - 滚动区上限统一用视口相对值（`max-h-[70vh]` / `max-h-[calc(100vh_-_240px)]`），不要写死 `max-h-[400px]` 这类在 4K 屏上显得很小的数值。
-- 需要「更大 / 显示更多」时**只改 `globals.css` 里的 `--ui-page-max` 与这几个语义类**，不要逐页改；首页卡片网格用 `.ui-card-grid`，不要写死断点列数。
-- 理由：多档位、每页 `wide` 属性、可覆盖宽度，会让后续维护者（包括 AI）每建一页都要判断一次用哪档，必然出现不一致。唯一变量 + 唯一规则 = 零判断 = 不会写错。
+- 需要「更大 / 显示更多」时**只改 `globals.css` 里的变量与语义类**，不要逐页改；首页卡片网格用 `.ui-card-grid`，不要写死断点列数。
+- 理由：原型只有四个、宽度只有一处，新增页面时只是「从枚举里选一个标签」，不需要判断像素；而逐页调 `max-w-*` 或自由加档位，必然出现不一致。有限枚举 + 单点宽度 = 零判断 = 不会写错。
 
 # 站点级能力约定
 

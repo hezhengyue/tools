@@ -78,7 +78,7 @@ export function DisplayBox({
     <div className={`ui-display ${className}`}>
       {label && <div className="text-slate-500 text-sm mb-2">{label}</div>}
       {value !== undefined && (
-        <div className="text-3xl md:text-4xl font-mono font-bold text-slate-800 break-all">
+        <div className="text-2xl md:text-3xl font-mono font-bold text-slate-800 break-all">
           {value}
         </div>
       )}
@@ -189,7 +189,7 @@ export function Field({
 }) {
   return (
     <div className={className}>
-      <div className="flex items-center justify-between mb-3 gap-3">
+      <div className="flex items-center justify-between mb-2 gap-3">
         <label className="ui-label text-sm">{label}</label>
         {hint}
       </div>
@@ -206,7 +206,7 @@ export function ToolActions({
   children: ReactNode;
   className?: string;
 }) {
-  return <div className={`grid grid-cols-2 gap-4 ${className}`}>{children}</div>;
+  return <div className={`grid grid-cols-2 gap-3 ${className}`}>{children}</div>;
 }
 
 /** 统一徽章 */
