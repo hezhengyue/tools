@@ -1,8 +1,7 @@
 // app/hash-text/page.tsx
 "use client";
 
-import { useState, useMemo, useEffect, useRef } from "react";
-import { RefreshCw } from "lucide-react";
+import { useState, useMemo, useEffect } from "react";
 // 按需引入子模块：避免 crypto-js 主入口把 30+ 种算法一次性打进首屏 bundle
 import MD5 from "crypto-js/md5";
 import RIPEMD160 from "crypto-js/ripemd160";
@@ -93,17 +92,11 @@ function HashTextCore() {
   // 防抖后的文本：连续输入时不再每敲一个字符就同步算 8 种哈希
   const [debouncedText, setDebouncedText] = useState("");
   const [encoding, setEncoding] = useState<Encoding>("Hex");
-  const [isGenerating, setIsGenerating] = useState(false);
-  const flashTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
     const timer = setTimeout(() => setDebouncedText(inputText), 250);
     return () => clearTimeout(timer);
   }, [inputText]);
-
-  useEffect(() => () => {
-    if (flashTimer.current) clearTimeout(flashTimer.current);
-  }, []);
 
   const hashes = useMemo(() => {
     return ALGORITHMS.reduce((acc, { value }) => {
@@ -111,12 +104,6 @@ function HashTextCore() {
       return acc;
     }, {} as Record<HashAlgorithm, string>);
   }, [debouncedText, encoding]);
-
-  const handleRegenerate = () => {
-    setIsGenerating(true);
-    if (flashTimer.current) clearTimeout(flashTimer.current);
-    flashTimer.current = setTimeout(() => setIsGenerating(false), 300);
-  };
 
   const handleClear = () => {
     setInputText("");
@@ -138,9 +125,9 @@ function HashTextCore() {
         <textarea
           id="hash-input"
           value={inputText}
-          onChange={(e) => { setInputText(e.target.value); handleRegenerate(); }}
+          onChange={(e) => setInputText(e.target.value)}
           placeholder="输入任意文本进行哈希计算..."
-          className="ui-textarea ui-editor"
+          className="ui-textarea ui-editor-sm"
           autoFocus
         />
         <div className="text-right text-xs text-slate-500 mt-2">{inputText.length} 个字符</div>
@@ -153,7 +140,7 @@ function HashTextCore() {
           {ENCODINGS.map((opt) => (
             <button
               key={opt.value}
-              onClick={() => { setEncoding(opt.value); handleRegenerate(); }}
+              onClick={() => setEncoding(opt.value)}
               aria-pressed={encoding === opt.value}
               className={`px-4 py-2.5 rounded-xl text-sm font-medium transition-all border ${
                 encoding === opt.value
@@ -187,7 +174,7 @@ function HashTextCore() {
               key={value}
               className={`flex items-center gap-3 p-4 rounded-2xl border transition-all ${
                 hashValue ? colorClasses[color] : "bg-slate-50 border-slate-200 text-slate-500"
-              } ${isGenerating ? "animate-pulse" : ""}`}
+              }`}
             >
               <span className="font-mono font-bold w-24 text-sm shrink-0">{label}</span>
               <input
@@ -213,16 +200,6 @@ function HashTextCore() {
           在上方输入文本，即可实时生成各种哈希值，结果随输入自动更新。
         </p>
       )}
-
-      {/* 重新生成按钮 */}
-      <button
-        onClick={handleRegenerate}
-        disabled={!inputText}
-        className="ui-btn ui-btn-primary ui-btn-block mt-6"
-      >
-        <RefreshCw size={18} className={`mr-2 ${isGenerating ? "animate-spin" : ""}`} />
-        重新计算哈希
-      </button>
     </>
   );
 }

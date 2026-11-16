@@ -146,32 +146,31 @@ function SshKeyCore() {
       )}
 
       {/* =========================
-          public key
+          公钥 / 私钥：生成前不占位，避免页面一打开就是两个空框
       ========================= */}
-      <OutputBlock
-        label="Public Key"
-        value={keyPair?.publicKey || ""}
-        copyLabel="复制公钥"
-        filename="id_rsa.pub"
-        mimeType="application/octet-stream"
-        placeholder="点击上方按钮生成密钥..."
-        textareaClassName="text-xs"
-      />
+      {keyPair && (
+        <>
+          <OutputBlock
+            label="Public Key"
+            value={keyPair.publicKey}
+            copyLabel="复制公钥"
+            filename="id_rsa.pub"
+            mimeType="application/octet-stream"
+            textareaClassName="text-xs"
+          />
 
-      {/* =========================
-          private key
-      ========================= */}
-      <OutputBlock
-        label="Private Key"
-        hint="请妥善保管，不要分享"
-        tone="warning"
-        value={keyPair?.privateKey || ""}
-        copyLabel="复制私钥"
-        filename="id_rsa"
-        mimeType="application/octet-stream"
-        placeholder="点击上方按钮生成密钥..."
-        textareaClassName="text-xs"
-      />
+          <OutputBlock
+            label="Private Key"
+            hint="请妥善保管，不要分享"
+            tone="warning"
+            value={keyPair.privateKey}
+            copyLabel="复制私钥"
+            filename="id_rsa"
+            mimeType="application/octet-stream"
+            textareaClassName="text-xs"
+          />
+        </>
+      )}
 
       {/* =========================
           authorized_keys

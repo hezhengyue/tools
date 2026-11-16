@@ -170,6 +170,12 @@
     @apply min-h-[300px] lg:min-h-[380px] xl:min-h-[440px];
   }
 
+  /* 短文本输入：只填一两行内容（哈希原文、正则、关键字）的输入框，
+     不要套 .ui-editor 占掉半屏；高度恒定，不随屏幕放大 */
+  .ui-editor-sm {
+    @apply min-h-[132px];
+  }
+
   /* 左右对照两栏的主体：用固定高度而不是 min-height，
      这样「左输入 / 右输出」不论一个是 textarea、另一个是渲染区，底边都能对齐 */
   .ui-pane {

@@ -69,6 +69,7 @@ export default function XxxPage() {
 - `children` 可自定义内容区（如代码块），复制仍取 `value`；复制/下载按钮在 `value` 为空时自动禁用。
 - 只需单个动作用 `CopyButton`（自带「已复制」成功态）或 `DownloadButton`，**不要在页面里再写 `navigator.clipboard` / `Blob` 下载逻辑**。
 - `OutputBlock` 没有 `minHeight` 参数，高度统一由 `.ui-output-min` 控制；页面不要自己指定高度，也不要新增类似的高度参数。
+- 结果还没产生时**整块不渲染**（`{result && <OutputBlock … />}`），不要留一个写着「点击上方按钮生成…」的空框占位。
 - 禁止：把复制/下载做成结果下方一排大按钮、用 `<details>` 折叠藏结果、每个输出块各写一套按钮样式。
 - 例外：整页级主操作按钮组（如「复制全部 / 重新检测」）与图片文件导出不属于文本输出块，继续用 `Button` / `ToolActions`。
 
@@ -168,7 +169,7 @@ export default function XxxPage() {
 
 - 密度令牌 `--ui-gap` / `--ui-gap-lg` / `--ui-pad` / `--ui-field-min` 管间距与字段最小宽。要整体变紧/变松只改这几个变量，不要逐页调 `p-*` / `gap-*`。
 - **禁止**在工具页、`ToolShell`、任何组件里写页面级宽度类（`max-w-4xl` / `max-w-6xl` / `w-[calc(100%-18rem)]` 等），也不要在别处覆盖 `--ui-page-max` / `--ui-layout-*`。
-- 单栏页的主编辑区用 `.ui-editor`，主预览区用 `.ui-viewer`，棋盘用 `.ui-board`（内含「不超过可视高度」保护，保证整盘完整可见）。**左右对照的双栏一律用 `.ui-pane`**（固定高度，保证两栏底边对齐）。**不要自己写 `min-h-[420px]` / `max-w-[520px]` 这类一次性数值**。
+- 单栏页的主编辑区用 `.ui-editor`，主预览区用 `.ui-viewer`，棋盘用 `.ui-board`（内含「不超过可视高度」保护，保证整盘完整可见）。**只填一两行内容**的输入（哈希原文、正则、关键字、搜索词）用 `.ui-editor-sm`（固定 132px），不要套 `.ui-editor` 占掉半屏。**左右对照的双栏一律用 `.ui-pane`**（固定高度，保证两栏底边对齐）。**不要自己写 `min-h-[420px]` / `max-w-[520px]` 这类一次性数值**。
 - **表单 / 选项字段组统一用 `.ui-form-grid`**（`auto-fit minmax(min(100%, 16rem), 1fr)`，列数随容器自动算）。不要写死 `grid grid-cols-2` / `sm:grid-cols-2`——那会让 2K / 4K 屏上只剩两列、每个输入被拉成一条。固定 2 列的按钮组、A/交换/B 三列输入、Markdown / Diff 双栏编辑区属于有语义的布局，保留原写法。
 - 面包屑 `.ui-breadcrumb`、快捷键 `.ui-shortcut`、侧栏阴影 `.ui-sidebar`、静态说明 `.ui-note` 也都在 `globals.css`，不要在组件里另写一套。
 - 局部元素（文字截断、按钮组、小控件）仍可用 `max-w-[10rem]`，但不得用在页面或主内容容器上。
