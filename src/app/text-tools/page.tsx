@@ -7,7 +7,7 @@ import {
 } from "lucide-react";
 import ToolShell from "@/components/ToolShell";
 import {
-  Button, IconButton, Notice, OutputBlock, Panel, KeyRow,
+  Button, IconButton, Notice, OutputBlock, Section, KeyRow,
 } from "@/components/ui/ToolUI";
 import {
   changeCase, fromBase64, fromHexBytes, htmlDecode, htmlEncode,
@@ -124,7 +124,7 @@ export default function TextToolsPage() {
 
   return (
     <ToolShell>
-      <Panel icon={Type} title="输入文本">
+      <Section icon={Type} title="输入文本">
         <textarea
           id="text-input"
           value={input}
@@ -140,18 +140,25 @@ export default function TextToolsPage() {
             <Button variant="secondary" size="sm" onClick={() => setInput(SAMPLE)}>填入示例</Button>
           </div>
         </div>
-      </Panel>
+      </Section>
 
       {GROUPS.map((group) => (
-        <Panel key={group.title} icon={group.icon} title={group.title} className="mt-5">
-          <div className="flex flex-wrap gap-2">
+        <Section key={group.title} icon={group.icon} title={group.title}>
+          {/* 等宽网格：同一组行为一致，宽度参差会让每组末尾多出孤零零的一个 */}
+          <div className="grid grid-cols-2 sm:grid-cols-3 xl:grid-cols-4 gap-2">
             {group.items.map((item) => (
-              <Button key={item.label} variant="secondary" size="sm" onClick={() => apply(item.label, item.run)}>
+              <Button
+                key={item.label}
+                variant="secondary"
+                size="sm"
+                className="w-full"
+                onClick={() => apply(item.label, item.run)}
+              >
                 {item.label}
               </Button>
             ))}
           </div>
-        </Panel>
+        </Section>
       ))}
 
       {error && <Notice tone="error" className="mt-5">{error}</Notice>}
@@ -175,9 +182,9 @@ export default function TextToolsPage() {
         />
       </div>
 
-      <Panel icon={BarChart3} title="文本统计" className="mt-5">
+      <Section icon={BarChart3} title="文本统计">
         <StatGrid stats={stats} />
-      </Panel>
+      </Section>
 
       <p className="ui-note mt-5">
         所有转换都只改文本、不改动原始输入；想连续处理多步，点结果右上角的「写回输入框」即可。URL 编码默认用 %20，表单编码会把空格写成 +。

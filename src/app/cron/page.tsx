@@ -5,7 +5,7 @@ import { useEffect, useMemo, useState } from "react";
 import { CalendarClock, Clock, ListChecks, RefreshCw, Timer } from "lucide-react";
 import ToolShell from "@/components/ToolShell";
 import {
-  Badge, Button, CopyButton, Notice, Panel, Segmented,
+  Badge, Button, CopyButton, Notice, Section, Segmented,
 } from "@/components/ui/ToolUI";
 import {
   configToExpr, CRON_TEMPLATES, defaultConfig, describeCron, exprToConfig,
@@ -60,7 +60,7 @@ function FieldCard({
     : String(value).padStart(2, "0");
 
   return (
-    <div className="border border-slate-200 rounded-xl p-3 bg-white">
+    <div className="p-3">
       <div className="flex flex-wrap items-center justify-between gap-2 mb-3">
         <span className="text-sm font-semibold text-slate-700 shrink-0">
           {meta.name}
@@ -185,7 +185,7 @@ export default function CronPage() {
 
   return (
     <ToolShell>
-      <Panel icon={Clock} title="Cron 表达式">
+      <Section icon={Clock} title="Cron 表达式">
         <div className="flex items-center gap-2">
           <input
             id="cron-expr"
@@ -206,25 +206,26 @@ export default function CronPage() {
           <Button variant="ghost" size="sm" icon={RefreshCw} onClick={() => setBase(Date.now())}>刷新时间</Button>
         </div>
         {result.error && <Notice tone="error" className="mt-3">{result.error}</Notice>}
-      </Panel>
+      </Section>
 
-      <Panel icon={ListChecks} title="常用模板" className="mt-5">
-        <div className="flex flex-wrap gap-2">
+      <Section icon={ListChecks} title="常用模板">
+        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-2">
           {CRON_TEMPLATES.map((template) => (
             <Button
               key={template.name}
               variant={expr === template.expr ? "primary" : "secondary"}
               size="sm"
+              className="w-full"
               onClick={() => { setExpr(template.expr); setConfig(exprToConfig(template.expr)); }}
             >
               {template.name}
             </Button>
           ))}
         </div>
-      </Panel>
+      </Section>
 
-      <Panel icon={Timer} title="可视化配置" className="mt-5">
-        <div className="space-y-3">
+      <Section icon={Timer} title="可视化配置">
+        <div className="ui-list divide-y divide-slate-100">
           {FIELD_KEYS.map((key, index) => (
             <FieldCard
               key={key}
@@ -235,9 +236,9 @@ export default function CronPage() {
             />
           ))}
         </div>
-      </Panel>
+      </Section>
 
-      <Panel icon={CalendarClock} title="执行计划" className="mt-5">
+      <Section icon={CalendarClock} title="执行计划">
         <div className="flex flex-wrap items-center gap-2 mb-4">
           <Badge className="bg-indigo-50 text-indigo-700">{result.error ? "表达式无效" : "本地时区"}</Badge>
           <span className="text-sm text-slate-700">{result.error || result.description}</span>
@@ -258,7 +259,7 @@ export default function CronPage() {
             {result.error ? "修正表达式后即可预览执行时间。" : "正在计算…或该表达式在 4 年内没有匹配的时间。"}
           </Notice>
         )}
-      </Panel>
+      </Section>
 
       <p className="ui-note mt-5">
         标准 5 段 Linux cron 语法，支持 <code>* , - /</code>；「日」「周」都受限时任一满足即执行（Vixie 行为），不支持 L / W / #；按浏览器本地时区，不含秒。

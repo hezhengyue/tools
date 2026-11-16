@@ -4,7 +4,7 @@
 import { useState, useEffect } from "react";
 import { RefreshCw, ArrowRightLeft, FileDiff } from "lucide-react";
 import ToolShell from "@/components/ToolShell";
-import { Notice, CopyButton } from "@/components/ui/ToolUI";
+import { ActionBar, Button, Notice, CopyButton } from "@/components/ui/ToolUI";
 import { useTextDiff, type DiffMode } from "./useTextDiff";
 
 function TextDiffCore() {
@@ -189,14 +189,17 @@ function TextDiffCore() {
       )}
 
       {/* 手动触发按钮（备用） */}
-      <button
-        onClick={() => computeDiff({ oldText, newText, mode })}
-        disabled={isComputing || (!oldText && !newText)}
-        className="ui-btn ui-btn-primary w-full py-3"
-      >
-        <RefreshCw size={18} className={`mr-2 ${isComputing ? "animate-spin" : ""}`} />
-        {isComputing ? "计算中..." : "重新计算差异"}
-      </button>
+      <ActionBar>
+        <Button
+          variant="primary"
+          size="lg"
+          icon={RefreshCw}
+          onClick={() => computeDiff({ oldText, newText, mode })}
+          disabled={isComputing || (!oldText && !newText)}
+        >
+          {isComputing ? "计算中..." : "重新计算差异"}
+        </Button>
+      </ActionBar>
     </>
   );
 }

@@ -19,7 +19,7 @@ import {
   X,
 } from "lucide-react";
 import ToolShell from "@/components/ToolShell";
-import { Button, Notice, Panel } from "@/components/ui/ToolUI";
+import { Button, Notice, Section } from "@/components/ui/ToolUI";
 
 interface Shot {
   url: string;
@@ -540,7 +540,7 @@ export default function ScreenshotPage() {
       <div className="space-y-5">
         {error && <Notice tone="error">{error}</Notice>}
 
-        <Panel icon={Camera} title="框选截图">
+        <Section icon={Camera} title="框选截图">
           <ol className="text-sm text-slate-600 space-y-1.5 mb-5 leading-relaxed list-decimal pl-5">
             <li>
               按 <span className="font-mono text-slate-800">{HOTKEY_LABEL}</span> 或点下方按钮开始
@@ -623,10 +623,10 @@ export default function ScreenshotPage() {
               </Button>
             </div>
           )}
-        </Panel>
+        </Section>
 
         {shot && (
-          <Panel icon={ImageIcon} title="截取结果">
+          <Section icon={ImageIcon} title="截取结果">
             <div className="rounded-xl bg-slate-100 border border-slate-200 p-3 flex items-center justify-center overflow-hidden">
               <div
                 ref={imageWrapRef}
@@ -736,7 +736,7 @@ export default function ScreenshotPage() {
                 <span className="ui-kv-value font-mono">{formatBytes(shot.blob.size)}</span>
               </div>
             </div>
-          </Panel>
+          </Section>
         )}
 
         <p className="ui-note flex items-start gap-1.5">

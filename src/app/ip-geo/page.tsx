@@ -10,7 +10,7 @@ import {
 } from "lucide-react";
 import ToolShell from "@/components/ToolShell";
 import {
-  Panel, KeyRow, Button, DisplayBox, EmptyState, ToolActions, writeClipboard,
+  Section, KeyRow, Button, DisplayBox, EmptyState, ActionBar, writeClipboard,
 } from "@/components/ui/ToolUI";
 
 interface GeoInfo {
@@ -202,7 +202,7 @@ function IpGeoCore() {
       </div>
 
       {/* 地理位置卡片 */}
-      <Panel className="mb-6" icon={MapPin} title="📍 地理位置">
+      <Section icon={MapPin} title="📍 地理位置">
         <div className="ui-kv-list">
           {geo ? (
             <>
@@ -215,10 +215,10 @@ function IpGeoCore() {
             <EmptyState>{loading ? "正在获取..." : hint || "暂无数据"}</EmptyState>
           )}
         </div>
-      </Panel>
+      </Section>
 
       {/* 网络信息卡片 */}
-      <Panel className="mb-6" icon={Radio} title="📡 网络信息">
+      <Section icon={Radio} title="📡 网络信息">
         <div className="ui-kv-list">
           {geo ? (
             <>
@@ -229,20 +229,20 @@ function IpGeoCore() {
             <EmptyState>{loading ? "正在获取..." : hint || "暂无数据"}</EmptyState>
           )}
         </div>
-      </Panel>
+      </Section>
 
       {copyError && <p className="mb-3 text-sm text-red-600" role="alert">{copyError}</p>}
 
-      {/* 操作按钮 */}
-      <ToolActions>
-        <Button variant="secondary" icon={Copy} onClick={copyAll} disabled={!data?.ip}>
-          复制全部
-        </Button>
-        <Button onClick={() => void loadData()} disabled={loading}>
-          <RefreshCw size={18} className={loading ? "animate-spin" : ""} />
+      {/* 主操作行：主操作在左、次操作随后 */}
+      <ActionBar>
+        <Button variant="primary" size="lg" onClick={() => void loadData()} disabled={loading}>
+          {loading ? <RefreshCw size={18} className="animate-spin" /> : <RefreshCw size={18} />}
           重新检测
         </Button>
-      </ToolActions>
+        <Button variant="secondary" size="lg" icon={Copy} onClick={copyAll} disabled={!data?.ip}>
+          复制全部
+        </Button>
+      </ActionBar>
     </>
   );
 }

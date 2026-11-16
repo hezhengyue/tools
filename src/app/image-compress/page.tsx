@@ -321,7 +321,7 @@ export default function ImageCompressPage() {
         </div>
 
         {/* 🔧 功能选项 */}
-        <div className="ui-form-grid">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
           {/* 压缩选项 - 可选 */}
           <OptionCard
             checked={enableCompress}

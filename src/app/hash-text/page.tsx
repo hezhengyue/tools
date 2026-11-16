@@ -17,7 +17,7 @@ import Base64 from "crypto-js/enc-base64";
 // 标准 SHA3-256/512 必须用专门实现，否则与 openssl / node crypto 的结果不一致。
 import { sha3_256, sha3_512 } from "@noble/hashes/sha3.js";
 import ToolShell from "@/components/ToolShell";
-import { CopyButton } from "@/components/ui/ToolUI";
+import { Button, CopyButton, Segmented } from "@/components/ui/ToolUI";
 
 // ============ 类型定义 ============
 
@@ -114,13 +114,11 @@ function HashTextCore() {
     <>
       {/* 输入区域 */}
       <div className="mb-6">
-        <div className="flex justify-between items-center mb-3">
-          <label htmlFor="hash-input" className="font-semibold text-slate-700">哈希文本</label>
-          {inputText && (
-            <button onClick={handleClear} className="text-sm text-slate-500 hover:text-indigo-600 transition-colors">
-              清空
-            </button>
-          )}
+        <div className="ui-field-head">
+          <label htmlFor="hash-input" className="ui-label">哈希文本</label>
+          <div className="ui-field-actions">
+            <Button variant="ghost" size="sm" disabled={!inputText} onClick={handleClear}>清空</Button>
+          </div>
         </div>
         <textarea
           id="hash-input"
@@ -135,53 +133,30 @@ function HashTextCore() {
 
       {/* 编码选择 */}
       <div className="mb-6">
-        <span className="font-semibold text-slate-700 block mb-3">输出编码格式</span>
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-          {ENCODINGS.map((opt) => (
-            <button
-              key={opt.value}
-              onClick={() => setEncoding(opt.value)}
-              aria-pressed={encoding === opt.value}
-              className={`px-4 py-2.5 rounded-xl text-sm font-medium transition-all border ${
-                encoding === opt.value
-                  ? "bg-indigo-600 text-white border-indigo-600 shadow-md shadow-indigo-600/20"
-                  : "bg-slate-50 text-slate-600 border-slate-200 hover:border-indigo-300 hover:text-indigo-600"
-              }`}
-            >
-              {opt.label}
-            </button>
-          ))}
-        </div>
+        <span className="ui-label mb-2 block">输出编码格式</span>
+        <Segmented
+          label="输出编码格式"
+          value={encoding}
+          onChange={setEncoding}
+          options={ENCODINGS.map((opt) => ({ value: opt.value, label: opt.label }))}
+        />
       </div>
 
-      {/* 哈希结果列表 */}
-      <div className="space-y-3">
-        {ALGORITHMS.map(({ label, value, color }) => {
+      {/* 哈希结果列表：一个容器 + 细分隔线，避免十条彩色块抢视觉 */}
+      <div className="ui-list divide-y divide-slate-100">
+        {ALGORITHMS.map(({ label, value }) => {
           const hashValue = hashes[value] || "";
-          const colorClasses: Record<string, string> = {
-            indigo: "text-indigo-600 bg-indigo-50 border-indigo-200",
-            blue: "text-blue-600 bg-blue-50 border-blue-200",
-            cyan: "text-cyan-600 bg-cyan-50 border-cyan-200",
-            emerald: "text-emerald-600 bg-emerald-50 border-emerald-200",
-            teal: "text-teal-600 bg-teal-50 border-teal-200",
-            violet: "text-violet-600 bg-violet-50 border-violet-200",
-            purple: "text-purple-600 bg-purple-50 border-purple-200",
-            pink: "text-pink-600 bg-pink-50 border-pink-200",
-          };
 
           return (
-            <div
-              key={value}
-              className={`flex items-center gap-3 p-4 rounded-2xl border transition-all ${
-                hashValue ? colorClasses[color] : "bg-slate-50 border-slate-200 text-slate-500"
-              }`}
-            >
-              <span className="font-mono font-bold w-24 text-sm shrink-0">{label}</span>
+            <div key={value} className="flex items-center gap-3 px-3 py-2.5">
+              <span className="font-mono font-semibold w-24 text-[13px] text-slate-500 shrink-0">{label}</span>
               <input
                 readOnly
                 value={hashValue || "—"}
                 aria-label={`${label} 哈希值`}
-                className="flex-1 bg-transparent border-0 font-mono text-sm truncate focus:outline-none"
+                className={`flex-1 bg-transparent border-0 font-mono text-[13px] truncate focus:outline-none ${
+                  hashValue ? "text-slate-700" : "text-slate-400"
+                }`}
                 placeholder="等待输入..."
               />
               <CopyButton value={hashValue} label={`复制 ${label} 哈希值`} />
@@ -190,16 +165,11 @@ function HashTextCore() {
         })}
       </div>
 
-      <p className="ui-note mt-6">
-        SHA3 系列是 NIST 标准，可用 <code className="font-mono">openssl dgst -sha3-256</code> 校验；Keccak-512 用旧版填充，结果不同，多见于以太坊。
+      <p className="ui-note mt-4">
+        {inputText
+          ? "SHA3 系列是 NIST 标准，可用 openssl dgst -sha3-256 校验；Keccak-512 用旧版填充，结果不同，多见于以太坊。"
+          : "输入文本即自动计算；SHA3 系列是 NIST 标准，Keccak-512 填充不同，多见于以太坊。"}
       </p>
-
-      {/* 空状态提示 */}
-      {!inputText && (
-        <p className="ui-note mt-3">
-          在上方输入文本，即可实时生成各种哈希值，结果随输入自动更新。
-        </p>
-      )}
     </>
   );
 }

@@ -4,7 +4,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { Braces, Eraser, ListChecks, WandSparkles } from "lucide-react";
 import ToolShell from "@/components/ToolShell";
-import { Badge, Notice, OutputBlock, Switch } from "@/components/ui/ToolUI";
+import { Badge, Button, Notice, OutputBlock, Switch } from "@/components/ui/ToolUI";
 import { runRegex, type RegexMatch, type RegexResult } from "./regex";
 
 const DEFAULT_PATTERN = "(\\d{4})-(\\d{2})-(\\d{2})";
@@ -138,25 +138,26 @@ export default function RegexPage() {
           </span>
           <div className="flex flex-wrap gap-2">
             {PRESETS.map((preset) => (
-              <button
+              <Button
                 key={preset.label}
-                type="button"
+                variant="secondary"
+                size="sm"
                 onClick={() => {
                   setPattern(preset.pattern);
                   setFlags(preset.flags);
                 }}
-                className="px-3 py-1.5 text-sm rounded-lg border border-slate-200 bg-white text-slate-600 hover:border-indigo-300 hover:text-indigo-600 transition-colors"
               >
                 {preset.label}
-              </button>
+              </Button>
             ))}
-            <button
-              type="button"
+            <Button
+              variant="ghost"
+              size="sm"
+              icon={Eraser}
               onClick={() => { setPattern(""); setText(""); setReplacement(""); }}
-              className="px-3 py-1.5 text-sm rounded-lg border border-slate-200 bg-white text-slate-500 hover:text-red-600 hover:border-red-200 transition-colors"
             >
-              <Eraser size={14} className="inline mr-1" />清空
-            </button>
+              清空
+            </Button>
           </div>
         </div>
 

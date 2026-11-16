@@ -217,10 +217,18 @@
   .ui-panel-muted {
     @apply bg-slate-50 border border-slate-200 rounded-2xl p-4;
   }
-  .ui-panel-title {
+  /* 页内分段：ToolShell 外层已经是卡片，页内再用卡片就是「卡片套卡片」。
+     统一用一条细上分隔线 + 小标题分段，第一个分段不带分隔线。 */
+  .ui-section {
+    @apply border-t border-slate-200 pt-4 mt-4;
+  }
+  .ui-section:first-child {
+    @apply border-t-0 pt-0 mt-0;
+  }
+  .ui-section-title {
     @apply flex items-center font-semibold text-slate-700 mb-3;
   }
-  .ui-panel-icon {
+  .ui-section-icon {
     @apply w-5 h-5 mr-2 text-indigo-600 shrink-0;
   }
   .ui-display {
@@ -252,10 +260,17 @@
   .ui-kv-value {
     @apply text-right break-all min-w-0;
   }
+  /* 多行结果列表：一个容器 + 细分隔线，比十条彩色块轻，行高也天然对齐 */
+  .ui-list {
+    @apply rounded-xl border border-slate-200 bg-white overflow-hidden;
+  }
 
-  /* ---- 按钮 ---- */
+  /* ---- 按钮 ----
+     尺寸只有三档，用固定 height 而不是 padding 撑：
+     否则带 1px 边框的 secondary 会比 ghost 高 2px，同一行就对不齐。
+     32 = 行内小动作 / 结果区图标；36 = 常规次操作；44 = 主操作。 */
   .ui-btn {
-    @apply inline-flex items-center justify-center gap-2 px-4 py-2 rounded-xl font-semibold text-sm transition-all disabled:opacity-50 disabled:cursor-not-allowed;
+    @apply inline-flex items-center justify-center gap-2 h-9 px-4 rounded-xl font-semibold text-sm transition-all disabled:opacity-50 disabled:cursor-not-allowed;
   }
   .ui-btn-primary {
     @apply bg-indigo-600 text-white hover:bg-indigo-700 shadow-md shadow-indigo-600/20;
@@ -270,13 +285,41 @@
     @apply text-red-600 hover:bg-red-50;
   }
   .ui-btn-sm {
-    @apply px-3 py-1.5 rounded-lg font-medium;
+    @apply h-8 px-3 rounded-lg text-[13px] font-medium;
+  }
+  .ui-btn-lg {
+    @apply h-11 px-5;
   }
   .ui-btn-block {
-    @apply w-full py-3.5;
+    @apply w-full h-11;
   }
   .ui-icon-btn {
-    @apply inline-flex items-center justify-center p-2 rounded-lg text-slate-600 hover:bg-slate-100 transition-colors disabled:opacity-30;
+    @apply inline-flex items-center justify-center w-8 h-8 p-0 rounded-lg text-slate-600 hover:bg-slate-100 transition-colors disabled:opacity-30;
+  }
+
+  /* 主操作行：主操作在左、次操作紧随其后，窄屏自动换行且不把按钮拉变形。
+     一屏只允许一条，放参数区下方；结果区的复制/下载走标题行图标，不进这里。 */
+  .ui-action-bar {
+    @apply flex flex-wrap items-center gap-3 mt-5;
+  }
+  .ui-action-bar > .ui-btn-primary {
+    @apply min-w-[11rem];
+  }
+  @media (max-width: 30rem) {
+    .ui-action-bar {
+      @apply gap-2;
+    }
+    .ui-action-bar > .ui-btn {
+      @apply flex-1;
+    }
+  }
+
+  /* 输入区标题行：左边标签、右边「清空 / 填入示例」这类辅助动作 */
+  .ui-field-head {
+    @apply flex items-center justify-between gap-3 mb-2;
+  }
+  .ui-field-head > .ui-field-actions {
+    @apply flex items-center gap-1 shrink-0;
   }
 
   /* ---- 表单控件 ---- */

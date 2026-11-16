@@ -17,7 +17,7 @@ import {
   Volume2,
 } from "lucide-react";
 import ToolShell from "@/components/ToolShell";
-import { Button, Notice, Panel } from "@/components/ui/ToolUI";
+import { Button, Notice, Section } from "@/components/ui/ToolUI";
 
 type Phase = "idle" | "recording" | "paused" | "done";
 type Quality = "standard" | "high";
@@ -407,7 +407,7 @@ export default function ScreenRecordPage() {
         {notice && <Notice tone="info">{notice}</Notice>}
 
         {phase === "done" && result ? (
-          <Panel icon={Video} title="录制完成">
+          <Section icon={Video} title="录制完成">
             <video
               controls
               src={result.url}
@@ -442,11 +442,11 @@ export default function ScreenRecordPage() {
                 重新录制
               </Button>
             </div>
-          </Panel>
+          </Section>
         ) : (
           <>
             {!recording && (
-              <Panel icon={ScreenShare} title="录制设置">
+              <Section icon={ScreenShare} title="录制设置">
                 <div className="space-y-4">
                   <label className="flex items-start gap-3 cursor-pointer">
                     <input
@@ -522,11 +522,11 @@ export default function ScreenRecordPage() {
                 <Button block icon={Video} onClick={() => void startRecording()} className="mt-5">
                   开始录制
                 </Button>
-              </Panel>
+              </Section>
             )}
 
             {recording && (
-              <Panel
+              <Section
                 icon={ScreenShare}
                 title={phase === "recording" ? "正在录制" : "已暂停"}
               >
@@ -569,7 +569,7 @@ export default function ScreenRecordPage() {
                     停止并生成视频
                   </Button>
                 </div>
-              </Panel>
+              </Section>
             )}
           </>
         )}

@@ -4,7 +4,7 @@
 import { useMemo, useState } from "react";
 import { Globe2, Network } from "lucide-react";
 import ToolShell from "@/components/ToolShell";
-import { Button, KeyRow, Notice, Panel } from "@/components/ui/ToolUI";
+import { Button, KeyRow, Notice, Section } from "@/components/ui/ToolUI";
 import { calcSubnet, intToIpv4, SAMPLES, type SubnetInfo } from "./ip-utils";
 
 function ResultRows({ info }: { info: SubnetInfo }) {
@@ -107,7 +107,7 @@ export default function IpSubnetPage() {
 
   return (
     <ToolShell>
-      <Panel icon={Globe2} title="IPv4 地址与前缀">
+      <Section icon={Globe2} title="IPv4 地址与前缀">
         <label htmlFor="ip-address" className="ui-label text-sm block mb-2">IP 地址（可直接粘贴 CIDR，如 10.0.0.1/8）</label>
         <input
           id="ip-address"
@@ -147,12 +147,12 @@ export default function IpSubnetPage() {
           ))}
         </div>
         {result.error && <Notice tone="error" className="mt-4">{result.error}</Notice>}
-      </Panel>
+      </Section>
 
       {result.info && (
-        <Panel icon={Network} title="子网计算结果" className="mt-5">
+        <Section icon={Network} title="子网计算结果">
           <ResultRows info={result.info} />
-        </Panel>
+        </Section>
       )}
 
       <section className="mt-6">

@@ -5,7 +5,7 @@ import { useMemo, useState } from "react";
 import { ArrowLeftRight, Binary, Ruler, TriangleAlert } from "lucide-react";
 import ToolShell from "@/components/ToolShell";
 import {
-  Button, CopyButton, KeyRow, Notice, OutputBlock, Panel, Segmented,
+  Button, CopyButton, KeyRow, Notice, OutputBlock, Section, Segmented,
 } from "@/components/ui/ToolUI";
 import {
   COMMON_BASES, findCategory, findUnit, formatInBase, formatNumber,
@@ -68,7 +68,7 @@ export default function UnitConverterPage() {
 
   return (
     <ToolShell>
-      <Panel icon={Ruler} title="单位换算">
+      <Section icon={Ruler} title="单位换算">
         <div className="mb-4">
           <label htmlFor="unit-category" className="ui-label text-sm block mb-2">换算类别</label>
           <select
@@ -155,9 +155,9 @@ export default function UnitConverterPage() {
             ))}
           </div>
         </div>
-      </Panel>
+      </Section>
 
-      <Panel icon={Binary} title="任意进制转换" className="mt-5">
+      <Section icon={Binary} title="任意进制转换">
         <div className="grid grid-cols-1 sm:grid-cols-[1fr_auto_1fr] gap-3 items-end">
           <div>
             <label htmlFor="base-input" className="ui-label text-sm block mb-2">待转换数值</label>
@@ -221,7 +221,7 @@ export default function UnitConverterPage() {
             </Notice>
           </>
         )}
-      </Panel>
+      </Section>
 
       <div className="mt-5">
         <OutputBlock

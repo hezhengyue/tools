@@ -4,7 +4,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Check, RefreshCw } from "lucide-react";
 import ToolShell from "@/components/ToolShell";
-import { CopyButton } from "@/components/ui/ToolUI";
+import { ActionBar, Button, CopyButton, Segmented } from "@/components/ui/ToolUI";
 
 // ============ 模块级纯函数：密码学安全随机，不依赖 Math.random ============
 
@@ -24,17 +24,17 @@ const SYMBOL_PRESETS = {
   safe: {
     label: "兼容",
     chars: "!#$%&*+-=?@^_",
-    hint: "不含引号、反斜杠、尖括号、反引号、括号和竖线。主流网站、数据库、命令行、配置文件（YAML/INI）都能直接接受，是默认推荐档。",
+    hint: "剔除引号、反斜杠、尖括号、反引号与竖线，网站、数据库、命令行都能直接接受。",
   },
   standard: {
     label: "标准",
     chars: "!#$%&()*+,-./:;=?@[]^_{|}~",
-    hint: "额外包含括号、逗号、冒号、分号、斜杠和竖线。多数系统支持，但写进命令行或 CSV 时需要加引号转义。",
+    hint: "另含括号、逗号、冒号、分号与斜杠，多数系统支持；写进命令行或 CSV 需转义。",
   },
   all: {
     label: "全部",
     chars: "!#$%&()*+,-./:;<=>?@[]^_{|}~`",
-    hint: "再加尖括号与反引号。反引号在 shell 中是命令替换、尖括号是重定向，个别老系统会直接拒绝，仅在确认目标系统支持时使用。",
+    hint: "再加尖括号与反引号：它们在 shell 里是重定向与命令替换，个别老系统会拒绝。",
   },
 } as const;
 
@@ -370,39 +370,22 @@ function PasswordGeneratorCore() {
             </span>
           </div>
 
-          <div
-            className="grid grid-cols-3 gap-1 p-1 bg-slate-100 rounded-xl"
-            role="radiogroup"
-            aria-label="符号范围"
-          >
-            {(Object.keys(SYMBOL_PRESETS) as SymbolPreset[]).map((key) => {
-              const active = symbolPreset === key;
-              return (
-                <button
-                  key={key}
-                  type="button"
-                  role="radio"
-                  aria-checked={active}
-                  onClick={() => setSymbolPreset(key)}
-                  className={`py-1.5 text-sm rounded-lg transition-all ${
-                    active
-                      ? "bg-white text-indigo-600 font-semibold shadow-sm"
-                      : "text-slate-600 hover:text-slate-800"
-                  }`}
-                >
-                  {SYMBOL_PRESETS[key].label}
-                </button>
-              );
-            })}
-          </div>
+          <Segmented
+            fill
+            label="符号范围"
+            value={symbolPreset}
+            onChange={setSymbolPreset}
+            options={(Object.keys(SYMBOL_PRESETS) as SymbolPreset[]).map((key) => ({
+              value: key,
+              label: SYMBOL_PRESETS[key].label,
+            }))}
+          />
 
           <div className="mt-2 px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl font-mono text-xs text-slate-600 break-all leading-relaxed">
             {SYMBOL_PRESETS[symbolPreset].chars.split("").join(" ")}
           </div>
 
-          <p className="text-xs text-slate-500 mt-2 leading-relaxed">
-            {SYMBOL_PRESETS[symbolPreset].hint}
-          </p>
+          <p className="ui-note mt-2">{SYMBOL_PRESETS[symbolPreset].hint}</p>
         </div>
       )}
 
@@ -443,35 +426,28 @@ function PasswordGeneratorCore() {
             className={`ui-input font-mono flex-1 ${excludeEnabled ? "" : "bg-slate-50 text-slate-500"}`}
           />
         </div>
-        <p className="text-xs text-slate-500 mt-2 leading-relaxed">
-          列表已预填手抄最易认错的 <span className="font-mono">I l 1 O 0 o |</span>，<span className="text-slate-700">勾选后即刻生效</span>，无需手动输入；也可以按需增删，例如某后台不允许 <span className="font-mono">&amp;</span> 或 <span className="font-mono">%</span>，加进去即可。未勾选时整份列表都不参与生成。
+        <p className="ui-note mt-2">
+          预填了最易认错的 <span className="font-mono">I l 1 O 0 o |</span>，勾选即生效；某系统拒绝 <span className="font-mono">&amp;</span> 或 <span className="font-mono">%</span> 时加进去即可。
         </p>
       </div>
 
-      {/* 提示 */}
-      {emptiedClasses.length > 0 && (
-        <p className="text-amber-600 text-sm mb-4">
+      {/* 提示：同一时刻只显示最要紧的一条，避免三行黄字叠在一起 */}
+      {activeCount === 0 ? (
+        <p className="ui-note text-amber-700 mt-4">所有字符类型都被排除了，请至少保留一种，或清空排除条件。</p>
+      ) : emptiedClasses.length > 0 ? (
+        <p className="ui-note text-amber-700 mt-4">
           已排除全部「{emptiedClasses.join("、")}」字符，当前密码不会包含该类型。
         </p>
-      )}
-
-      {activeCount === 0 && (
-        <p className="text-red-600 text-sm mb-4">
-          所有字符类型都被排除了，请至少保留一种，或清空排除条件。
-        </p>
-      )}
-
-      {length < activeCount && activeCount > 0 && (
-        <p className="text-amber-600 text-sm mb-4">
-          建议长度 ≥ 已选字符类型数量，保证每类都能出现
-        </p>
-      )}
+      ) : length < activeCount ? (
+        <p className="ui-note text-amber-700 mt-4">建议长度不小于已选字符类型数量，保证每类都能出现。</p>
+      ) : null}
 
       {/* 生成按钮 */}
-      <button onClick={generatePassword} className="ui-btn ui-btn-primary ui-btn-block">
-        <RefreshCw size={18} className="mr-2" />
-        重新生成密码
-      </button>
+      <ActionBar>
+        <Button variant="primary" size="lg" icon={RefreshCw} onClick={generatePassword}>
+          重新生成密码
+        </Button>
+      </ActionBar>
     </>
   );
 }

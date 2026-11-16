@@ -4,7 +4,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { Braces, Fingerprint, History, RefreshCw, ShieldCheck, Trash2 } from "lucide-react";
 import ToolShell from "@/components/ToolShell";
-import { Badge, Button, Notice, OutputBlock, Segmented, Switch } from "@/components/ui/ToolUI";
+import { ActionBar, Badge, Button, Notice, OutputBlock, Segmented, Switch } from "@/components/ui/ToolUI";
 
 type IdKind = "v4" | "v7" | "nanoid" | "custom";
 
@@ -162,7 +162,7 @@ export default function UuidPage() {
           <p className="text-xs text-slate-500">{KIND_DESC[kind]}</p>
         </div>
 
-        <div className="ui-form-grid">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
           <div className="space-y-2">
             <label htmlFor="uuid-count" className="ui-label text-sm">生成数量（1–100）</label>
             <input
@@ -222,11 +222,13 @@ export default function UuidPage() {
           </div>
         )}
 
-        <div className="flex flex-wrap items-center gap-2">
-          <Button icon={RefreshCw} onClick={generate}>生成 ID</Button>
-          <Button variant="ghost" icon={Trash2} onClick={clear} disabled={!values.length}>清空结果</Button>
-          <Badge className="bg-indigo-50 text-indigo-700"><ShieldCheck size={13} className="inline mr-1" />{entropy} bit 随机性</Badge>
-        </div>
+        <ActionBar>
+          <Button variant="primary" size="lg" icon={RefreshCw} onClick={generate}>生成 ID</Button>
+          <Button variant="ghost" size="lg" icon={Trash2} onClick={clear} disabled={!values.length}>清空结果</Button>
+          <Badge className="bg-indigo-50 text-indigo-700">
+            <ShieldCheck size={13} className="inline mr-1" />{entropy} bit 随机性
+          </Badge>
+        </ActionBar>
 
         {notice && <Notice tone="info">{notice}</Notice>}
 

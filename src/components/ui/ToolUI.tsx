@@ -20,7 +20,12 @@ import {
 type IconType = ElementType<{ className?: string; size?: number; strokeWidth?: number }>;
 
 /** 内容区块：带图标标题的白色卡片 */
-export function Panel({
+/**
+ * 页内分段。ToolShell 外层已经是一张卡片，页内再套卡片就变成「卡片套卡片」，
+ * 所以这里只用一条细上分隔线 + 小标题来分段，不画边框、不铺底色。
+ * 第一个分段自动去掉分隔线。
+ */
+export function Section({
   icon: Icon,
   title,
   children,
@@ -32,9 +37,9 @@ export function Panel({
   className?: string;
 }) {
   return (
-    <section className={`ui-panel ${className}`}>
-      <h3 className="ui-panel-title">
-        {Icon && <Icon className="ui-panel-icon" size={20} strokeWidth={1.75} />}
+    <section className={`ui-section ${className}`}>
+      <h3 className="ui-section-title">
+        {Icon && <Icon className="ui-section-icon" size={20} strokeWidth={1.75} />}
         {title}
       </h3>
       {children}
@@ -100,13 +105,13 @@ export function Button({
   ...rest
 }: ButtonHTMLAttributes<HTMLButtonElement> & {
   variant?: ButtonVariant;
-  size?: "md" | "sm";
+  size?: "sm" | "md" | "lg";
   block?: boolean;
   icon?: IconType;
 }) {
   return (
     <button
-      className={`ui-btn ui-btn-${variant} ${size === "sm" ? "ui-btn-sm" : ""} ${
+      className={`ui-btn ui-btn-${variant} ${size === "sm" ? "ui-btn-sm" : size === "lg" ? "ui-btn-lg" : ""} ${
         block ? "ui-btn-block" : ""
       } ${className}`}
       {...rest}
@@ -232,14 +237,19 @@ export function Field({
 }
 
 /** 统一按钮组（两列或自适应） */
-export function ToolActions({
+/**
+ * 主操作行。规则：一屏只允许一条，放在参数区下方。
+ * 主操作（primary）在左、次操作紧随其后，窄屏自动换行、按钮等分而不是被压变形。
+ * 结果区的复制/下载不进这里 —— 它们是标题行的图标按钮。
+ */
+export function ActionBar({
   children,
   className = "",
 }: {
   children: ReactNode;
   className?: string;
 }) {
-  return <div className={`grid grid-cols-2 gap-3 ${className}`}>{children}</div>;
+  return <div className={`ui-action-bar ${className}`}>{children}</div>;
 }
 
 /** 统一徽章 */
@@ -261,17 +271,20 @@ export function Segmented<T extends string>({
   value,
   options,
   onChange,
+  fill = false,
   className = "",
 }: {
   label: string;
   value: T;
   options: { value: T; label: string; icon?: IconType }[];
   onChange: (next: T) => void;
+  /** 铺满容器并让各项等宽：适合「三选一、四选一」这种整行选项 */
+  fill?: boolean;
   className?: string;
 }) {
   return (
     <div
-      className={`inline-flex flex-wrap gap-1 p-1 bg-slate-100 rounded-xl ${className}`}
+      className={`${fill ? "flex w-full" : "inline-flex flex-wrap"} gap-1 p-1 bg-slate-100 rounded-xl ${className}`}
       role="group"
       aria-label={label}
     >
@@ -283,7 +296,9 @@ export function Segmented<T extends string>({
             type="button"
             onClick={() => onChange(item)}
             aria-pressed={active}
-            className={`flex items-center gap-1.5 px-3 py-1.5 text-sm rounded-lg transition-all ${
+            className={`flex items-center justify-center gap-1.5 h-8 px-3 text-sm rounded-lg transition-all ${
+              fill ? "flex-1 min-w-0 truncate" : ""
+            } ${
               active
                 ? "bg-white text-indigo-600 font-semibold shadow-sm"
                 : "text-slate-600 hover:text-slate-800"

@@ -4,7 +4,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { Cpu, Globe, Monitor, MonitorSmartphone, Check, Copy, RefreshCw } from "lucide-react";
 import ToolShell from "@/components/ToolShell";
-import { KeyRow, Panel, writeClipboard } from "@/components/ui/ToolUI";
+import { ActionBar, Button, KeyRow, Section, writeClipboard } from "@/components/ui/ToolUI";
 import { collectDeviceInfo, type DeviceInfo } from "./device";
 
 function DeviceInfoCore() {
@@ -81,16 +81,16 @@ ${info.userAgent}`;
         </div>
       )}
 
-      <Panel icon={Globe} title="浏览器">
+      <Section icon={Globe} title="浏览器">
         <div className="ui-kv-list">
           <KeyRow label="浏览器" value={info?.browser ?? "检测中…"} />
           <KeyRow label="版本" value={info?.browserVersion ?? "—"} mono />
           <KeyRow label="语言" value={info?.language ?? "—"} />
           <KeyRow label="备用语言" value={info?.languages.join(", ") ?? "—"} />
         </div>
-      </Panel>
+      </Section>
 
-      <Panel icon={Cpu} title="系统" className="mt-5">
+      <Section icon={Cpu} title="系统">
         <div className="ui-kv-list">
           <KeyRow label="操作系统" value={info?.os ?? "检测中…"} />
           <KeyRow label="系统版本" value={info?.osVersion ?? "—"} mono />
@@ -103,16 +103,16 @@ ${info.userAgent}`;
             设备内存是浏览器上报的近似值：只取 2 的幂（4 / 8 / 16 GB），部分版本还会截断到 8 GB，因此与系统信息里的容量不一定相同；Safari / Firefox 完全不提供该字段。
           </p>
         )}
-      </Panel>
+      </Section>
 
-      <Panel icon={MonitorSmartphone} title="GPU" className="mt-5">
+      <Section icon={MonitorSmartphone} title="GPU">
         <div className="ui-kv-list">
           <KeyRow label="型号" value={info?.gpuName ?? "读取中…"} />
           <KeyRow label="厂商" value={info?.gpuVendor ?? "—"} />
         </div>
-      </Panel>
+      </Section>
 
-      <Panel icon={Monitor} title="屏幕" className="mt-5">
+      <Section icon={Monitor} title="屏幕">
         <div className="ui-kv-list">
           <KeyRow label="逻辑分辨率（CSS 像素）" value={info?.screenLogical ?? "—"} mono />
           <KeyRow label="物理像素" value={info?.screenPhysical ?? "—"} mono />
@@ -125,39 +125,36 @@ ${info.userAgent}`;
         <p className="ui-note mt-3">
           逻辑分辨率受系统缩放影响（125% 缩放下 2560 宽会报 2048）；物理像素 = 逻辑分辨率 × 像素比，才是屏幕真实点数。
         </p>
-      </Panel>
+      </Section>
 
-      <Panel title="时区与时间" className="mt-5">
+      <Section title="时区与时间">
         <div className="ui-kv-list">
           <KeyRow label="时区" value={info?.timezone ?? "—"} mono />
           <KeyRow label="UTC 偏移" value={info?.utcOffset ?? "—"} mono />
           <KeyRow label="当前时间" value={info?.localTime ?? "—"} />
         </div>
-      </Panel>
+      </Section>
 
-      <Panel title="UserAgent" className="mt-5">
+      <Section title="UserAgent">
         <div className="bg-slate-50 border border-slate-200 rounded-xl p-3">
           <pre className="whitespace-pre-wrap break-all text-xs leading-6 text-slate-600 font-mono">
             {info?.userAgent ?? "读取中…"}
           </pre>
         </div>
-      </Panel>
+      </Section>
 
       {copyError && (
-        <p className="mt-3 text-sm text-red-600" role="alert">{copyError}</p>
+        <p className="ui-note text-red-600 mt-4" role="alert">{copyError}</p>
       )}
 
-      <div className="grid grid-cols-2 gap-4 mt-5">
-        <button onClick={copyAll} className="ui-btn ui-btn-secondary w-full py-3">
-          <Copy size={18} className="mr-2" />
-          复制全部
-        </button>
-
-        <button onClick={() => void loadInfo()} disabled={loading} className="ui-btn ui-btn-primary w-full py-3">
-          <RefreshCw size={18} className={`mr-2 ${loading ? "animate-spin" : ""}`} />
+      <ActionBar>
+        <Button variant="primary" size="lg" onClick={() => void loadInfo()} disabled={loading} icon={RefreshCw}>
           重新检测
-        </button>
-      </div>
+        </Button>
+        <Button variant="secondary" size="lg" icon={Copy} onClick={copyAll}>
+          复制全部
+        </Button>
+      </ActionBar>
 
       <p className="ui-note mt-4">
         所有信息都由本机浏览器 API 读出，不上传；浏览器为了防指纹会主动打折上报（内存只给 2 的幂近似值、系统版本与 GPU 可能被冻结或屏蔽），因此个别项与实际硬件不一致属正常。

@@ -8,7 +8,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { DragEvent } from "react";
 import { ArrowLeftRight, Binary, FileUp, Info, X } from "lucide-react";
 import ToolShell from "@/components/ToolShell";
-import { CopyButton, DownloadButton, Notice, PaneHead } from "@/components/ui/ToolUI";
+import { CopyButton, DownloadButton, Notice, PaneHead, Segmented } from "@/components/ui/ToolUI";
 import { checkImageFile } from "@/lib/image-guard";
 
 /* ============================ 编解码 ============================ */
@@ -198,67 +198,28 @@ function Base64Core() {
 
   return (
     <div className="space-y-5">
-      {/* 方向 + 输入类型 */}
+      {/* 方向 + 输入类型：互斥选项统一用 Segmented，不再手写胶囊 */}
       <div className="flex flex-wrap items-center gap-2">
-        <div
-          className="inline-flex p-1 bg-slate-100 rounded-xl"
-          role="tablist"
-          aria-label="编解码方向"
-        >
-          {([
+        <Segmented
+          label="编解码方向"
+          value={mode}
+          onChange={switchMode}
+          options={[
             { value: "encode" as const, label: "编码", icon: Binary },
             { value: "decode" as const, label: "解码", icon: ArrowLeftRight },
-          ]).map(({ value, label, icon: Icon }) => {
-            const active = mode === value;
-            return (
-              <button
-                key={value}
-                type="button"
-                role="tab"
-                aria-selected={active}
-                onClick={() => switchMode(value)}
-                className={`flex items-center justify-center gap-1.5 px-4 py-1.5 text-sm rounded-lg transition-all ${
-                  active
-                    ? "bg-white text-indigo-600 font-semibold shadow-sm"
-                    : "text-slate-600 hover:text-slate-800"
-                }`}
-              >
-                <Icon size={15} />
-                {label}
-              </button>
-            );
-          })}
-        </div>
+          ]}
+        />
 
         {mode === "encode" && (
-          <div
-            className="inline-flex p-1 bg-slate-100 rounded-xl"
-            role="tablist"
-            aria-label="输入类型"
-          >
-            {[
+          <Segmented
+            label="输入类型"
+            value={source}
+            onChange={setSource}
+            options={[
               { value: "text" as const, label: "文本" },
               { value: "file" as const, label: "文件" },
-            ].map(({ value, label }) => {
-              const active = source === value;
-              return (
-                <button
-                  key={value}
-                  type="button"
-                  role="tab"
-                  aria-selected={active}
-                  onClick={() => setSource(value)}
-                  className={`px-4 py-1.5 text-sm rounded-lg transition-all ${
-                    active
-                      ? "bg-white text-indigo-600 font-semibold shadow-sm"
-                      : "text-slate-600 hover:text-slate-800"
-                  }`}
-                >
-                  {label}
-                </button>
-              );
-            })}
-          </div>
+            ]}
+          />
         )}
       </div>
 
@@ -426,7 +387,7 @@ function Base64Core() {
 
           {!output && (
             <p className="ui-note">
-              输入文本或选择文件后自动编码。中文、emoji 都按 UTF-8 字节处理，不会乱码。
+              输入文本或选择文件后自动编码。
             </p>
           )}
         </>

@@ -14,12 +14,13 @@ import {
 
 import ToolShell from "@/components/ToolShell";
 import {
+  ActionBar,
   Notice,
   OutputBlock,
   Button,
   IconButton,
   Badge,
-  Panel,
+  Section,
   KeyRow,
 } from "@/components/ui/ToolUI";
 
@@ -229,7 +230,7 @@ export default function SelfCertPage() {
     <ToolShell>
       <div className="space-y-6">
         {/* 页面标题与描述由 ToolShell 统一渲染，这里不再重复 */}
-        <div className="ui-panel-muted space-y-5">
+        <div className="space-y-5">
           <div>
             <label htmlFor="cert-cn" className="ui-label text-sm">证书名称 (CN)</label>
             <input
@@ -373,26 +374,27 @@ export default function SelfCertPage() {
 
           {formError && <Notice tone="error">{formError}</Notice>}
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <ActionBar>
             <Button
+              variant="primary"
+              size="lg"
               icon={Shield}
               disabled={isGenerating}
               onClick={generate}
-              className="w-full py-3"
             >
               {isGenerating ? "生成中..." : "生成证书"}
             </Button>
 
             <Button
               variant="secondary"
+              size="lg"
               icon={Laptop}
               disabled={isGenerating}
               onClick={generateLocalhost}
-              className="w-full py-3"
             >
               localhost 开发证书
             </Button>
-          </div>
+          </ActionBar>
 
           {error && <Notice tone="error">{error}</Notice>}
 
@@ -416,7 +418,7 @@ export default function SelfCertPage() {
 
         {result && (
           <div className="space-y-5">
-            <Panel icon={CheckCircle2} title="证书生成成功">
+            <Section icon={CheckCircle2} title="证书生成成功">
               <div className="ui-kv-list">
                 <KeyRow label="算法" value={`RSA ${result.info.keySize}`} />
                 <KeyRow label="签名算法" value={result.info.hash} mono />
@@ -444,7 +446,7 @@ export default function SelfCertPage() {
                   ))}
                 </div>
               </div>
-            </Panel>
+            </Section>
 
             <OutputBlock
               label="private-key.pem"

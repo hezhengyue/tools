@@ -235,7 +235,7 @@ function TimestampCore() {
             <option value="ms">毫秒</option>
           </select>
           <Button variant="secondary" icon={RefreshCw} onClick={setNowInput}>
-            现在
+            用当前时间
           </Button>
         </div>
 
@@ -319,7 +319,7 @@ function TimestampCore() {
             className="ui-input flex-1"
           />
           <Button variant="secondary" onClick={() => applyToDateInput(new Date())}>
-            现在
+            此刻
           </Button>
           <Button
             variant="secondary"

@@ -18,7 +18,7 @@ This version has breaking changes — APIs, conventions, and file structure may 
 
 唯一视觉来源：
 - `src/app/globals.css` → `@layer components` 里的 `.ui-*` 语义类（设计令牌）。
-- `src/components/ui/ToolUI.tsx` → 结构组件：`Panel` / `KeyRow` / `DisplayBox` / `Button` / `IconButton` / `PaneHead` / `Notice` / `EmptyState` / `Field` / `ToolActions` / `Badge` / `Segmented` / `Switch`，以及输出块 `OutputBlock` / `CopyButton` / `DownloadButton` 与剪贴板工具 `writeClipboard`；图片类：上传面板 `ImageDrop.tsx`（`ImageUploadPanel` / `ImageDropZone` / `ImageSourceCard`）、结果区 `ImageResult.tsx`（`ImageResult` / `ResultCard` / `FileResult`）、开关型选项 `OptionCard.tsx`、状态钩子 `@/lib/use-image-source`。
+- `src/components/ui/ToolUI.tsx` → 结构组件：`Section` / `KeyRow` / `DisplayBox` / `Button` / `IconButton` / `PaneHead` / `Notice` / `EmptyState` / `Field` / `ActionBar` / `Badge` / `Segmented` / `Switch`，以及输出块 `OutputBlock` / `CopyButton` / `DownloadButton` 与剪贴板工具 `writeClipboard`；图片类：上传面板 `ImageDrop.tsx`（`ImageUploadPanel` / `ImageDropZone` / `ImageSourceCard`）、结果区 `ImageResult.tsx`（`ImageResult` / `ResultCard` / `FileResult`）、开关型选项 `OptionCard.tsx`、状态钩子 `@/lib/use-image-source`。
 - `src/config/site.ts` → 站点名称与描述的唯一来源（metadata / 侧栏 / 移动端顶栏共用）。
 - `src/components/ToolShell.tsx` → 所有工具页统一外壳（面包屑、标题、图标、描述、收藏、内容卡、底部一行固定隐私说明）。全部工具页都用它包裹，面包屑的分类从 `tools.ts` 派生，页面不要自己写。
 - 首页 / 导航组件：`HomeSearch`（搜索主入口）、`RecentBar`（最近 + 收藏快捷入口）、`HomeCategories`（可折叠分类）、`Sidebar`、`MobileHeader`（模态抽屉）、`CommandPalette`、`ShortcutHint`（Mac 显示 ⌘K）。
@@ -71,9 +71,27 @@ export default function XxxPage() {
 - `OutputBlock` 没有 `minHeight` 参数，高度统一由 `.ui-output-min` 控制；页面不要自己指定高度，也不要新增类似的高度参数。
 - 结果还没产生时**整块不渲染**（`{result && <OutputBlock … />}`），不要留一个写着「点击上方按钮生成…」的空框占位。
 - 禁止：把复制/下载做成结果下方一排大按钮、用 `<details>` 折叠藏结果、每个输出块各写一套按钮样式。
-- 例外：整页级主操作按钮组（如「复制全部 / 重新检测」）与图片文件导出不属于文本输出块，继续用 `Button` / `ToolActions`。
+- 例外：整页级主操作行（如「重新检测 / 复制全部」）与图片文件导出不属于文本输出块，用 `ActionBar` + `Button`。
 
 设计约定：主色 `indigo-600`；成功 `emerald`；提示 `amber`；错误 `red`；卡片 `rounded-2xl`，按钮 `rounded-xl`，小控件 `rounded-lg`；边框统一 `border-slate-200`；次级底色 `bg-slate-50`。语义色（哈希算法标签、密码强度、增删高亮、私钥警示）可保留。
+
+## 工具内按钮布局：三档尺寸 + 三层角色 + 固定位置（强制）
+
+**尺寸只有三档**，都写在 `globals.css`，用固定 `height` 而不是 padding 撑（否则带 1px 边框的 `secondary` 会比 `ghost` 高 2px，同一行永远差一点）：
+`ui-btn-sm` = 32（行内小动作）／默认 = 36（常规次操作）／`ui-btn-lg` = 44（主操作）；`IconButton` 固定 32。
+**禁止**在页面里用 `py-2.5` / `py-3` / `h-*` 改按钮高度 —— 改造前全站同类按钮出现过 32/34/36/38/42/46/48 七档，同一行肉眼可见不齐。
+
+**角色只有三层**：
+1. 主操作：一屏一个，实心 `variant="primary" size="lg"`，放参数区下方。
+2. 次操作：描边 / 幽灵，与主操作同一行，最多 3 个。
+3. 辅助操作：输入区标题行右侧（清空、填入示例，`ghost + sm`）、结果区标题行右侧（复制 / 下载，`IconButton`）。
+
+**位置固定四处**：输入区标题行（`.ui-field-head`）、参数区下方的 `.ui-action-bar`、结果卡标题行、页面底部（不放按钮）。
+- 整行动作一律用 `ActionBar`：主操作在左、次操作随后；窄屏自动换行并等分，不把按钮压变形。**不要**用 `grid grid-cols-2` 摆两个整宽按钮，也**不要**用 `ui-btn-block` 让单个按钮横跨整页。
+- 互斥选项一律 `Segmented`（整行铺满时加 `fill`），不要手写胶囊或单选按钮组。
+- 一组平级的小动作（文本工具箱的 39 个转换、Cron 的 10 个模板）用**等宽网格 + `w-full`**，不要 `flex flex-wrap` —— 宽度参差会在每组末尾留下孤零零一个按钮。
+- 一屏最多一条主操作行；出现第二条，说明该拆工具了。
+- 同一个动作不要在同一页出现两次不同文案（时间戳页曾有两个「现在」），语义不同就改文案区分。
 
 ## 静态说明：不带框，用 `.ui-note`（强制）
 
@@ -170,7 +188,8 @@ export default function XxxPage() {
 - 密度令牌 `--ui-gap` / `--ui-gap-lg` / `--ui-pad` / `--ui-field-min` 管间距与字段最小宽。要整体变紧/变松只改这几个变量，不要逐页调 `p-*` / `gap-*`。
 - **禁止**在工具页、`ToolShell`、任何组件里写页面级宽度类（`max-w-4xl` / `max-w-6xl` / `w-[calc(100%-18rem)]` 等），也不要在别处覆盖 `--ui-page-max` / `--ui-layout-*`。
 - 单栏页的主编辑区用 `.ui-editor`，主预览区用 `.ui-viewer`，棋盘用 `.ui-board`（内含「不超过可视高度」保护，保证整盘完整可见）。**只填一两行内容**的输入（哈希原文、正则、关键字、搜索词）用 `.ui-editor-sm`（固定 132px），不要套 `.ui-editor` 占掉半屏。**左右对照的双栏一律用 `.ui-pane`**（固定高度，保证两栏底边对齐）。**不要自己写 `min-h-[420px]` / `max-w-[520px]` 这类一次性数值**。
-- **表单 / 选项字段组统一用 `.ui-form-grid`**（`auto-fit minmax(min(100%, 16rem), 1fr)`，列数随容器自动算）。不要写死 `grid grid-cols-2` / `sm:grid-cols-2`——那会让 2K / 4K 屏上只剩两列、每个输入被拉成一条。固定 2 列的按钮组、A/交换/B 三列输入、Markdown / Diff 双栏编辑区属于有语义的布局，保留原写法。
+- **页内分段一律用 `Section`**（`@/components/ui/ToolUI`，渲染成 `.ui-section`：一条细上分隔线 + 小标题，第一个分段没有分隔线）。`ToolShell` 外层本身就是卡片，页内**不要再套 `Panel` / `.ui-panel` / `.ui-panel-muted`** —— 那就是「卡片套卡片」，`/device-info`、`/text-tools`、`/cron` 都栽在过这里。多行结果（四五个哈希、五个 cron 字段）用一个 `.ui-list` 容器 + `divide-y` 分隔，不要每条各套一个圆角边框。
+- **表单 / 选项字段组统一用 `.ui-form-grid`**（`auto-fit minmax(min(100%, 16rem), 1fr)`，列数随容器自动算）。不要写死 `grid grid-cols-2` / `sm:grid-cols-2`——那会让 2K / 4K 屏上只剩两列、每个输入被拉成一条。**例外：字段正好 2 个时**改用 `grid grid-cols-1 sm:grid-cols-2`，否则 1000px 宽的卡片会算成 3 列、右边空一格（`/ssh-key`、`/uuid`、`/image-compress` 都是这个毛病）。固定 2 列的按钮组、A/交换/B 三列输入、Markdown / Diff 双栏编辑区属于有语义的布局，保留原写法。
 - 面包屑 `.ui-breadcrumb`、快捷键 `.ui-shortcut`、侧栏阴影 `.ui-sidebar`、静态说明 `.ui-note` 也都在 `globals.css`，不要在组件里另写一套。
 - 局部元素（文字截断、按钮组、小控件）仍可用 `max-w-[10rem]`，但不得用在页面或主内容容器上。
 - 滚动区上限统一用视口相对值（`max-h-[70vh]` / `max-h-[calc(100vh_-_240px)]`），不要写死 `max-h-[400px]` 这类在 4K 屏上显得很小的数值。

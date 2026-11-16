@@ -14,7 +14,7 @@ import {
   XCircle,
 } from "lucide-react";
 import ToolShell from "@/components/ToolShell";
-import { Badge, Button, CopyButton, Notice, OutputBlock, Segmented } from "@/components/ui/ToolUI";
+import { ActionBar, Badge, Button, CopyButton, Notice, OutputBlock, Segmented } from "@/components/ui/ToolUI";
 import {
   HASH_ALGOS,
   MAX_FILES,
@@ -30,13 +30,6 @@ interface FileItem {
   hashes?: Hashes;
   error?: string;
 }
-
-const ALGO_COLORS: Record<HashAlgo, string> = {
-  MD5: "bg-indigo-50 border-indigo-200 text-indigo-700",
-  SHA1: "bg-blue-50 border-blue-200 text-blue-700",
-  SHA256: "bg-emerald-50 border-emerald-200 text-emerald-700",
-  SHA512: "bg-violet-50 border-violet-200 text-violet-700",
-};
 
 function formatSize(bytes: number) {
   if (bytes < 1024) return `${bytes} B`;
@@ -262,13 +255,13 @@ export default function FileHashPage() {
           </div>
         )}
 
-        <div className="flex flex-wrap gap-2">
-          <Button icon={Play} onClick={start} disabled={running || !items.length}>
+        <ActionBar>
+          <Button variant="primary" size="lg" icon={Play} onClick={start} disabled={running || !items.length}>
             {running ? "计算中…" : "开始计算"}
           </Button>
-          {running && <Button variant="secondary" icon={Square} onClick={stop}>停止</Button>}
-          <Button variant="ghost" icon={Trash2} onClick={clear} disabled={!items.length && !expected}>清空</Button>
-        </div>
+          {running && <Button variant="secondary" size="lg" icon={Square} onClick={stop}>停止</Button>}
+          <Button variant="ghost" size="lg" icon={Trash2} onClick={clear} disabled={!items.length && !expected}>清空</Button>
+        </ActionBar>
 
         {notice && <Notice tone="info">{notice}</Notice>}
         {selected?.error && <Notice tone="error">{selected.file.name}：{selected.error}</Notice>}
@@ -313,21 +306,25 @@ export default function FileHashPage() {
           <span className="ui-label text-sm flex items-center gap-2">
             <Fingerprint size={16} className="text-indigo-600" /> 计算结果
           </span>
-          {HASH_ALGOS.map((algo) => {
-            const value = selected?.hashes?.[algo] ?? "";
-            return (
-              <div key={algo} className={`flex items-center gap-3 p-3 rounded-xl border ${value ? ALGO_COLORS[algo] : "bg-slate-50 border-slate-200"}`}>
-                <span className="font-mono font-semibold text-xs w-16 shrink-0">{algo}</span>
-                <input
-                  readOnly
-                  value={value || "—"}
-                  aria-label={`${algo} 哈希值`}
-                  className="flex-1 min-w-0 bg-transparent border-0 font-mono text-xs truncate focus:outline-none"
-                />
-                <CopyButton value={value} label={`复制 ${algo} 哈希值`} />
-              </div>
-            );
-          })}
+          <div className="ui-list divide-y divide-slate-100">
+            {HASH_ALGOS.map((algo) => {
+              const value = selected?.hashes?.[algo] ?? "";
+              return (
+                <div key={algo} className="flex items-center gap-3 px-3 py-2.5">
+                  <span className="font-mono font-semibold text-[13px] w-16 shrink-0 text-slate-500">{algo}</span>
+                  <input
+                    readOnly
+                    value={value || "—"}
+                    aria-label={`${algo} 哈希值`}
+                    className={`flex-1 min-w-0 bg-transparent border-0 font-mono text-[13px] truncate focus:outline-none ${
+                      value ? "text-slate-700" : "text-slate-400"
+                    }`}
+                  />
+                  <CopyButton value={value} label={`复制 ${algo} 哈希值`} />
+                </div>
+              );
+            })}
+          </div>
         </div>
 
         <OutputBlock

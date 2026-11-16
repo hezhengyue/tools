@@ -53,19 +53,16 @@ export default function SvgToPngPage() {
           </label>
           <div className="flex gap-1">
             {[128, 256, 512, 1024].map((value) => (
-              <button
+              <Button
                 key={value}
-                type="button"
+                variant={width === value ? "primary" : "secondary"}
+                size="sm"
+                className="font-mono"
                 aria-pressed={width === value}
                 onClick={() => setWidth(value)}
-                className={`px-2.5 py-1.5 text-xs font-mono rounded-lg border transition-colors ${
-                  width === value
-                    ? "bg-indigo-600 border-indigo-600 text-white"
-                    : "bg-white border-slate-200 text-slate-600 hover:border-indigo-300"
-                }`}
               >
                 {value}
-              </button>
+              </Button>
             ))}
           </div>
           <span className="text-xs text-slate-500">高度按原始宽高比自动计算</span>

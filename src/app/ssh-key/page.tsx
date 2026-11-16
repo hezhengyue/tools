@@ -3,7 +3,7 @@
 import { useState, useRef, useEffect, useCallback } from "react";
 import { RefreshCw } from "lucide-react";
 import ToolShell from "@/components/ToolShell";
-import { Notice, OutputBlock } from "@/components/ui/ToolUI";
+import { ActionBar, Button, Notice, OutputBlock } from "@/components/ui/ToolUI";
 import { hasWebCrypto } from "@/lib/rsa-keypair";
 import type { SshKeyPair } from "./keygen";
 
@@ -85,7 +85,7 @@ function SshKeyCore() {
           选择 RSA Key Size
         </div>
 
-        <div className="ui-form-grid">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
           <button
             onClick={() => setKeySize(2048)}
             className={`p-3 rounded-xl border text-left transition-all ${
@@ -115,14 +115,11 @@ function SshKeyCore() {
       {/* =========================
           generate
       ========================= */}
-      <button
-        onClick={() => void generate()}
-        disabled={loading}
-        className="ui-btn ui-btn-primary w-full py-3"
-      >
-        <RefreshCw size={18} className={loading ? "animate-spin" : ""} />
-        {loading ? `生成中… ${elapsed}s` : "生成 RSA SSH Key"}
-      </button>
+      <ActionBar>
+        <Button variant="primary" size="lg" onClick={() => void generate()} disabled={loading} icon={RefreshCw}>
+          {loading ? `生成中… ${elapsed}s` : "生成 RSA SSH Key"}
+        </Button>
+      </ActionBar>
 
       {loading && nativeEngine && (
         <Notice tone="info">
