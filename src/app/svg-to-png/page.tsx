@@ -4,7 +4,7 @@
 import { useRef, useState } from "react";
 import { FileImage, RefreshCw, ScanLine } from "lucide-react";
 import ToolShell from "@/components/ToolShell";
-import { Button, Notice, Panel } from "@/components/ui/ToolUI";
+import { Button, Notice } from "@/components/ui/ToolUI";
 import { ImageResult } from "@/components/ui/ImageResult";
 import { svgToPng } from "@/lib/image-canvas";
 
@@ -36,10 +36,40 @@ export default function SvgToPngPage() {
 
   return (
     <ToolShell>
-      <Panel icon={ScanLine} title="SVG 源码">
-        <div className="flex flex-wrap items-center justify-between gap-2 mb-3">
-          <span className="text-xs text-slate-500">支持 viewBox / width / height，外链图片与字体可能受浏览器安全策略限制</span>
-          <div className="flex gap-2">
+      <div className="space-y-4">
+        <div className="ui-options-bar">
+          <label htmlFor="svg-width" className="flex items-center gap-2 text-xs text-slate-500">
+            输出宽度
+            <input
+              id="svg-width"
+              type="number"
+              min={16}
+              max={4096}
+              value={width}
+              onChange={(event) => setWidth(Math.max(16, Math.min(4096, Number(event.target.value))))}
+              className="ui-input ui-input-sm w-24 font-mono text-center"
+            />
+            px
+          </label>
+          <div className="flex gap-1">
+            {[128, 256, 512, 1024].map((value) => (
+              <button
+                key={value}
+                type="button"
+                aria-pressed={width === value}
+                onClick={() => setWidth(value)}
+                className={`px-2.5 py-1.5 text-xs font-mono rounded-lg border transition-colors ${
+                  width === value
+                    ? "bg-indigo-600 border-indigo-600 text-white"
+                    : "bg-white border-slate-200 text-slate-600 hover:border-indigo-300"
+                }`}
+              >
+                {value}
+              </button>
+            ))}
+          </div>
+          <span className="text-xs text-slate-500">高度按原始宽高比自动计算</span>
+          <div className="flex gap-2 sm:ml-auto">
             <Button variant="secondary" size="sm" icon={FileImage} onClick={() => fileRef.current?.click()}>上传 .svg</Button>
             <Button variant="ghost" size="sm" icon={RefreshCw} onClick={() => setText(SVG_SAMPLE)}>恢复示例</Button>
             <input
@@ -58,31 +88,31 @@ export default function SvgToPngPage() {
             />
           </div>
         </div>
+
         <textarea
           id="svg-source"
           value={text}
           onChange={(event) => setText(event.target.value)}
           spellCheck={false}
           aria-label="SVG 源码"
-          className="ui-textarea ui-editor text-xs"
+          className="ui-textarea ui-editor-sm text-xs font-mono"
         />
-        <div className="flex flex-wrap items-center gap-3 mt-3">
-          <label htmlFor="svg-width" className="text-sm text-slate-600">输出宽度</label>
-          <input id="svg-width" type="number" min={16} max={4096} value={width} onChange={(event) => setWidth(Math.max(16, Math.min(4096, Number(event.target.value))))} className="ui-input ui-input-sm w-28 font-mono" />
-          <span className="text-xs text-slate-500">px，高度按原始宽高比自动计算</span>
-          <div className="flex gap-1 ml-auto">
-            {[128, 256, 512, 1024].map((value) => (
-              <Button key={value} variant="secondary" size="sm" onClick={() => setWidth(value)}>{value}</Button>
-            ))}
-          </div>
+        <p className="ui-note">支持 viewBox / width / height；外链图片与字体可能受浏览器安全策略限制。</p>
+
+        <div className="flex flex-wrap items-center gap-3">
+          <Button icon={ScanLine} disabled={busy} onClick={generate}>
+            {busy ? "转换中…" : "转换为 PNG"}
+          </Button>
         </div>
-        <div className="mt-4"><Button icon={ScanLine} disabled={busy} onClick={generate}>{busy ? "转换中…" : "转换为 PNG"}</Button></div>
-        {error && <Notice tone="error" className="mt-3">{error}</Notice>}
-        <div className="mt-4"><ImageResult blob={blob} filename={`svg-${width}.png`} checker /></div>
-      </Panel>
-      <p className="ui-note mt-5">
-        在浏览器内用 SVG 图像解码后再画到 canvas，不依赖任何服务端；输出带 alpha 通道，透明背景会保留。
-      </p>
+
+        {error && <Notice tone="error">{error}</Notice>}
+
+        <ImageResult blob={blob} filename={`svg-${width}.png`} checker />
+
+        <p className="ui-note">
+          在浏览器内用 SVG 图像解码后再画到 canvas，不依赖任何服务端；输出带 alpha 通道，透明背景会保留。
+        </p>
+      </div>
     </ToolShell>
   );
 }

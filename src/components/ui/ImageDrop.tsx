@@ -1,15 +1,21 @@
 // src/components/ui/ImageDrop.tsx
-// 图片类工具共用的上传区与「当前图片」条：拖入 / 点击 / 粘贴三种入口，
-// 尺寸与体积说明由 @/lib/image-io 的上限常量派生，避免各页文案写错。
+// 图片类工具共用的上传区与「当前图片」卡片：拖入 / 点击 / 粘贴三种入口。
+// 视觉与 /image-compress 一致：虚线大上传区 + 白底圆形图标，选中后换成信息卡片。
 
 "use client";
 
 import { useRef, useState, type ElementType } from "react";
-import { RefreshCw, Upload } from "lucide-react";
-import { Button, Notice, Panel } from "@/components/ui/ToolUI";
+import { ImagePlus, RefreshCw, Trash2 } from "lucide-react";
+import { Notice } from "@/components/ui/ToolUI";
 import { formatBytes, MAX_FILE_SIZE, type ImageSource } from "@/lib/image-io";
 
-export function ImageDropZone({ onFile, hint }: { onFile: (file: File) => void; hint?: string }) {
+export function ImageDropZone({
+  onFile, icon: Icon = ImagePlus, hint,
+}: {
+  onFile: (file: File) => void;
+  icon?: ElementType;
+  hint?: string;
+}) {
   const inputRef = useRef<HTMLInputElement>(null);
   const [dragging, setDragging] = useState(false);
 
@@ -33,15 +39,10 @@ export function ImageDropZone({ onFile, hint }: { onFile: (file: File) => void; 
         const file = event.dataTransfer.files[0];
         if (file) onFile(file);
       }}
-      className={`flex flex-col items-center justify-center gap-2 p-8 border-2 border-dashed rounded-2xl cursor-pointer transition-colors ${
-        dragging ? "border-indigo-500 bg-indigo-50" : "border-slate-200 bg-slate-50 hover:border-indigo-300"
+      className={`relative border-2 border-dashed rounded-2xl p-8 text-center cursor-pointer transition-all ${
+        dragging ? "border-indigo-500 bg-indigo-50/50" : "border-slate-200 bg-slate-50/50 hover:border-slate-400"
       }`}
     >
-      <Upload size={28} className="text-indigo-500" strokeWidth={1.6} />
-      <p className="text-sm font-semibold text-slate-700">点击选择、拖入图片，或直接 Ctrl/⌘+V 粘贴</p>
-      <p className="text-xs text-slate-500">
-        {hint ?? `PNG / JPG / WebP / GIF / SVG · 最大 ${formatBytes(MAX_FILE_SIZE)} · 1600 万像素以内`}
-      </p>
       <input
         ref={inputRef}
         type="file"
@@ -53,32 +54,80 @@ export function ImageDropZone({ onFile, hint }: { onFile: (file: File) => void; 
           event.target.value = "";
         }}
       />
+      <div className="flex flex-col items-center gap-3">
+        <div className="p-4 bg-white rounded-full shadow-sm">
+          <Icon size={32} strokeWidth={1.6} className="text-indigo-600" />
+        </div>
+        <div>
+          <p className="font-medium text-slate-700">拖拽图片到此处，或点击上传</p>
+          <p className="text-sm text-slate-500 mt-1">
+            {hint ?? `PNG / JPG / WebP / GIF / SVG · 最大 ${formatBytes(MAX_FILE_SIZE)} · 也可直接 Ctrl/⌘+V 粘贴`}
+          </p>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/** 已选中的图片：缩略图 + 尺寸体积 + 更换 / 移除，样式对齐处理结果卡片 */
+export function ImageSourceCard({
+  source, onReplace, onClear,
+}: { source: ImageSource; onReplace: () => void; onClear: () => void }) {
+  const width = source.img.naturalWidth || 0;
+  const height = source.img.naturalHeight || 0;
+
+  return (
+    <div className="flex items-center gap-3 sm:gap-4 p-3 sm:p-4 bg-white rounded-2xl border border-slate-200">
+      <div className="w-16 h-16 sm:w-20 sm:h-20 shrink-0 bg-slate-100 rounded-xl overflow-hidden flex items-center justify-center">
+        <img src={source.url} alt="原图预览" className="w-full h-full object-contain" />
+      </div>
+      <div className="flex-1 min-w-0">
+        <p className="font-medium text-slate-700 truncate" title={source.name}>{source.name}</p>
+        <p className="text-xs text-slate-500 mt-0.5">
+          {width || "—"} × {height || "—"} px · {formatBytes(source.size)}
+        </p>
+      </div>
+      <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
+        <button
+          type="button"
+          onClick={onReplace}
+          aria-label="更换图片"
+          title="更换图片"
+          className="ui-btn ui-btn-secondary ui-btn-sm"
+        >
+          <RefreshCw size={14} strokeWidth={1.75} />
+          <span className="hidden sm:inline">更换</span>
+        </button>
+        <button type="button" onClick={onClear} className="ui-icon-btn text-red-600 hover:bg-red-50" title="移除" aria-label="移除这张图片">
+          <Trash2 size={16} />
+        </button>
+      </div>
     </div>
   );
 }
 
 /**
- * 完整的「选择图片」面板：上传区 / 当前图片条 + 隐藏的文件输入 + 错误提示。
- * 每个图片工具页只需要把 useImageSource() 的返回值接进来。
+ * 完整的上传区：未选图时是虚线拖拽区，选图后换成信息卡片。
+ * 内部自带隐藏 file input 与错误提示；页面不要再写一遍上传逻辑。
  */
 export function ImageUploadPanel({
-  source, notice, onFile, onClear, title = "选择图片", icon = Upload,
+  source, notice, onFile, onClear, icon = ImagePlus, hint,
 }: {
   source: ImageSource | null;
   notice?: string;
   onFile: (file: File) => void;
   onClear: () => void;
-  title?: string;
   icon?: ElementType;
+  hint?: string;
 }) {
   const inputRef = useRef<HTMLInputElement>(null);
 
   return (
-    <Panel icon={icon} title={title}>
+    <div>
       {source ? (
-        <ImageSourceBar source={source} onReplace={() => inputRef.current?.click()} onClear={onClear} />
+        <ImageSourceCard source={source} onReplace={() => inputRef.current?.click()} onClear={onClear} />
       ) : (
-        <ImageDropZone onFile={onFile} />
+        <ImageDropZone onFile={onFile} icon={icon} hint={hint} />
       )}
       {notice && <Notice tone="error" className="mt-3">{notice}</Notice>}
       <input
@@ -92,26 +141,6 @@ export function ImageUploadPanel({
           event.target.value = "";
         }}
       />
-    </Panel>
-  );
-}
-
-export function ImageSourceBar({
-  source, onReplace, onClear,
-}: { source: ImageSource; onReplace: () => void; onClear: () => void }) {
-  return (
-    <div className="flex flex-wrap items-center gap-4 p-3 rounded-xl bg-slate-50 border border-slate-200">
-      <img src={source.url} alt="原图预览" className="w-20 h-20 object-contain rounded-lg bg-white border border-slate-200" />
-      <div className="min-w-0 flex-1">
-        <div className="text-sm font-semibold text-slate-700 truncate">{source.name}</div>
-        <div className="text-xs text-slate-500 mt-1">
-          {source.img.naturalWidth || "—"} × {source.img.naturalHeight || "—"} px · {formatBytes(source.size)}
-        </div>
-      </div>
-      <div className="flex gap-2">
-        <Button variant="secondary" size="sm" icon={RefreshCw} onClick={onReplace}>更换图片</Button>
-        <Button variant="ghost" size="sm" onClick={onClear}>移除</Button>
-      </div>
     </div>
   );
 }

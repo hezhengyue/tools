@@ -18,7 +18,7 @@ This version has breaking changes — APIs, conventions, and file structure may 
 
 唯一视觉来源：
 - `src/app/globals.css` → `@layer components` 里的 `.ui-*` 语义类（设计令牌）。
-- `src/components/ui/ToolUI.tsx` → 结构组件：`Panel` / `KeyRow` / `DisplayBox` / `Button` / `IconButton` / `PaneHead` / `Notice` / `EmptyState` / `Field` / `ToolActions` / `Badge` / `Segmented` / `Switch`，以及输出块 `OutputBlock` / `CopyButton` / `DownloadButton` 与剪贴板工具 `writeClipboard`；图片上传面板 `ImageDrop.tsx`（`ImageUploadPanel`）、结果区 `ImageResult.tsx`、图片页状态钩子 `@/lib/use-image-source`。
+- `src/components/ui/ToolUI.tsx` → 结构组件：`Panel` / `KeyRow` / `DisplayBox` / `Button` / `IconButton` / `PaneHead` / `Notice` / `EmptyState` / `Field` / `ToolActions` / `Badge` / `Segmented` / `Switch`，以及输出块 `OutputBlock` / `CopyButton` / `DownloadButton` 与剪贴板工具 `writeClipboard`；图片类：上传面板 `ImageDrop.tsx`（`ImageUploadPanel` / `ImageDropZone` / `ImageSourceCard`）、结果区 `ImageResult.tsx`（`ImageResult` / `ResultCard` / `FileResult`）、开关型选项 `OptionCard.tsx`、状态钩子 `@/lib/use-image-source`。
 - `src/config/site.ts` → 站点名称与描述的唯一来源（metadata / 侧栏 / 移动端顶栏共用）。
 - `src/components/ToolShell.tsx` → 所有工具页统一外壳（面包屑、标题、图标、描述、收藏、内容卡、底部一行固定隐私说明）。全部工具页都用它包裹，面包屑的分类从 `tools.ts` 派生，页面不要自己写。
 - 首页 / 导航组件：`HomeSearch`（搜索主入口）、`RecentBar`（最近 + 收藏快捷入口）、`HomeCategories`（可折叠分类）、`Sidebar`、`MobileHeader`（模态抽屉）、`CommandPalette`、`ShortcutHint`（Mac 显示 ⌘K）。
@@ -159,7 +159,7 @@ export default function XxxPage() {
 比规则更快的**锚点法**——找最像的现有工具，抄它的档位：
 - `narrow`：强密码、时间戳、IP 地理位置、单位换算、四个游戏
 - `medium`：文本哈希、文件哈希、SSH 密钥、自签证书、JWT、UUID、Cron、设备检测、子网计算、正则
-- `full`：JSON 格式化、JSON↔YAML、Base64、文本对比、文本工具箱、Markdown、四个图片工具、截图、录屏、二维码、颜色
+- `full`：JSON 格式化、JSON↔YAML、Base64、文本对比、文本工具箱、Markdown、全部图片工具、截图、录屏、二维码、颜色
 
 当前分布：`narrow` 8 / `medium` 10 / `full` 18，共 36 个工具。
 
@@ -208,7 +208,8 @@ export default function XxxPage() {
 - **隐私**：新增工具默认在浏览器本地处理；底部固定隐私句由 ToolShell 渲染，页面内不要再重复写「本地处理 / 不会上传 / 纯前端」。若确实需要服务端请求，把它加进 `ToolShell.tsx` 的 `SERVER_ROUTES` 并如实说明，不要改文案、不要给单个工具开小灶。
 - **待办**：图片压缩与抠图（背景透明）的画布计算仍在主线程（已用像素上限 + 异步编码缓解），彻底 Worker 化需单独排期并做浏览器兼容验证。
 - **一个工具只做一件事**：多功能不要塞进一页用 tab 切换（`/image-tools` 拆成 5 个独立工具就是反面教材）。每个功能一个路由、一条侧栏入口、一份 metadata，用户从搜索里能直接命中。
-- **图片工具页**：上传面板用 `components/ui/ImageDrop.tsx` 的 `ImageUploadPanel`（内部含上传区 / 当前图片条 / 隐藏 file input / 错误提示），状态用 `@/lib/use-image-source` 的 `useImageSource()`（加载、替换、移除、粘贴、ObjectURL 回收、并发加载顺序都在里面），结果区用 `components/ui/ImageResult.tsx`（预览 + 体积 + 下载，`checker` 参数开棋盘格），底层能力用 `src/lib/image-io.ts`（加载/编码/下载/像素守卫）与 `src/lib/image-canvas.ts`（水印/圆角/切图/ICO/SVG 光栅化）。**不要在页面里重写这几样。**
+- **图片工具页**：上传面板用 `components/ui/ImageDrop.tsx` 的 `ImageUploadPanel`（内部含上传区 / 当前图片卡 / 隐藏 file input / 错误提示），状态用 `@/lib/use-image-source` 的 `useImageSource()`（加载、替换、移除、粘贴、ObjectURL 回收、并发加载顺序都在里面），结果区用 `components/ui/ImageResult.tsx`（`ImageResult` 预览 + 体积 + 下载，`checker` 开棋盘格；ZIP / ICO 这类非图片产物用 `FileResult`），底层能力用 `src/lib/image-io.ts`（加载/编码/下载/像素守卫）与 `src/lib/image-canvas.ts`（水印/圆角/切图/ICO/SVG 光栅化）。**不要在页面里重写这几样。**
+- **图片页版式（以 `/image-compress` 为基准，所有图片工具必须一致）**：页面里**不要再套 `.ui-panel`** —— ToolShell 外层已经是卡片，里面再套一层就变成「卡片套卡片」。统一三段：① `ImageUploadPanel`（虚线大上传区，选中后换成信息卡）；② 参数区 = `.ui-options-bar`（单行内联控件：文字 / 颜色 / 旋转 / 行列 / 尺寸 chip）+ `.ui-form-grid`（滑杆、位置九宫格、开关卡片），开关型选项优先用 `OptionCard`，只有与单行控件强相关、必须挨着它看的那一个（如「平铺」之于「位置」）才放进参数条用 `Switch`，一页最多一个；③ 结果区 `ImageResult` / `FileResult`，标题行放文件名 + 类型体积，右侧才是下载按钮。段与段之间用 `space-y-4`，页面最下方一条 `.ui-note` 说明。
 - **透明预览底色**：`ImageResult` 传 `checker`，用 `.ui-checker` 棋盘格（深色模式是中灰，保证黑白 logo 都看得见），不要用白底。
 
 # 提交前检查

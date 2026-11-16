@@ -4,8 +4,10 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { Download, Eraser, ImagePlus, Pipette } from "lucide-react";
 import ToolShell from "@/components/ToolShell";
-import { ImageDropZone, ImageSourceBar } from "@/components/ui/ImageDrop";
-import { Button, Notice, Panel, Segmented, Switch } from "@/components/ui/ToolUI";
+import { Button, Notice, Segmented } from "@/components/ui/ToolUI";
+import { OptionCard } from "@/components/ui/OptionCard";
+import { ImageUploadPanel } from "@/components/ui/ImageDrop";
+import { ResultCard } from "@/components/ui/ImageResult";
 import { baseName, canvasToBlob, downloadBlob, loadImageFile, type ImageSource } from "@/lib/image-io";
 import {
   detectBackground, hexToRgb, removeBackground, rgbToHex, type RemoveResult,
@@ -26,7 +28,6 @@ export default function ImageTransparentPage() {
   const [busy, setBusy] = useState(false);
 
   const sourceRef = useRef<ImageSource | null>(null);
-  const replaceRef = useRef<HTMLInputElement>(null);
   const previewRef = useRef<HTMLCanvasElement>(null);
   const originalRef = useRef<HTMLCanvasElement | null>(null);
   const resultRef = useRef<HTMLCanvasElement | null>(null);
@@ -155,36 +156,54 @@ export default function ImageTransparentPage() {
   };
 
   const removedPercent = stats ? Math.round(stats.removedRatio * 100) : 0;
+  const filename = source ? `${baseName(source.name)}-transparent.png` : "transparent.png";
 
   return (
     <ToolShell>
-      <Panel icon={ImagePlus} title="选择图片">
-        {source ? (
-          <ImageSourceBar
-            source={source}
-            onReplace={() => replaceRef.current?.click()}
-            onClear={clear}
-          />
-        ) : (
-          <ImageDropZone onFile={(file) => void handleFile(file)} />
-        )}
-        {notice && <Notice tone="error" className="mt-3">{notice}</Notice>}
-        <input
-          ref={replaceRef}
-          type="file"
-          accept="image/*,.svg"
-          className="hidden"
-          onChange={(event) => {
-            const file = event.target.files?.[0];
-            if (file) void handleFile(file);
-            event.target.value = "";
-          }}
-        />
-      </Panel>
+      <div className="space-y-4">
+        <ImageUploadPanel icon={ImagePlus} source={source} notice={notice} onFile={(file) => void handleFile(file)} onClear={clear} />
 
-      {source && (
-        <>
-          <Panel icon={Eraser} title="抠图参数" className="mt-5">
+        {source && (
+          <>
+            <div className="ui-options-bar">
+              <div className="flex items-center gap-2">
+                <label htmlFor="bg-color" className="text-xs text-slate-500">背景色</label>
+                <input
+                  id="bg-color"
+                  type="color"
+                  value={colorHex}
+                  onChange={(event) => setColorHex(event.target.value)}
+                  className="w-9 h-9 p-1 bg-white border border-slate-200 rounded-lg cursor-pointer"
+                />
+                <span className="font-mono text-xs text-slate-500">{colorHex.toUpperCase()}</span>
+                <Button
+                  variant="secondary"
+                  size="sm"
+                  icon={Pipette}
+                  onClick={() => {
+                    if (!source) return;
+                    setColorHex(rgbToHex(prepareOriginal(source.img)));
+                  }}
+                >
+                  自动取四角
+                </Button>
+              </div>
+              <div className="flex items-center gap-2">
+                <span className="text-xs text-slate-500">边缘羽化</span>
+                <Segmented
+                  label="边缘羽化档位"
+                  value={feather}
+                  onChange={setFeather}
+                  options={[
+                    { value: "0", label: "关闭" },
+                    { value: "1", label: "轻微" },
+                    { value: "2", label: "柔和" },
+                    { value: "3", label: "最柔" },
+                  ]}
+                />
+              </div>
+            </div>
+
             <div className="ui-form-grid">
               <div>
                 <label htmlFor="tolerance" className="ui-label text-sm block mb-2">颜色容差 {tolerance}</label>
@@ -198,107 +217,59 @@ export default function ImageTransparentPage() {
                   className="w-full accent-indigo-600"
                 />
               </div>
-              <div>
-                <span className="ui-label text-sm block mb-2">边缘羽化</span>
-                <Segmented
-                  label="边缘羽化档位"
-                  value={feather}
-                  onChange={setFeather}
-                  options={[
-                    { value: "0", label: "关闭" },
-                    { value: "1", label: "轻微" },
-                    { value: "2", label: "柔和" },
-                    { value: "3", label: "最柔" },
-                  ]}
-                />
-              </div>
-              <div>
-                <label htmlFor="bg-color" className="ui-label text-sm block mb-2">背景色</label>
-                <div className="flex items-center gap-2">
-                  <input
-                    id="bg-color"
-                    type="color"
-                    value={colorHex}
-                    onChange={(event) => setColorHex(event.target.value)}
-                    className="w-11 h-11 p-1 bg-white border border-slate-200 rounded-xl cursor-pointer"
-                  />
-                  <span className="font-mono text-sm text-slate-600">{colorHex.toUpperCase()}</span>
+              <OptionCard
+                checked={alsoInside}
+                onChange={setAlsoInside}
+                title="同时删除图内同色区域"
+                desc="默认只删与四边连通的部分，字母 O 这类闭环内部会保留"
+                icon={Eraser}
+              />
+            </div>
+
+            <ResultCard
+              title={filename}
+              meta={`${stats ? rgbToHex(stats.background).toUpperCase() : "—"} · 已移除 ${removedPercent}%${busy ? " · 处理中…" : ` · ${stats?.elapsed ?? 0} ms`}`}
+              action={
+                <div className="flex flex-wrap gap-2">
                   <Button
                     variant="secondary"
                     size="sm"
-                    icon={Pipette}
                     onClick={() => {
-                      if (!source) return;
-                      setColorHex(rgbToHex(prepareOriginal(source.img)));
+                      setColorHex("#ffffff");
+                      setTolerance(TOLERANCE_DEFAULT);
+                      setFeather(FEATHER_DEFAULT);
+                      setAlsoInside(false);
                     }}
                   >
-                    自动取四角
+                    恢复默认
                   </Button>
+                  <Button size="sm" icon={Download} onClick={() => void download()}>下载 PNG</Button>
                 </div>
+              }
+            >
+              <div className="ui-checker p-4 flex items-center justify-center overflow-auto max-h-[70vh]">
+                <canvas
+                  ref={previewRef}
+                  onClick={pickColor}
+                  title="点击画面可取该处颜色作为背景色"
+                  className="max-w-full max-h-[62vh] object-contain cursor-crosshair rounded-lg shadow-sm"
+                />
               </div>
-            </div>
-
-            <div className="mt-4">
-              <Switch
-                id="also-inside"
-                checked={alsoInside}
-                onChange={setAlsoInside}
-                label="同时删除图内同色区域"
-                hint="默认只删与四边连通的部分，字母 O 这类闭环内部会保留"
-              />
-            </div>
-
-            <p className="ui-note mt-3">
-              白底 JPEG 有噪点时把容差调到 20~30；纯色插画设 10 左右即可。渐变或多色照片不适用本工具。
-            </p>
-          </Panel>
-
-          <Panel icon={ImagePlus} title="预览与导出" className="mt-5">
-            <div className="ui-editor ui-checker rounded-xl border border-slate-200 p-3 flex items-center justify-center overflow-auto">
-              <canvas
-                ref={previewRef}
-                onClick={pickColor}
-                title="点击画面可取该处颜色作为背景色"
-                className="max-w-full max-h-[60vh] object-contain cursor-crosshair"
-              />
-            </div>
-
-            <div className="flex flex-wrap items-center justify-between gap-3 mt-3">
-              <div className="text-xs text-slate-500">
-                背景色 {stats ? rgbToHex(stats.background).toUpperCase() : "—"} ·
-                已移除 {removedPercent}% 像素 ·
-                {busy ? " 处理中…" : ` 耗时 ${stats?.elapsed ?? 0} ms`}
-              </div>
-              <div className="flex flex-wrap gap-2">
-                <Button
-                  variant="secondary"
-                  size="sm"
-                  onClick={() => {
-                    setColorHex("#ffffff");
-                    setTolerance(TOLERANCE_DEFAULT);
-                    setFeather(FEATHER_DEFAULT);
-                    setAlsoInside(false);
-                  }}
-                >
-                  恢复默认
-                </Button>
-                <Button icon={Download} onClick={() => void download()}>下载透明 PNG</Button>
-              </div>
-            </div>
+            </ResultCard>
 
             {removedPercent === 0 && (
-              <Notice tone="tip" className="mt-3">
+              <Notice tone="tip">
                 没有识别到可移除的背景：调大颜色容差，或点画面上的底色手动吸色。
               </Notice>
             )}
-            {error && <Notice tone="error" className="mt-3">{error}</Notice>}
-          </Panel>
-        </>
-      )}
+            {error && <Notice tone="error">{error}</Notice>}
+          </>
+        )}
 
-      <p className="ui-note mt-5">
-        抠图在本机完成，图片不会上传。导出为带 alpha 通道的 PNG，可直接用于 logo、图标与浅色/深色背景。
-      </p>
+        <p className="ui-note">
+          白底 JPEG 有噪点时把容差调到 20~30，纯色插画设 10 左右即可；渐变或多色照片不适用本工具。抠图在本机完成，导出为带 alpha 通道的 PNG。
+        </p>
+      </div>
     </ToolShell>
   );
 }

@@ -144,6 +144,12 @@
     align-items: start;
   }
 
+  /* 图片工具的参数条：与上传区同一视觉层（不套卡片），里面放单行内联控件。
+     需要多行字段组时用 .ui-form-grid，两者可以上下连用 */
+  .ui-options-bar {
+    @apply flex flex-wrap items-center gap-x-5 gap-y-3 p-3 bg-white border border-slate-200 rounded-xl;
+  }
+
   /* 工具页面包屑：由 ToolShell 按 tools.ts 的分类统一渲染 */
   .ui-breadcrumb {
     @apply flex flex-wrap items-center gap-1.5 mb-4 text-xs text-slate-500;

@@ -2,13 +2,13 @@
 "use client";
 
 import { useState, useRef, useCallback, useEffect } from "react";
-import type { ElementType } from "react";
 import {
   Download, Trash2, Image as ImageIcon,
-  FileImage, ShieldCheck, Zap, Lock
+  FileImage, ShieldCheck, Zap
 } from "lucide-react";
 import ToolShell from "@/components/ToolShell";
 import { Notice } from "@/components/ui/ToolUI";
+import { OptionCard } from "@/components/ui/OptionCard";
 import { checkImageFile } from "@/lib/image-guard";
 
 // 支持的输出格式
@@ -39,71 +39,6 @@ const QUALITY_CONFIG: Record<QualityPreset, { quality: number; maxSize?: number 
 const MAX_FILE_BYTES = 40 * 1024 * 1024;
 const MAX_PIXELS = 24_000_000;
 const MAX_DIMENSION = 6000;
-
-/** 选项卡片：模块级组件，避免每次渲染都重建 */
-function OptionCard({
-  checked, onChange, disabled, title, desc, icon: Icon, badge
-}: {
-  checked: boolean;
-  onChange?: (v: boolean) => void;
-  disabled?: boolean;
-  title: string;
-  desc: string;
-  icon: ElementType;
-  badge?: string;
-}) {
-  const toggle = () => { if (!disabled) onChange?.(!checked); };
-  return (
-    <div
-      className={`flex items-start gap-3 p-3 rounded-xl border transition-all ${
-        disabled
-          ? "bg-slate-50 border-slate-200 cursor-not-allowed"
-          : checked
-            ? "bg-indigo-50 border-indigo-300 ring-2 ring-indigo-200 cursor-pointer"
-            : "bg-white border-slate-200 hover:border-slate-400 cursor-pointer"
-      }`}
-      onClick={toggle}
-      onKeyDown={(e) => {
-        if (!disabled && (e.key === "Enter" || e.key === " ")) {
-          e.preventDefault();
-          toggle();
-        }
-      }}
-      role="checkbox"
-      aria-checked={checked}
-      aria-disabled={disabled}
-      aria-label={title}
-      tabIndex={disabled ? -1 : 0}
-    >
-      <div className="relative mt-0.5">
-        <div className={`w-5 h-5 rounded border flex items-center justify-center transition-colors ${
-          disabled
-            ? "bg-slate-100 border-slate-200"
-            : checked
-              ? "bg-indigo-600 border-indigo-600"
-              : "border-slate-200 bg-white"
-        }`}>
-          {checked && <svg className="w-3 h-3 text-white" fill="none" viewBox="0 0 12 12" aria-hidden="true"><path d="M10 3L4.5 8.5L2 6" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/></svg>}
-          {disabled && <Lock size={12} className="text-slate-500" />}
-        </div>
-      </div>
-      <div className="flex-1 min-w-0">
-        <div className="flex items-center gap-2">
-          <Icon size={16} className={disabled ? "text-slate-500 opacity-50" : checked ? "text-indigo-600" : "text-slate-500"} />
-          <span className={`font-medium ${disabled ? "text-slate-500" : checked ? "text-slate-800" : "text-slate-600"}`}>
-            {title}
-          </span>
-          {badge && (
-            <span className="text-[10px] px-1.5 py-0.5 bg-emerald-100 text-emerald-700 rounded-full font-medium">
-              {badge}
-            </span>
-          )}
-        </div>
-        <p className="text-xs text-slate-500 mt-0.5">{desc}</p>
-      </div>
-    </div>
-  );
-}
 
 export default function ImageCompressPage() {
   const [files, setFiles] = useState<ProcessedFile[]>([]);
@@ -343,7 +278,7 @@ export default function ImageCompressPage() {
         </div>
 
         {/* 输出设置（格式 / 质量）：设置仅对之后上传的图片生效 */}
-        <div className="flex flex-wrap items-center gap-3 p-3 bg-white border border-slate-200 rounded-xl">
+        <div className="ui-options-bar">
           <div className="flex items-center gap-2">
             <FileImage size={16} className="text-slate-500" />
             <label htmlFor="compress-format" className="text-xs text-slate-500">格式</label>
@@ -496,7 +431,7 @@ export default function ImageCompressPage() {
                 {/* 下载 */}
                 <button
                   onClick={() => downloadFile(file)}
-                  className="ui-icon-btn bg-indigo-600 text-white hover:bg-indigo-700 shadow-sm"
+                  className="ui-icon-btn shrink-0 self-center bg-indigo-600 text-white hover:bg-indigo-700 shadow-sm"
                   title="下载"
                   aria-label={`下载 ${file.original.name}`}
                 >
