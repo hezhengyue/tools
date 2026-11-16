@@ -204,7 +204,7 @@ function HashTextCore() {
       </div>
 
       <p className="ui-note mt-6">
-        SHA3-256 / SHA3-512 是 NIST 标准 SHA-3（可与 <code className="font-mono">openssl dgst -sha3-256</code> 校验）；Keccak-512 是旧版 Keccak 填充，与 SHA-3 结果不同，主要用于以太坊等场景。
+        SHA3 系列是 NIST 标准，可用 <code className="font-mono">openssl dgst -sha3-256</code> 校验；Keccak-512 用旧版填充，结果不同，多见于以太坊。
       </p>
 
       {/* 空状态提示 */}

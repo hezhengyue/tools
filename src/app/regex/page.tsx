@@ -300,7 +300,7 @@ export default function RegexPage() {
         </div>
 
         <p className="ui-note">
-          匹配在独立线程中执行，卡住会自动终止；表达式使用 JavaScript 的 <code className="font-mono">RegExp</code> 语法，与 Python / PCRE 略有差异。
+          匹配在独立线程执行，卡住会自动终止；语法为 JavaScript 的 <code className="font-mono">RegExp</code>，与 Python / PCRE 略有差异。
         </p>
       </div>
     </ToolShell>

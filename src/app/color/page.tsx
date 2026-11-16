@@ -332,7 +332,7 @@ export default function ColorPage() {
         </div>
 
         <p className="ui-note">
-          HSL / CMYK 换算按标准公式计算，屏幕取色依赖浏览器的 <code className="font-mono">EyeDropper</code> API（Chrome / Edge 支持），Safari 与 Firefox 请手动输入色值。
+          HSL / CMYK 按标准公式换算；屏幕取色依赖 <code className="font-mono">EyeDropper</code> API（Chrome / Edge 支持），其它浏览器请手动输入。
         </p>
       </div>
     </ToolShell>

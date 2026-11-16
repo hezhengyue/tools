@@ -520,7 +520,7 @@ function Base64Core() {
 
       <div className="flex items-start gap-2 pt-4 border-t border-slate-100">
         <Info size={14} className="shrink-0 mt-0.5 text-slate-500" />
-        <p className="ui-note">
+        <p className="ui-note flex-1 min-w-0">
           中文、emoji 都按 UTF-8 字节编码，不会出现乱码；<span className="font-mono">atob</span>{" "}
           直接处理 Unicode 字符串是常见的乱码原因。
         </p>
