@@ -133,7 +133,7 @@ function ImageResult({ blob, filename, hint }: { blob: Blob | null; filename: st
 }
 
 function NeedImage() {
-  return <Notice tone="info">请先在上方上传一张图片。</Notice>;
+  return <p className="ui-note">请先在上方上传一张图片。</p>;
 }
 
 /* ---------------- 文字水印 ---------------- */

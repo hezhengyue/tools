@@ -275,10 +275,13 @@ export default function UuidPage() {
           </div>
         )}
 
-        <Notice tone="tip">
-          <Braces size={14} className="inline mr-1" />
-          随机源是浏览器的 <code className="font-mono">crypto.getRandomValues</code>（密码学安全），不是 <code className="font-mono">Math.random</code>；自定义 ID 用拒绝采样避免字符概率偏差。
-        </Notice>
+        <p className="ui-note flex items-start gap-1.5">
+          <Braces size={14} className="shrink-0 mt-0.5" aria-hidden="true" />
+          <span>
+            随机源是浏览器的 <code className="font-mono">crypto.getRandomValues</code>（密码学安全），不是{" "}
+            <code className="font-mono">Math.random</code>；自定义字符集用拒绝采样避免概率偏差。
+          </span>
+        </p>
       </div>
     </ToolShell>
   );

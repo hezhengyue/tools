@@ -304,7 +304,7 @@ export default function FileHashPage() {
             </Notice>
           )}
           {hasExpected && matched === null && (
-            <Notice tone="info">请先选中文件并点击「开始计算」，得出结果后会自动比对。</Notice>
+            <p className="ui-note">请先选中文件并点击「开始计算」，得出结果后会自动比对。</p>
           )}
         </div>
 

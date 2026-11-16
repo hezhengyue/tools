@@ -131,6 +131,39 @@ export function IconButton({
   );
 }
 
+/**
+ * 左右对照布局的栏头：左边标题、右边统计与图标操作。
+ * 固定 32px 行高 —— 右侧图标按钮本身 32px，左侧只有文字，
+ * 不锁高度会让左右两个主体错开十几像素。
+ */
+export function PaneHead({
+  label,
+  htmlFor,
+  meta,
+  className = "",
+  children,
+}: {
+  label: string;
+  htmlFor?: string;
+  meta?: ReactNode;
+  className?: string;
+  children?: ReactNode;
+}) {
+  return (
+    <div className={`flex h-8 items-center justify-between gap-2 mb-2 ${className}`}>
+      {htmlFor ? (
+        <label htmlFor={htmlFor} className="ui-label text-sm truncate">{label}</label>
+      ) : (
+        <span className="ui-label text-sm truncate">{label}</span>
+      )}
+      <div className="flex items-center gap-2 shrink-0">
+        {meta && <span className="text-xs text-slate-500">{meta}</span>}
+        {children}
+      </div>
+    </div>
+  );
+}
+
 type NoticeTone = "tip" | "info" | "success" | "error";
 
 const NOTICE_ICON: Record<NoticeTone, IconType> = {

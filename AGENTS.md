@@ -18,7 +18,7 @@ This version has breaking changes — APIs, conventions, and file structure may 
 
 唯一视觉来源：
 - `src/app/globals.css` → `@layer components` 里的 `.ui-*` 语义类（设计令牌）。
-- `src/components/ui/ToolUI.tsx` → 结构组件：`Panel` / `KeyRow` / `DisplayBox` / `Button` / `IconButton` / `Notice` / `EmptyState` / `Field` / `ToolActions` / `Badge`，以及输出块 `OutputBlock` / `CopyButton` / `DownloadButton` 与剪贴板工具 `writeClipboard`。
+- `src/components/ui/ToolUI.tsx` → 结构组件：`Panel` / `KeyRow` / `DisplayBox` / `Button` / `IconButton` / `PaneHead` / `Notice` / `EmptyState` / `Field` / `ToolActions` / `Badge` / `Segmented` / `Switch`，以及输出块 `OutputBlock` / `CopyButton` / `DownloadButton` 与剪贴板工具 `writeClipboard`。
 - `src/config/site.ts` → 站点名称与描述的唯一来源（metadata / 侧栏 / 移动端顶栏共用）。
 - `src/components/ToolShell.tsx` → 所有工具页统一外壳（面包屑、标题、图标、描述、收藏、内容卡、底部一行固定隐私说明）。全部工具页都用它包裹，面包屑的分类从 `tools.ts` 派生，页面不要自己写。
 - 首页 / 导航组件：`HomeSearch`（搜索主入口）、`RecentBar`（最近 + 收藏快捷入口）、`HomeCategories`（可折叠分类）、`Sidebar`、`MobileHeader`（模态抽屉）、`CommandPalette`、`ShortcutHint`（Mac 显示 ⌘K）。
@@ -85,9 +85,38 @@ export default function XxxPage() {
 
 - 原因：带框的说明会画出可见右边缘，一旦框比内容区窄，就变成「框没铺满、文字提前换行」，看起来像布局坏了。
 - **`.ui-note` 不限宽、必须单行**：宽度跟随内容区（`narrow` 档约 698px、`medium` 档约 998px），**不要给说明加 `max-w-*`**；文案要短到在所属档位下**一行放得下**（1440 与 1920 都是单行），放不下就压字数，不要靠换行。写完后按「1440 宽下滚动到说明处」目视确认一次。超过两句就拆成要点，别写成一段长文。
-- `Notice` **只用于状态反馈与需要强调的提醒**：错误、成功、动态提示（没有结果、文件不合法、测速中）、以及真正的风险警告（隐私条款、敏感信息）。它现在铺满内容宽度，与上方控件左右对齐。
+- **静态的风险/隐私提示也不要用彩色框**：改成 `.ui-note` + 彩色小字 + 图标，例如
+  `<p className="ui-note flex items-start gap-1.5 text-amber-700"><ShieldAlert size={14} className="shrink-0 mt-0.5" />…</p>`（绿色隐私条款用 `text-emerald-700` + `ShieldCheck`）。观感更轻，也省下一整行的高度。
+- `Notice` **只用于随状态变化的内容**：错误、成功、进行中、条件触发的提醒（密码学接口不可用、时间戳存在歧义、/32 无法再划分等）。它铺满内容宽度、与控件左右对齐。
 - 需要小标题 + 多段时，用 `<div className="ui-note">` 包若干 `<p>`，不要为了一段说明新建 `Panel`；但注意小标题会额外占一行，能合并成一句话就合并。
 - 空状态引导同样用 `.ui-note`，不用 `EmptyState`（后者用于「上传前」这类占位区）。
+
+## 左右对照布局：`PaneHead` + `.ui-pane`（强制）
+
+凡是「转换前 / 转换后」「输入 / 结果」这类双栏工具（`/base64`、`/json-yaml`、`/markdown`、`/text-diff`），一律用同一套结构，左右必须**顶边同高、底边同高**：
+
+```tsx
+<div className="grid gap-4 md:grid-cols-2">
+  <div className="flex flex-col min-w-0">
+    <PaneHead htmlFor="x-in" label="转换前 · Markdown" meta="412 字符 · 30 行" />
+    <textarea id="x-in" className="ui-textarea ui-pane font-mono resize-none" />
+  </div>
+  <div className="flex flex-col min-w-0">
+    <PaneHead label="转换后 · HTML" meta="860 字符">
+      <CopyButton value={out} label="复制" />
+      <DownloadButton value={out} filename="out.html" />
+    </PaneHead>
+    <textarea readOnly className="ui-textarea ui-pane font-mono resize-none" />
+    {/* 非输入型结果用：<div className="ui-pane ui-pane-box">…</div> */}
+  </div>
+</div>
+```
+
+- `PaneHead` 从 `@/components/ui/ToolUI` 导入，**不要在页面里另写一份**。它是 `h-8`（32px）——图标按钮正好 32px，左栏只有文字，不锁高度两栏主体会错开 10~16px。
+- 主体统一用 `.ui-pane`（固定 `300/380/440`）+ `resize-none`。**不要用** `.ui-editor`（那是 `min-height`，textarea 与渲染区之间对不齐）。
+- 普通渲染结果用 `.ui-pane ui-pane-box`，外观与 textarea 一致（灰底、圆角、边框、内部滚动）。
+- 说明文字、错误提示放在两栏**下方**，不要塞进某一栏内部，否则那一栏会被撑高。
+
 
 ## 页脚：框架固定的一句话（不可自定义）
 
@@ -139,7 +168,7 @@ export default function XxxPage() {
 
 - 密度令牌 `--ui-gap` / `--ui-gap-lg` / `--ui-pad` / `--ui-field-min` 管间距与字段最小宽。要整体变紧/变松只改这几个变量，不要逐页调 `p-*` / `gap-*`。
 - **禁止**在工具页、`ToolShell`、任何组件里写页面级宽度类（`max-w-4xl` / `max-w-6xl` / `w-[calc(100%-18rem)]` 等），也不要在别处覆盖 `--ui-page-max` / `--ui-layout-*`。
-- 主编辑区统一用 `.ui-editor`，主预览区统一用 `.ui-viewer`，棋盘统一用 `.ui-board`（内含「不超过可视高度」保护，保证整盘完整可见）。**不要自己写 `min-h-[420px]` / `max-w-[520px]` 这类一次性数值**。
+- 单栏页的主编辑区用 `.ui-editor`，主预览区用 `.ui-viewer`，棋盘用 `.ui-board`（内含「不超过可视高度」保护，保证整盘完整可见）。**左右对照的双栏一律用 `.ui-pane`**（固定高度，保证两栏底边对齐）。**不要自己写 `min-h-[420px]` / `max-w-[520px]` 这类一次性数值**。
 - **表单 / 选项字段组统一用 `.ui-form-grid`**（`auto-fit minmax(min(100%, 16rem), 1fr)`，列数随容器自动算）。不要写死 `grid grid-cols-2` / `sm:grid-cols-2`——那会让 2K / 4K 屏上只剩两列、每个输入被拉成一条。固定 2 列的按钮组、A/交换/B 三列输入、Markdown / Diff 双栏编辑区属于有语义的布局，保留原写法。
 - 面包屑 `.ui-breadcrumb`、快捷键 `.ui-shortcut`、侧栏阴影 `.ui-sidebar`、静态说明 `.ui-note` 也都在 `globals.css`，不要在组件里另写一套。
 - 局部元素（文字截断、按钮组、小控件）仍可用 `max-w-[10rem]`，但不得用在页面或主内容容器上。

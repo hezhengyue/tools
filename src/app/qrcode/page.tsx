@@ -15,6 +15,7 @@ import {
   Link2,
   QrCode,
   ScanLine,
+  ShieldAlert,
   Trash2,
   Wifi,
 } from "lucide-react";
@@ -639,7 +640,10 @@ export default function QrCodePage() {
               )}
             </div>
 
-            <Notice tone="tip">二维码内容会直接写进码里，请不要把密码、密钥等敏感信息做成二维码后公开传播。</Notice>
+            <p className="ui-note flex items-start gap-1.5 text-amber-700">
+              <ShieldAlert size={14} className="shrink-0 mt-0.5" aria-hidden="true" />
+              <span>二维码内容会直接写进码里，不要把密码、密钥等敏感信息做成二维码后公开传播。</span>
+            </p>
           </>
         ) : (
           <>

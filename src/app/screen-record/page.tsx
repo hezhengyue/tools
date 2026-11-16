@@ -574,9 +574,9 @@ export default function ScreenRecordPage() {
           </>
         )}
 
-        <Notice tone="tip">
-          录制权限由浏览器弹窗授予，可选「整个屏幕 / 窗口 / 标签页」。停止时若视频还没生成完，稍等一下即可。WebM 可直接上传到视频网站，需要 MP4 时用剪辑软件转码即可。
-        </Notice>
+        <p className="ui-note">
+          录制权限由浏览器弹窗授予（整个屏幕 / 窗口 / 标签页）；停止后需稍等视频生成；WebM 可直接上传，转 MP4 需转码。
+        </p>
       </div>
     </ToolShell>
   );

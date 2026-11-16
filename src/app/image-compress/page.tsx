@@ -507,19 +507,13 @@ export default function ImageCompressPage() {
           </div>
         )}
 
-        {/* 隐私保护说明 */}
-        <Notice tone="success">
-          <p><strong>隐私保护已启用</strong>：所有处理的图片都会自动清除以下敏感信息：</p>
-          <ul className="ml-4 mt-1 list-disc text-emerald-700/90">
-            <li>GPS 地理位置坐标（防止泄露家庭/公司地址）</li>
-            <li>设备型号、镜头参数（防止设备指纹追踪）</li>
-            <li>精确拍摄时间（防止时间线分析）</li>
-            <li>作者、版权信息（防止个人信息泄露）</li>
-          </ul>
-          <p className="text-xs text-emerald-600/80 mt-2">
-            这是为了保护您的隐私安全，该选项无法关闭。
-          </p>
-        </Notice>
+        {/* 隐私保护说明：静态内容，不用彩色框，用小字 + 图标强调 */}
+        <p className="ui-note flex items-start gap-1.5 text-emerald-700">
+          <ShieldCheck size={14} className="shrink-0 mt-0.5" aria-hidden="true" />
+          <span>
+            <strong>隐私保护已启用</strong>：处理后会自动清除 GPS 坐标、设备型号、拍摄时间、作者与版权信息，不可关闭。
+          </span>
+        </p>
       </div>
     </ToolShell>
   );

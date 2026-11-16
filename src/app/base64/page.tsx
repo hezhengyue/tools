@@ -5,10 +5,10 @@
 // 布局为左右对照：左边是转换前的内容，右边是转换后的结果。
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import type { DragEvent, ReactNode } from "react";
+import type { DragEvent } from "react";
 import { ArrowLeftRight, Binary, FileUp, Info, X } from "lucide-react";
 import ToolShell from "@/components/ToolShell";
-import { CopyButton, DownloadButton, Notice } from "@/components/ui/ToolUI";
+import { CopyButton, DownloadButton, Notice, PaneHead } from "@/components/ui/ToolUI";
 import { checkImageFile } from "@/lib/image-guard";
 
 /* ============================ 编解码 ============================ */
@@ -63,34 +63,6 @@ interface PickedFile {
 }
 
 /* ============================ 小部件 ============================ */
-
-function PaneHead({
-  label,
-  htmlFor,
-  meta,
-  children,
-}: {
-  label: string;
-  htmlFor?: string;
-  meta?: string;
-  children?: ReactNode;
-}) {
-  return (
-    // 固定 32px 行高：右侧有图标按钮（p-2 + 16px）撑到 32px，左侧只有文字，
-    // 不锁高度会让左右两个输入框错开 12px
-    <div className="flex h-8 items-center justify-between gap-2 mb-2">
-      {htmlFor ? (
-        <label htmlFor={htmlFor} className="ui-label text-sm truncate">{label}</label>
-      ) : (
-        <span className="ui-label text-sm truncate">{label}</span>
-      )}
-      <div className="flex items-center gap-2 shrink-0">
-        {meta && <span className="text-xs text-slate-500">{meta}</span>}
-        {children}
-      </div>
-    </div>
-  );
-}
 
 /* ============================ 页面 ============================ */
 

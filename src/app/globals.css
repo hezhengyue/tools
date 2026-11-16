@@ -170,6 +170,16 @@
     @apply min-h-[300px] lg:min-h-[380px] xl:min-h-[440px];
   }
 
+  /* 左右对照两栏的主体：用固定高度而不是 min-height，
+     这样「左输入 / 右输出」不论一个是 textarea、另一个是渲染区，底边都能对齐 */
+  .ui-pane {
+    @apply h-[300px] lg:h-[380px] xl:h-[440px];
+  }
+  /* 非输入型的主体（渲染预览等），外观与 textarea 保持一致 */
+  .ui-pane-box {
+    @apply p-3 bg-slate-50 border border-slate-200 rounded-xl overflow-y-auto;
+  }
+
   /* 主预览区：同样给足高度，但不超过可视区域，超长内容在区内滚动 */
   .ui-viewer {
     @apply min-h-[300px] lg:min-h-[380px] xl:min-h-[440px] overflow-y-auto;
@@ -428,6 +438,10 @@
     width: 100%;
     padding: 0;
     border: 0;
+    /* 预览区在屏幕上是固定高 + 内部滚动，打印必须放开高度，否则只印出第一屏 */
+    height: auto !important;
+    max-height: none !important;
+    overflow: visible !important;
   }
 }
 

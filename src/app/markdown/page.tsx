@@ -6,15 +6,17 @@ import DOMPurify from "dompurify";
 import { Marked, marked } from "marked";
 import TurndownService from "turndown";
 import {
-  FileCode2, FileText, ListTree, Printer, RefreshCw,
+  FileCode2, FileText, Printer, RefreshCw,
 } from "lucide-react";
 import ToolShell from "@/components/ToolShell";
 import {
-  Button, DownloadButton, IconButton, Notice, OutputBlock, Panel,
+  Button, CopyButton, DownloadButton, IconButton, Notice, PaneHead,
   Segmented, Switch,
 } from "@/components/ui/ToolUI";
 
 type Mode = "preview" | "to-markdown";
+/** 结果栏视图：渲染结果 / HTML 源码 */
+type ResultView = "rendered" | "html";
 
 const MD_SAMPLE = `# 正月工具箱
 
@@ -108,8 +110,42 @@ function ensurePurifyHooks() {
   purifyHooksReady = true;
 }
 
+/** 结果栏的「预览 / HTML」小切换：高度 24px，塞得进 32px 的栏头 */
+function ViewToggle({
+  value,
+  onChange,
+}: {
+  value: ResultView;
+  onChange: (next: ResultView) => void;
+}) {
+  const items: { value: ResultView; label: string }[] = [
+    { value: "rendered", label: "预览" },
+    { value: "html", label: "HTML" },
+  ];
+  return (
+    <div className="inline-flex rounded-lg bg-slate-100 p-0.5" role="group" aria-label="结果视图">
+      {items.map((item) => (
+        <button
+          key={item.value}
+          type="button"
+          onClick={() => onChange(item.value)}
+          aria-pressed={value === item.value}
+          className={`px-2 py-0.5 text-xs rounded-md transition-colors ${
+            value === item.value
+              ? "bg-white text-indigo-600 font-semibold shadow-sm"
+              : "text-slate-600 hover:text-slate-800"
+          }`}
+        >
+          {item.label}
+        </button>
+      ))}
+    </div>
+  );
+}
+
 export default function MarkdownPage() {
   const [mode, setMode] = useState<Mode>("preview");
+  const [resultView, setResultView] = useState<ResultView>("rendered");
   const [source, setSource] = useState(MD_SAMPLE);
   const [htmlInput, setHtmlInput] = useState(HTML_SAMPLE);
   const [gfm, setGfm] = useState(true);
@@ -188,13 +224,20 @@ ${html}
           value={mode}
           onChange={(next) => { setMode(next); setError(""); }}
           options={[
-            { value: "preview", label: "Markdown → 预览 / HTML", icon: FileText },
+            { value: "preview", label: "Markdown → HTML", icon: FileText },
             { value: "to-markdown", label: "HTML → Markdown", icon: FileCode2 },
           ]}
         />
-        <Button variant="ghost" size="sm" icon={RefreshCw} onClick={() => {
-          if (mode === "preview") setSource(MD_SAMPLE); else setHtmlInput(HTML_SAMPLE);
-        }}>恢复示例</Button>
+        <div className="flex items-center gap-2">
+          <Button variant="ghost" size="sm" icon={RefreshCw} onClick={() => {
+            if (mode === "preview") setSource(MD_SAMPLE); else setHtmlInput(HTML_SAMPLE);
+          }}>恢复示例</Button>
+          {mode === "preview" && (
+            <IconButton label="打印或另存为 PDF" onClick={() => window.print()}>
+              <Printer size={16} />
+            </IconButton>
+          )}
+        </div>
       </div>
 
       {mode === "preview" ? (
@@ -205,29 +248,59 @@ ${html}
             <Switch id="md-html" checked={allowHtml} onChange={setAllowHtml} label="允许内嵌 HTML" />
           </div>
 
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-            <Panel icon={FileText} title="Markdown 源码">
+          {/* 左右对照：左「转换前」右「转换后」，两栏主体固定等高 */}
+          <div className="grid gap-4 md:grid-cols-2">
+            <div className="flex flex-col min-w-0">
+              <PaneHead
+                htmlFor="md-source"
+                label="转换前 · Markdown"
+                meta={`${stats.chars} 字符 · ${stats.lines} 行`}
+              />
               <textarea
                 id="md-source"
                 value={source}
                 onChange={(event) => setSource(event.target.value)}
-                className="ui-textarea ui-editor"
+                className="ui-textarea ui-pane font-mono resize-none"
                 spellCheck={false}
-                aria-label="Markdown 源码"
               />
-              <div className="text-xs text-slate-500 mt-2">{stats.chars} 字符 · {stats.lines} 行 · {stats.headings} 个标题</div>
-            </Panel>
-            <Panel icon={FileCode2} title="实时预览" className="md-print-root">
-              <div
-                className="md-preview ui-viewer pr-1"
-                // HTML 已由 DOMPurify 净化，且剥离了 script / 事件属性
-                dangerouslySetInnerHTML={{ __html: html }}
-              />
-            </Panel>
+            </div>
+
+            <div className="flex flex-col min-w-0">
+              <PaneHead
+                label="转换后 · HTML"
+                meta={resultView === "rendered" ? `${stats.headings} 个标题` : `${html.length} 字符`}
+              >
+                <ViewToggle value={resultView} onChange={setResultView} />
+                <CopyButton value={html} label="复制 HTML" />
+                <DownloadButton
+                  value={fullHtml}
+                  filename="document.html"
+                  mimeType="text/html;charset=utf-8"
+                  label="导出完整 HTML 文件"
+                />
+              </PaneHead>
+              {resultView === "rendered" ? (
+                <div
+                  className="md-preview ui-pane ui-pane-box md-print-root"
+                  // HTML 已由 DOMPurify 净化，且剥离了 script / 事件属性
+                  dangerouslySetInnerHTML={{ __html: html }}
+                />
+              ) : (
+                <textarea
+                  id="md-html-out"
+                  readOnly
+                  value={html}
+                  aria-label="生成的 HTML"
+                  className="ui-textarea ui-pane font-mono resize-none"
+                  spellCheck={false}
+                />
+              )}
+            </div>
           </div>
 
           {toc.length > 0 && (
-            <Panel icon={ListTree} title="文档大纲" className="mt-5">
+            <div className="mt-4">
+              <PaneHead label="文档大纲" meta={`共 ${toc.length} 个标题`} />
               <div className="flex flex-wrap gap-2">
                 {toc.map((item) => (
                   <button
@@ -241,57 +314,62 @@ ${html}
                   </button>
                 ))}
               </div>
-            </Panel>
+            </div>
           )}
-
-          <div className="mt-5">
-            <OutputBlock
-              label="生成的 HTML 片段"
-              hint="已净化，可直接嵌入页面"
-              value={html}
-              filename="markdown-output.html"
-              mimeType="text/html;charset=utf-8"
-              textareaClassName="text-xs"
-              actions={
-                <>
-                  <DownloadButton value={fullHtml} filename="document.html" mimeType="text/html;charset=utf-8" label="导出完整 HTML 文件" />
-                  <IconButton label="打印或另存为 PDF" onClick={() => window.print()}><Printer size={16} /></IconButton>
-                </>
-              }
-            />
-          </div>
         </>
       ) : (
         <>
-          <Panel icon={FileCode2} title="HTML 源码">
-            <textarea
-              id="md-html-input"
-              value={htmlInput}
-              onChange={(event) => setHtmlInput(event.target.value)}
-              className="ui-textarea ui-editor"
-              spellCheck={false}
-              aria-label="HTML 源码"
-            />
-            <Notice tone="info" className="mt-3">
-              转换前会先净化 HTML（移除 script、事件属性与内联样式），再转成标准 Markdown；复杂布局可能被简化。
-            </Notice>
-          </Panel>
-          <div className="mt-5">
-            <OutputBlock
-              label="转换后的 Markdown"
-              hint="标题 ATX、代码块围栏、列表符号 -"
-              value={resultMd}
-              filename="converted.md"
-              mimeType="text/markdown;charset=utf-8"
-            />
+          <div className="grid gap-4 md:grid-cols-2">
+            <div className="flex flex-col min-w-0">
+              <PaneHead
+                htmlFor="md-html-input"
+                label="转换前 · HTML"
+                meta={`${htmlInput.length} 字符`}
+              />
+              <textarea
+                id="md-html-input"
+                value={htmlInput}
+                onChange={(event) => setHtmlInput(event.target.value)}
+                className="ui-textarea ui-pane font-mono resize-none"
+                spellCheck={false}
+              />
+            </div>
+
+            <div className="flex flex-col min-w-0">
+              <PaneHead
+                htmlFor="md-result"
+                label="转换后 · Markdown"
+                meta={`${resultMd.length} 字符`}
+              >
+                <CopyButton value={resultMd} label="复制 Markdown" />
+                <DownloadButton
+                  value={resultMd}
+                  filename="converted.md"
+                  mimeType="text/markdown;charset=utf-8"
+                  label="下载 .md 文件"
+                />
+              </PaneHead>
+              <textarea
+                id="md-result"
+                readOnly
+                value={resultMd}
+                aria-label="转换后的 Markdown"
+                className="ui-textarea ui-pane font-mono resize-none"
+                spellCheck={false}
+              />
+            </div>
           </div>
+
+          <p className="ui-note mt-3">
+            转换前会先净化 HTML（移除 script、事件属性与内联样式），标题转 ATX、代码块转围栏；复杂布局可能被简化。
+          </p>
         </>
       )}
 
-      {error && <Notice tone="error" className="mt-5">{error}</Notice>}
+      {error && <Notice tone="error" className="mt-4">{error}</Notice>}
 
-      <p className="ui-note mt-5">
-        预览与转换全部在本机完成：HTML 经 DOMPurify 净化后渲染，默认不执行文档里内嵌的 HTML。打印按钮会调用浏览器打印，选择「另存为 PDF」即可导出。
+      <p className="ui-note mt-4">
+        全部在本机完成：HTML 经 DOMPurify 净化后才渲染，默认不执行文档里内嵌的 HTML；打印时选「另存为 PDF」即可导出。
       </p>
     </ToolShell>
   );

@@ -172,9 +172,9 @@ export default function IpSubnetPage() {
 
           <Panel icon={Binary} title="二进制视图" className="mt-5">
             <BinaryRows info={result.info} />
-            <Notice tone="info" className="mt-4">
-              掩码中连续的 1 是网络位，后面的 0 是主机位；主机位全 0 为网络地址，全 1 为广播地址。/31 按 RFC 3021 用于点对点链路，两个地址均可使用。
-            </Notice>
+            <p className="ui-note mt-4">
+              掩码中连续的 1 是网络位、后面的 0 是主机位；主机位全 0 为网络地址，全 1 为广播地址。/31 按 RFC 3021 用于点对点链路。
+            </p>
           </Panel>
 
           <Panel icon={ShieldCheck} title="IPv4 与整数互转" className="mt-5">
@@ -241,7 +241,7 @@ export default function IpSubnetPage() {
 
           <Panel icon={Network} title="子网划分" className="mt-5">
             {result.info.prefix >= 32 ? (
-              <Notice tone="info">/32 是单主机路由，只包含一个地址，无法再划分子网。把前缀调小即可查看划分结果。</Notice>
+              <p className="ui-note">/32 是单主机路由，只包含一个地址，无法再划分子网。把前缀调小即可查看划分结果。</p>
             ) : (
             <>
             <div className="flex flex-wrap items-center gap-3 mb-4">
