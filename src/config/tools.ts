@@ -6,7 +6,8 @@ import {
   Camera, ScreenShare, Video, Braces, Clock, Binary,
   Bomb, Grid2x2, Worm, CircleDot,
   Regex, QrCode, Fingerprint, KeySquare, Palette, IdCard, Shapes,
-  FileText, FileCode2, CalendarClock, ImagePlus, Network, Ruler
+  FileText, FileCode2, CalendarClock, Network, Ruler,
+  Stamp, Crop, Grid3x3, Layers3, ScanLine
 } from "lucide-react";
 
 /**
@@ -236,10 +237,38 @@ export const toolsConfig: ToolCategory[] = [
         layout: "full"
       },
       {
-        name: "图片工具套件",
-        href: "/image-tools",
-        icon: ImagePlus,
-        desc: "文字水印、圆角裁剪、九宫格切图、ICO / favicon 生成、SVG 转 PNG，五个功能一页切换，结果可直接下载。",
+        name: "文字水印",
+        href: "/image-watermark",
+        icon: Stamp,
+        desc: "给图片加上文字水印，可调颜色、透明度、字号、九宫格位置与平铺旋转。",
+        layout: "full"
+      },
+      {
+        name: "圆角裁剪",
+        href: "/image-round",
+        icon: Crop,
+        desc: "按比例切圆角并可居中裁成正方形，导出带 alpha 的 PNG，适合头像与图标。",
+        layout: "full"
+      },
+      {
+        name: "九宫格切图",
+        href: "/image-grid",
+        icon: Grid3x3,
+        desc: "把图片按 2×2 到 4×4 等分切开，一次打包下载全部切片，适合社交平台九宫格。",
+        layout: "full"
+      },
+      {
+        name: "ICO / favicon",
+        href: "/favicon",
+        icon: Layers3,
+        desc: "上传一张图，一次生成多尺寸 ICO 与 PNG favicon 套件，直接放到站点根目录即可。",
+        layout: "full"
+      },
+      {
+        name: "SVG 转 PNG",
+        href: "/svg-to-png",
+        icon: ScanLine,
+        desc: "粘贴或上传 SVG 源码，按指定宽度导出高位宽 PNG，保留透明通道。",
         layout: "full"
       },
     ]

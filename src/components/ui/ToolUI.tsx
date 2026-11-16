@@ -6,7 +6,7 @@
 // 规范见 AGENTS.md「界面模板规范」。
 
 import { useEffect, useRef, useState } from "react";
-import type { ReactNode, ButtonHTMLAttributes, HTMLAttributes, ElementType, CSSProperties } from "react";
+import type { ReactNode, ButtonHTMLAttributes, HTMLAttributes, ElementType } from "react";
 import {
   Check,
   CheckCircle2,
@@ -291,55 +291,6 @@ export function Segmented<T extends string>({
           >
             {Icon && <Icon size={14} strokeWidth={1.75} />}
             {text}
-          </button>
-        );
-      })}
-    </div>
-  );
-}
-
-/**
- * 子工具切换（tab）：等宽格子，数量决定大屏列数。
- * 与 `Segmented` 的区别：`Segmented` 是 `inline-flex` 胶囊组，选项多、文字长短不一时
- * 每个胶囊宽度参差、右侧留一大片空白；超过 3 个平级功能就该用这个。
- */
-export function TabBar<T extends string>({
-  label,
-  value,
-  options,
-  onChange,
-  className = "",
-}: {
-  label: string;
-  value: T;
-  options: { value: T; label: string; icon?: IconType }[];
-  onChange: (next: T) => void;
-  className?: string;
-}) {
-  return (
-    <div
-      className={`ui-tabs ${className}`}
-      style={{ "--ui-tabs-cols": String(options.length) } as CSSProperties}
-      role="tablist"
-      aria-label={label}
-    >
-      {options.map(({ value: item, label: text, icon: Icon }) => {
-        const active = item === value;
-        return (
-          <button
-            key={item}
-            type="button"
-            role="tab"
-            aria-selected={active}
-            onClick={() => onChange(item)}
-            className={`flex min-h-[2.5rem] items-center justify-center gap-2 rounded-lg px-3 py-2 text-sm transition-all ${
-              active
-                ? "bg-white font-semibold text-indigo-600 shadow-sm"
-                : "text-slate-600 hover:bg-white/70 hover:text-slate-800"
-            }`}
-          >
-            {Icon && <Icon size={15} strokeWidth={1.75} className="shrink-0" />}
-            <span className="truncate">{text}</span>
           </button>
         );
       })}

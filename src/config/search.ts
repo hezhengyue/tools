@@ -1,6 +1,6 @@
 // src/config/search.ts
 // 命令面板的检索索引：从 tools.ts 单一清单派生，别名只在这里补一份。
-// 不引入搜索库，32 个工具直接打分排序即可。
+// 不引入搜索库，36 个工具直接打分排序即可。
 
 import { toolsConfig } from "./tools";
 
@@ -38,7 +38,11 @@ const ALIASES: Record<string, string> = {
   "/image-compress": "压缩 转格式 webp jpeg 隐私 exif compress",
   "/image-transparent": "抠图 透明 去背景 白底 去底 logo 图标 png alpha",
   "/image-to-base64": "dataurl 内联 base64 图片编码",
-  "/image-tools": "水印 watermark 圆角 九宫格 切图 ico favicon svg png",
+  "/image-watermark": "水印 watermark 打标 版权 文字",
+  "/image-round": "圆角 头像 rounded 切圆 正方形",
+  "/image-grid": "九宫格 切图 切片 拼图 grid 朋友圈",
+  "/favicon": "ico favicon 图标 网站图标 站点图标",
+  "/svg-to-png": "svg png 矢量 光栅化 转换 导出",
   "/screenshot": "截图 截屏 框选 capture screen 剪贴板",
   "/screen-record": "录屏 录制 屏幕共享 webm mediarecorder",
   "/qrcode": "qr 二维码 扫码 名片 vcard wifi 条形码",

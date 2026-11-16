@@ -1,6 +1,6 @@
 # 正月工具箱
 
-一个基于 Next.js App Router 的纯前端在线工具站：32 个常用工具，界面统一；31 个工具在浏览器本地完成计算，IP 地理位置由服务端接口查询归属地（见 `/api/my-ip`）。
+一个基于 Next.js App Router 的纯前端在线工具站：36 个常用工具，界面统一；35 个工具在浏览器本地完成计算，IP 地理位置由服务端接口查询归属地（见 `/api/my-ip`）。
 
 ## 技术栈
 
@@ -30,13 +30,13 @@ npx tsc --noEmit # 类型检查
 
 ```
 src/
-  app/                  # 首页 + 32 个工具页 + /api/my-ip 服务端路由
+  app/                  # 首页 + 36 个工具页 + /api/my-ip 服务端路由
     <工具名>/layout.tsx # 每页独立 metadata（页面是 "use client"，metadata 只能由 layout 导出）
     api/my-ip/route.ts  # 全站唯一的服务端接口：查询公网 IP 归属地
     globals.css         # .ui-* 设计令牌、深色模式变量覆盖（唯一视觉来源）
   components/
     ToolShell.tsx       # 所有工具页的统一外壳（标题 / 收藏星标 / 内容卡 / 页脚）
-    Sidebar.tsx         # 桌面侧栏（命令面板入口、最近使用、收藏、外观切换）
+    Sidebar.tsx         # 桌面侧栏（命令面板入口、收藏、外观切换）
     MobileHeader.tsx    # 移动端顶栏与抽屉
     CommandPalette.tsx  # Ctrl/⌘+K 全局命令面板
     PreferencesProvider.tsx # 主题 / 收藏 / 最近使用的 localStorage 状态

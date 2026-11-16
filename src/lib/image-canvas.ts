@@ -1,13 +1,8 @@
-// app/image-tools/image-utils.ts
-// 图片工具套件的绘图能力：水印、圆角、切图、ICO 封装、SVG 光栅化。
+// src/lib/image-canvas.ts
+// 图片工具的绘图能力：文字水印、圆角裁剪、九宫格切图、ICO 封装、SVG 光栅化。
+// 加载/编码/下载/像素守卫在 @/lib/image-io，这里只管「画」。
 
 import { canvasToBlob, createCanvas, MAX_PIXELS } from "@/lib/image-io";
-
-// 通用能力（加载/编码/下载/像素守卫）已抽到 @/lib/image-io，本文件只放具体绘图能力。
-export {
-  baseName, canvasToBlob, createCanvas, downloadBlob, formatBytes,
-  loadImageFile, MAX_FILE_SIZE, MAX_PIXELS, type ImageSource,
-} from "@/lib/image-io";
 
 /* ---------------- 文字水印 ---------------- */
 

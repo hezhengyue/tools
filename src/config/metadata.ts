@@ -37,7 +37,7 @@ export function toolMetadata(href: string): Metadata {
 
   const fullTitle = `${tool.name} | ${SITE_NAME}`;
   // Next.js 的 openGraph / twitter 是整体替换而非与根布局深合并，
-  // 所以这里必须把 siteName、locale、图片一并写全，否则 32 个工具页会丢掉站点级 OG 信息。
+  // 所以这里必须把 siteName、locale、图片一并写全，否则每个工具页都会丢掉站点级 OG 信息。
   const meta: Metadata = {
     title: tool.name, // 根 layout 的 title.template 会补上站点名
     description: tool.desc,

@@ -4,9 +4,9 @@
 
 "use client";
 
-import { useRef, useState } from "react";
+import { useRef, useState, type ElementType } from "react";
 import { RefreshCw, Upload } from "lucide-react";
-import { Button } from "@/components/ui/ToolUI";
+import { Button, Notice, Panel } from "@/components/ui/ToolUI";
 import { formatBytes, MAX_FILE_SIZE, type ImageSource } from "@/lib/image-io";
 
 export function ImageDropZone({ onFile, hint }: { onFile: (file: File) => void; hint?: string }) {
@@ -54,6 +54,45 @@ export function ImageDropZone({ onFile, hint }: { onFile: (file: File) => void; 
         }}
       />
     </div>
+  );
+}
+
+/**
+ * 完整的「选择图片」面板：上传区 / 当前图片条 + 隐藏的文件输入 + 错误提示。
+ * 每个图片工具页只需要把 useImageSource() 的返回值接进来。
+ */
+export function ImageUploadPanel({
+  source, notice, onFile, onClear, title = "选择图片", icon = Upload,
+}: {
+  source: ImageSource | null;
+  notice?: string;
+  onFile: (file: File) => void;
+  onClear: () => void;
+  title?: string;
+  icon?: ElementType;
+}) {
+  const inputRef = useRef<HTMLInputElement>(null);
+
+  return (
+    <Panel icon={icon} title={title}>
+      {source ? (
+        <ImageSourceBar source={source} onReplace={() => inputRef.current?.click()} onClear={onClear} />
+      ) : (
+        <ImageDropZone onFile={onFile} />
+      )}
+      {notice && <Notice tone="error" className="mt-3">{notice}</Notice>}
+      <input
+        ref={inputRef}
+        type="file"
+        accept="image/*,.svg"
+        className="hidden"
+        onChange={(event) => {
+          const file = event.target.files?.[0];
+          if (file) onFile(file);
+          event.target.value = "";
+        }}
+      />
+    </Panel>
   );
 }
 

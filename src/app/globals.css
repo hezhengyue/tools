@@ -220,19 +220,6 @@
   .ui-display {
     @apply bg-slate-50 border border-slate-200 rounded-2xl p-4 text-center shadow-inner;
   }
-  /* 子工具切换：等宽 tab 网格。大屏按选项数平分一行，平板 3 列、手机 2 列，
-     避免「胶囊宽度参差 + 右侧空一大片」的观感（/image-tools 反馈过） */
-  .ui-tabs {
-    @apply grid gap-1 p-1 bg-slate-100 rounded-xl;
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-  }
-  @media (min-width: 640px) {
-    .ui-tabs { grid-template-columns: repeat(3, minmax(0, 1fr)); }
-  }
-  @media (min-width: 1024px) {
-    .ui-tabs { grid-template-columns: repeat(var(--ui-tabs-cols, 4), minmax(0, 1fr)); }
-  }
-
   /* 透明图片预览的棋盘格：能一眼看出导出结果真的带 alpha，而不是白底 */
   .ui-checker {
     background-color: #ffffff;

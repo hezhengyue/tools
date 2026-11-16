@@ -41,15 +41,6 @@ export function maskFromPrefix(prefix: number): number {
   return prefix === 0 ? 0 : (0xffffffff << (32 - prefix)) >>> 0;
 }
 
-/** 从点分掩码反推前缀，校验掩码必须由连续的 1 组成 */
-export function prefixFromMask(maskText: string): number {
-  const mask = parseIpv4(maskText);
-  const inverted = (~mask) >>> 0;
-  // 合法的掩码取反后是连续的低位 1，即 (inverted + 1) 为 2 的幂
-  if (((inverted + 1) & inverted) !== 0) throw new Error("子网掩码必须由连续的高位 1 组成，例如 255.255.255.0");
-  return 32 - Math.round(Math.log2(inverted + 1));
-}
-
 const SPECIAL_RANGES: { start: number; end: number; name: string }[] = [
   { start: 0x00000000, end: 0x00ffffff, name: "本网络（0.0.0.0/8）" },
   { start: 0x0a000000, end: 0x0affffff, name: "私有地址（10.0.0.0/8，RFC 1918）" },
@@ -88,11 +79,6 @@ export function calcSubnet(ipText: string, prefix: number): SubnetInfo {
     networkInt, broadcastInt, firstHost, lastHost, total, usable,
     class: cls, scope,
   };
-}
-
-export function containsIp(info: SubnetInfo, ipText: string): boolean {
-  const ip = parseIpv4(ipText);
-  return (ip & info.maskInt) >>> 0 === info.networkInt;
 }
 
 export const SAMPLES = [
