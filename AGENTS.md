@@ -18,7 +18,7 @@ This version has breaking changes — APIs, conventions, and file structure may 
 
 唯一视觉来源：
 - `src/app/globals.css` → `@layer components` 里的 `.ui-*` 语义类（设计令牌）。
-- `src/components/ui/ToolUI.tsx` → 结构组件：`Panel` / `KeyRow` / `DisplayBox` / `Button` / `IconButton` / `PaneHead` / `Notice` / `EmptyState` / `Field` / `ToolActions` / `Badge` / `Segmented` / `Switch`，以及输出块 `OutputBlock` / `CopyButton` / `DownloadButton` 与剪贴板工具 `writeClipboard`。
+- `src/components/ui/ToolUI.tsx` → 结构组件：`Panel` / `KeyRow` / `DisplayBox` / `Button` / `IconButton` / `PaneHead` / `Notice` / `EmptyState` / `Field` / `ToolActions` / `Badge` / `Segmented` / `TabBar` / `Switch`，以及输出块 `OutputBlock` / `CopyButton` / `DownloadButton` 与剪贴板工具 `writeClipboard`；图片上传区 `components/ui/ImageDrop.tsx`。
 - `src/config/site.ts` → 站点名称与描述的唯一来源（metadata / 侧栏 / 移动端顶栏共用）。
 - `src/components/ToolShell.tsx` → 所有工具页统一外壳（面包屑、标题、图标、描述、收藏、内容卡、底部一行固定隐私说明）。全部工具页都用它包裹，面包屑的分类从 `tools.ts` 派生，页面不要自己写。
 - 首页 / 导航组件：`HomeSearch`（搜索主入口）、`RecentBar`（最近 + 收藏快捷入口）、`HomeCategories`（可折叠分类）、`Sidebar`、`MobileHeader`（模态抽屉）、`CommandPalette`、`ShortcutHint`（Mac 显示 ⌘K）。
@@ -206,7 +206,9 @@ export default function XxxPage() {
 - **证书 / 密钥输入**：`/self-cert` 的证书名称支持英文逗号分隔多个，第一个写 CN、其余进 SAN（X.509 的 CN 只有一个字段，现代浏览器也不看它）。改这一段时注意两个入口（普通与 localhost）共用 `validate()`，别让其中一个跳过校验。
 - **可访问性**：允许用户缩放（viewport 不设 `userScalable: false`）；独立 `<label>` 必须用 `htmlFor` 关联控件 id；图标按钮必须有 `aria-label`；上传区支持键盘触发；动态提示用 `Notice`（自带 `role=status/alert`）；小字最低 `text-slate-500`，不要用 `text-slate-400`。
 - **隐私**：新增工具默认在浏览器本地处理；底部固定隐私句由 ToolShell 渲染，页面内不要再重复写「本地处理 / 不会上传 / 纯前端」。若确实需要服务端请求，把它加进 `ToolShell.tsx` 的 `SERVER_ROUTES` 并如实说明，不要改文案、不要给单个工具开小灶。
-- **待办**：图片压缩与背景虚化的画布计算仍在主线程（已用像素上限 + 异步编码缓解），彻底 Worker 化需单独排期并做浏览器兼容验证。
+- **待办**：图片压缩与抠图（背景透明）的画布计算仍在主线程（已用像素上限 + 异步编码缓解），彻底 Worker 化需单独排期并做浏览器兼容验证。
+- **图片上传与透明预览**：上传区与「当前图片」条用 `components/ui/ImageDrop.tsx`（`ImageDropZone` / `ImageSourceBar`），加载/编码/下载/像素守卫用 `src/lib/image-io.ts`，不要在页面里重写一遍。透明 PNG 的预览底色用 `.ui-checker`（棋盘格，深色模式是中灰，保证黑白 logo 都看得见）。
+- **子工具切换**：同一页里有 3 个以上平级功能用 `TabBar`（等宽 `.ui-tabs` 网格），不要用 `Segmented` —— 胶囊组宽度参差、右侧还会空一大片。
 
 # 提交前检查
 

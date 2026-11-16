@@ -2,14 +2,13 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { Binary, Globe2, Network, Search, ShieldCheck } from "lucide-react";
+import { Globe2, Network, Search } from "lucide-react";
 import ToolShell from "@/components/ToolShell";
 import {
   Button, CopyButton, KeyRow, Notice, OutputBlock, Panel,
 } from "@/components/ui/ToolUI";
 import {
-  calcSubnet, containsIp, intToIpv4, prefixFromMask, SAMPLES,
-  splitSubnets, toBinary, type SubnetInfo,
+  calcSubnet, containsIp, intToIpv4, prefixFromMask, SAMPLES, type SubnetInfo,
 } from "./ip-utils";
 
 function ResultRows({ info }: { info: SubnetInfo }) {
@@ -34,32 +33,46 @@ function ResultRows({ info }: { info: SubnetInfo }) {
   );
 }
 
-function BinaryRows({ info }: { info: SubnetInfo }) {
-  const rows: [string, number][] = [
-    ["IP 地址", info.ipInt],
-    ["子网掩码", info.maskInt],
-    ["网络地址", info.networkInt],
-    ["广播地址", info.broadcastInt],
-  ];
+/** 纯文字参考列表：只展示，不带复制、不带表格框 */
+function RangeList({ items }: { items: { cidr: string; note: string }[] }) {
   return (
-    <div className="ui-kv-list">
-      {rows.map(([label, value]) => (
-        <div key={label} className="ui-kv">
-          <span className="ui-kv-label">{label}</span>
-          <span className="ui-kv-value font-mono text-xs break-all">{toBinary(value)}</span>
+    <div className="space-y-1.5">
+      {items.map((item) => (
+        <div key={item.cidr} className="flex flex-wrap items-baseline gap-x-3 gap-y-0.5">
+          <code className="font-mono text-sm text-slate-800 w-40 shrink-0">{item.cidr}</code>
+          <span className="text-xs text-slate-500">{item.note}</span>
         </div>
       ))}
     </div>
   );
 }
 
+const PRIVATE_RANGES = [
+  { cidr: "10.0.0.0/8", note: "私有 A 类 · 16,777,216 个地址 · 企业内网常用" },
+  { cidr: "172.16.0.0/12", note: "私有 B 类 · 1,048,576 个地址 · 172.16 ~ 172.31 开头" },
+  { cidr: "192.168.0.0/16", note: "私有 C 类 · 65,536 个地址 · 家用路由器默认网段" },
+  { cidr: "127.0.0.0/8", note: "环回地址 · 16,777,216 个地址 · 指向本机" },
+  { cidr: "169.254.0.0/16", note: "链路本地 · 65,536 个地址 · DHCP 失败时自动配置" },
+  { cidr: "100.64.0.0/10", note: "运营商级 NAT（CGNAT）· 4,194,304 个地址" },
+];
+
+const PUBLIC_RANGES = [
+  { cidr: "0.0.0.0/8", note: "本网络 · 16,777,216 个地址 · 仅作源地址占位" },
+  { cidr: "192.0.0.0/24", note: "IETF 协议分配 · 256 个地址" },
+  { cidr: "192.0.2.0/24", note: "文档示例 TEST-NET-1 · 256 个地址" },
+  { cidr: "198.51.100.0/24", note: "文档示例 TEST-NET-2 · 256 个地址" },
+  { cidr: "203.0.113.0/24", note: "文档示例 TEST-NET-3 · 256 个地址" },
+  { cidr: "198.18.0.0/15", note: "网络设备基准测试 · 131,072 个地址" },
+  { cidr: "224.0.0.0/4", note: "组播 D 类 · 268,435,456 个地址" },
+  { cidr: "240.0.0.0/4", note: "保留 E 类 · 268,435,456 个地址" },
+  { cidr: "255.255.255.255/32", note: "受限广播 · 单个地址" },
+];
+
 export default function IpSubnetPage() {
   const [address, setAddress] = useState("192.168.1.130");
   const [prefix, setPrefix] = useState(24);
-  const [intText, setIntText] = useState("3232235818");
   const [maskText, setMaskText] = useState("255.255.255.0");
   const [checkIp, setCheckIp] = useState("192.168.1.200");
-  const [targetPrefix, setTargetPrefix] = useState(26);
 
   const result = useMemo(() => {
     try {
@@ -68,16 +81,6 @@ export default function IpSubnetPage() {
       return { info: null, error: cause instanceof Error ? cause.message : "地址不合法" };
     }
   }, [address, prefix]);
-
-  const intResult = useMemo(() => {
-    const raw = intText.trim();
-    if (!/^\d+$/.test(raw)) return { text: "", error: "请输入 0 ~ 4294967295 的十进制整数" };
-    const value = Number(raw);
-    if (!Number.isInteger(value) || value < 0 || value > 0xffffffff) {
-      return { text: "", error: "整数超出 IPv4 范围（0 ~ 4294967295）" };
-    }
-    return { text: intToIpv4(value), error: "" };
-  }, [intText]);
 
   const maskResult = useMemo(() => {
     try {
@@ -95,12 +98,6 @@ export default function IpSubnetPage() {
       return { text: "", error: cause instanceof Error ? cause.message : "地址不合法" };
     }
   }, [result.info, checkIp]);
-
-  const effectiveTarget = Math.min(32, Math.max(result.info ? result.info.prefix + 1 : 25, targetPrefix));
-  const split = useMemo(
-    () => result.info ? splitSubnets(result.info, effectiveTarget, 32) : { list: [], total: 0 },
-    [result.info, effectiveTarget],
-  );
 
   const handleAddress = (value: string) => {
     const [ip, cidr, ...rest] = value.split("/");
@@ -154,7 +151,6 @@ export default function IpSubnetPage() {
                 const [ip, cidr] = sample.value.split("/");
                 setAddress(ip);
                 setPrefix(Number(cidr));
-                setTargetPrefix(Math.min(32, Number(cidr) + 2));
               }}
             >
               {sample.label} {sample.value}
@@ -170,41 +166,6 @@ export default function IpSubnetPage() {
             <ResultRows info={result.info} />
           </Panel>
 
-          <Panel icon={Binary} title="二进制视图" className="mt-5">
-            <BinaryRows info={result.info} />
-            <p className="ui-note mt-4">
-              掩码中连续的 1 是网络位、后面的 0 是主机位；主机位全 0 为网络地址，全 1 为广播地址。/31 按 RFC 3021 用于点对点链路。
-            </p>
-          </Panel>
-
-          <Panel icon={ShieldCheck} title="IPv4 与整数互转" className="mt-5">
-            <div className="ui-form-grid">
-              <div>
-                <label htmlFor="ip-to-int" className="ui-label text-sm block mb-2">当前 IP → 十进制整数</label>
-                <div className="flex items-center gap-2">
-                  <input readOnly value={String(result.info.ipInt)} className="ui-input font-mono bg-slate-50" aria-label="IP 对应的整数" />
-                  <CopyButton value={String(result.info.ipInt)} label="复制整数值" />
-                </div>
-              </div>
-              <div>
-                <label htmlFor="int-to-ip" className="ui-label text-sm block mb-2">十进制整数 → IP</label>
-                <div className="flex items-center gap-2">
-                  <input
-                    id="int-to-ip"
-                    value={intText}
-                    onChange={(event) => setIntText(event.target.value)}
-                    inputMode="numeric"
-                    className="ui-input font-mono"
-                  />
-                  <CopyButton value={intResult.text} label="复制 IP" />
-                </div>
-              </div>
-            </div>
-            {intResult.error
-              ? <Notice tone="error" className="mt-3">{intResult.error}</Notice>
-              : <div className="mt-3 text-sm text-slate-700">转换结果：<code className="font-mono text-indigo-700">{intResult.text}</code></div>}
-          </Panel>
-
           <Panel icon={Search} title="掩码反推与包含判断" className="mt-5">
             <div className="ui-form-grid">
               <div>
@@ -217,7 +178,7 @@ export default function IpSubnetPage() {
                     spellCheck={false}
                     className="ui-input font-mono"
                   />
-                  <Button variant="secondary" size="sm" disabled={maskResult.prefix < 0} onClick={() => setPrefix(maskResult.prefix)}>应用</Button>
+                  <Button variant="secondary" size="sm" className="shrink-0 whitespace-nowrap" disabled={maskResult.prefix < 0} onClick={() => setPrefix(maskResult.prefix)}>应用</Button>
                 </div>
                 {maskResult.error
                   ? <p className="text-xs text-red-600 mt-2">{maskResult.error}</p>
@@ -225,62 +186,21 @@ export default function IpSubnetPage() {
               </div>
               <div>
                 <label htmlFor="check-ip" className="ui-label text-sm block mb-2">判断 IP 是否属于当前网段</label>
-                <input
-                  id="check-ip"
-                  value={checkIp}
-                  onChange={(event) => setCheckIp(event.target.value)}
-                  spellCheck={false}
-                  className="ui-input font-mono"
-                />
+                <div className="flex items-center gap-2">
+                  <input
+                    id="check-ip"
+                    value={checkIp}
+                    onChange={(event) => setCheckIp(event.target.value)}
+                    spellCheck={false}
+                    className="ui-input font-mono"
+                  />
+                  <CopyButton value={checkResult.text} label="复制判断结果" />
+                </div>
                 {checkResult.error
                   ? <p className="text-xs text-red-600 mt-2">{checkResult.error}</p>
                   : <Notice tone={checkResult.text === "在该网段内" ? "success" : "info"} className="mt-2">{checkResult.text}</Notice>}
               </div>
             </div>
-          </Panel>
-
-          <Panel icon={Network} title="子网划分" className="mt-5">
-            {result.info.prefix >= 32 ? (
-              <p className="ui-note">/32 是单主机路由，只包含一个地址，无法再划分子网。把前缀调小即可查看划分结果。</p>
-            ) : (
-            <>
-            <div className="flex flex-wrap items-center gap-3 mb-4">
-              <label htmlFor="target-prefix" className="text-sm text-slate-600">划分为</label>
-              <select
-                id="target-prefix"
-                value={effectiveTarget}
-                onChange={(event) => setTargetPrefix(Number(event.target.value))}
-                className="ui-select ui-input-sm w-28"
-              >
-                {Array.from({ length: 32 - result.info.prefix }, (_, index) => result.info!.prefix + index + 1).map((value) => (
-                  <option key={value} value={value}>/{value}</option>
-                ))}
-              </select>
-              <span className="text-sm text-slate-500">共 {split.total.toLocaleString()} 个子网，下面显示前 {split.list.length} 个</span>
-            </div>
-            <div className="overflow-x-auto">
-              <table className="w-full text-sm border-collapse min-w-[560px]">
-                <thead>
-                  <tr className="bg-slate-50 text-slate-600">
-                    {["子网", "网络地址", "可用范围", "广播地址"].map((head) => (
-                      <th key={head} className="text-left font-semibold px-3 py-2 border border-slate-200">{head}</th>
-                    ))}
-                  </tr>
-                </thead>
-                <tbody>
-                  {split.list.map((item) => (
-                    <tr key={item.cidr} className="text-slate-700">
-                      <td className="px-3 py-2 border border-slate-200 font-mono text-indigo-700 whitespace-nowrap">{item.cidr}</td>
-                      <td className="px-3 py-2 border border-slate-200 font-mono whitespace-nowrap">{item.network}</td>
-                      <td className="px-3 py-2 border border-slate-200 font-mono whitespace-nowrap">{item.firstHost} ~ {item.lastHost}</td>
-                      <td className="px-3 py-2 border border-slate-200 font-mono whitespace-nowrap">{item.broadcast}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-            </>
-            )}
           </Panel>
 
           <div className="mt-5">
@@ -293,6 +213,22 @@ export default function IpSubnetPage() {
           </div>
         </>
       )}
+
+      <section className="mt-6">
+        <h3 className="ui-label text-sm mb-2">内网（私有）地址段</h3>
+        <RangeList items={PRIVATE_RANGES} />
+        <p className="ui-note mt-2">
+          IPv6 对应段：<code className="font-mono">fc00::/7</code> 唯一本地、<code className="font-mono">fe80::/10</code> 链路本地、<code className="font-mono">::1</code> 环回。
+        </p>
+      </section>
+
+      <section className="mt-5">
+        <h3 className="ui-label text-sm mb-2">公网地址范围与保留段</h3>
+        <p className="ui-note mb-2">
+          除下表特殊段和上面的私有段之外，<code className="font-mono">1.0.0.0</code> ~ <code className="font-mono">223.255.255.255</code> 都是可在公网路由的单播地址，不存在「公网专用段」。
+        </p>
+        <RangeList items={PUBLIC_RANGES} />
+      </section>
 
       <p className="ui-note mt-5">
         仅支持 IPv4。所有计算在本机完成，不会向任何服务查询你的 IP；这里输入的地址只是计算样本，与你的真实公网 IP 无关。

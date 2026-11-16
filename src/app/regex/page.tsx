@@ -5,7 +5,7 @@ import { useEffect, useMemo, useState } from "react";
 import { Braces, Eraser, ListChecks, WandSparkles } from "lucide-react";
 import ToolShell from "@/components/ToolShell";
 import { Badge, Notice, OutputBlock, Switch } from "@/components/ui/ToolUI";
-import type { RegexMatch, RegexResponse } from "./regex.worker";
+import { runRegex, type RegexMatch, type RegexResult } from "./regex";
 
 const DEFAULT_PATTERN = "(\\d{4})-(\\d{2})-(\\d{2})";
 const DEFAULT_TEXT =
@@ -54,62 +54,28 @@ export default function RegexPage() {
   const [flags, setFlags] = useState("g");
   const [text, setText] = useState(DEFAULT_TEXT);
   const [replacement, setReplacement] = useState("$1/$2/$3");
-  const [result, setResult] = useState<RegexResponse | null>(null);
-  const [timedOut, setTimedOut] = useState(false);
+  const [result, setResult] = useState<RegexResult | null>(null);
 
   useEffect(() => {
-    let worker: Worker | null = null;
-    let guard: ReturnType<typeof setTimeout> | null = null;
-    let timer: ReturnType<typeof setTimeout> | null = null;
     let cancelled = false;
 
-    const cleanup = () => {
-      cancelled = true;
-      if (timer) clearTimeout(timer);
-      if (guard) clearTimeout(guard);
-      worker?.terminate();
-    };
-
-    // 依赖一变就作废旧结果：否则防抖 + Worker 计算期间会用「新 text」配「旧 matches」
-    // 的 index/value 切片，高亮整体错位，替换结果与命中数也是上一段文本的。
+    // 依赖一变就作废旧结果：否则防抖期间会用「新 text」配「旧 matches」的
+    // index/value 切片，高亮整体错位，替换结果与命中数也是上一段文本的。
     queueMicrotask(() => {
-      if (!cancelled) {
-        setResult(null);
-        setTimedOut(false);
-      }
+      if (!cancelled) setResult(null);
     });
 
-    if (!pattern) return cleanup;
+    if (!pattern) return () => { cancelled = true; };
 
-    // 输入防抖 + 独立线程 + 超时终止，三者一起杜绝灾难性回溯锁死页面
-    timer = setTimeout(() => {
-      setTimedOut(false);
-      worker = new Worker(new URL("./regex.worker.ts", import.meta.url));
-
-      guard = setTimeout(() => {
-        worker?.terminate();
-        if (!cancelled) {
-          setResult(null);
-          setTimedOut(true);
-        }
-      }, 1500);
-
-      worker.onmessage = (event: MessageEvent<RegexResponse>) => {
-        if (cancelled) return;
-        if (guard) clearTimeout(guard);
-        worker?.terminate();
-        setResult(event.data);
-      };
-      worker.onerror = () => {
-        if (cancelled) return;
-        if (guard) clearTimeout(guard);
-        worker?.terminate();
-        setResult({ id: 0, ok: false, error: "匹配线程异常，请简化表达式后重试" });
-      };
-      worker.postMessage({ id: 0, pattern, flags, text, replacement });
+    // 防抖之后同步计算：纯 JS 匹配在几十毫秒内完成，不需要跨线程来回搬运文本
+    const timer = setTimeout(() => {
+      if (!cancelled) setResult(runRegex(pattern, flags, text, replacement));
     }, 220);
 
-    return cleanup;
+    return () => {
+      cancelled = true;
+      clearTimeout(timer);
+    };
   }, [pattern, flags, text, replacement]);
 
   const toggleFlag = (flag: string) => {
@@ -128,6 +94,7 @@ export default function RegexPage() {
   const replaced = result && result.ok ? result.replaced : "";
   const matchCount = result && result.ok ? result.matches.length : 0;
   const okError = result && !result.ok ? result.error : "";
+  const budgetHit = Boolean(result?.ok && result.budgetHit);
 
   return (
     <ToolShell>
@@ -209,10 +176,10 @@ export default function RegexPage() {
           />
         </div>
 
-        {okError && <Notice tone="error">表达式无效：{okError}</Notice>}
-        {timedOut && (
-          <Notice tone="error">
-            匹配超过 1.5 秒已被强制中止。这通常是灾难性回溯，请简化嵌套量词（如 <code className="font-mono">(a+)+</code>）或缩短测试文本。
+        {okError && <Notice tone="error">{okError}</Notice>}
+        {budgetHit && (
+          <Notice tone="tip">
+            匹配已跑满 2 秒，只返回前 {matchCount.toLocaleString()} 处结果。表达式或文本过于复杂，建议缩小测试范围。
           </Notice>
         )}
 
@@ -300,7 +267,7 @@ export default function RegexPage() {
         </div>
 
         <p className="ui-note">
-          匹配在独立线程执行，卡住会自动终止；语法为 JavaScript 的 <code className="font-mono">RegExp</code>，与 Python / PCRE 略有差异。
+          语法为 JavaScript 的 <code className="font-mono">RegExp</code>，与 Python / PCRE 略有差异；含嵌套量词（如 <code className="font-mono">(a+)+</code>）的表达式会被提前拒绝，避免页面假死。
         </p>
       </div>
     </ToolShell>

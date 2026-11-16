@@ -5,16 +5,17 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import JSZip from "jszip";
 import {
   Crop, Download, Droplets, FileImage, Grid3x3, ImagePlus, Layers3,
-  RefreshCw, ScanLine, Stamp, Upload,
+  RefreshCw, ScanLine, Stamp,
 } from "lucide-react";
 import ToolShell from "@/components/ToolShell";
 import {
-  Button, EmptyState, Notice, Panel, Segmented, Switch,
+  Button, EmptyState, Notice, Panel, Segmented, Switch, TabBar,
 } from "@/components/ui/ToolUI";
+import { ImageDropZone, ImageSourceBar } from "@/components/ui/ImageDrop";
+import { downloadBlob, formatBytes, loadImageFile, type ImageSource } from "@/lib/image-io";
 import {
-  baseName, buildIco, canvasToBlob, downloadBlob, drawRounded,
-  drawWatermark, formatBytes, loadImageFile, MAX_FILE_SIZE, renderSquare,
-  sliceGrid, svgToPng, type ImageSource, type WatermarkPosition,
+  baseName, buildIco, canvasToBlob, drawRounded, drawWatermark,
+  renderSquare, sliceGrid, svgToPng, type WatermarkPosition,
 } from "./image-utils";
 
 type Mode = "watermark" | "round" | "grid" | "ico" | "svg";
@@ -36,72 +37,6 @@ const SVG_SAMPLE = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 120
 </svg>`;
 
 /* ---------------- 通用组件 ---------------- */
-
-function UploadArea({ onFile }: { onFile: (file: File) => void }) {
-  const inputRef = useRef<HTMLInputElement>(null);
-  const [dragging, setDragging] = useState(false);
-
-  return (
-    <div
-      role="button"
-      tabIndex={0}
-      aria-label="点击、拖入或粘贴图片"
-      onClick={() => inputRef.current?.click()}
-      onKeyDown={(event) => {
-        if (event.key === "Enter" || event.key === " ") {
-          event.preventDefault();
-          inputRef.current?.click();
-        }
-      }}
-      onDragOver={(event) => { event.preventDefault(); setDragging(true); }}
-      onDragLeave={() => setDragging(false)}
-      onDrop={(event) => {
-        event.preventDefault();
-        setDragging(false);
-        const file = event.dataTransfer.files[0];
-        if (file) onFile(file);
-      }}
-      className={`flex flex-col items-center justify-center gap-2 p-8 border-2 border-dashed rounded-2xl cursor-pointer transition-colors ${
-        dragging ? "border-indigo-500 bg-indigo-50" : "border-slate-200 bg-slate-50 hover:border-indigo-300"
-      }`}
-    >
-      <Upload size={28} className="text-indigo-500" strokeWidth={1.6} />
-      <p className="text-sm font-semibold text-slate-700">点击选择、拖入图片，或直接 Ctrl/⌘+V 粘贴</p>
-      <p className="text-xs text-slate-500">PNG / JPG / WebP / GIF / SVG · 最大 {formatBytes(MAX_FILE_SIZE)} · 1600 万像素以内</p>
-      <input
-        ref={inputRef}
-        type="file"
-        accept="image/*,.svg"
-        className="hidden"
-        onChange={(event) => {
-          const file = event.target.files?.[0];
-          if (file) onFile(file);
-          event.target.value = "";
-        }}
-      />
-    </div>
-  );
-}
-
-function SourcePreview({
-  source, onReplace, onClear,
-}: { source: ImageSource; onReplace: () => void; onClear: () => void }) {
-  return (
-    <div className="flex flex-wrap items-center gap-4 p-3 rounded-xl bg-slate-50 border border-slate-200">
-      <img src={source.url} alt="原图预览" className="w-20 h-20 object-contain rounded-lg bg-white border border-slate-200" />
-      <div className="min-w-0 flex-1">
-        <div className="text-sm font-semibold text-slate-700 truncate">{source.name}</div>
-        <div className="text-xs text-slate-500 mt-1">
-          {source.img.naturalWidth || "—"} × {source.img.naturalHeight || "—"} px · {formatBytes(source.size)}
-        </div>
-      </div>
-      <div className="flex gap-2">
-        <Button variant="secondary" size="sm" icon={RefreshCw} onClick={onReplace}>更换图片</Button>
-        <Button variant="ghost" size="sm" onClick={onClear}>移除</Button>
-      </div>
-    </div>
-  );
-}
 
 /** 生成结果后的统一预览 + 下载（图片文件导出属于整页动作，用 Button） */
 function ImageResult({ blob, filename, hint }: { blob: Blob | null; filename: string; hint?: string }) {
@@ -543,7 +478,7 @@ export default function ImageToolsPage() {
 
   return (
     <ToolShell>
-      <Segmented
+      <TabBar
         label="图片工具模式"
         value={mode}
         onChange={setMode}
@@ -554,12 +489,12 @@ export default function ImageToolsPage() {
       {mode !== "svg" && (
         <Panel icon={ImagePlus} title="选择图片">
           {source ? (
-            <SourcePreview
+            <ImageSourceBar
               source={source}
               onReplace={() => replaceRef.current?.click()}
               onClear={clearSource}
             />
-          ) : <UploadArea onFile={handleFile} />}
+          ) : <ImageDropZone onFile={(file) => void handleFile(file)} />}
           {notice && <Notice tone="error" className="mt-3">{notice}</Notice>}
           <input
             ref={replaceRef}

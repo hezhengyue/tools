@@ -1,140 +1,11 @@
+// app/device-info/page.tsx
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
-import {
-  Globe,
-  Cpu,
-  Monitor,
-  MonitorSmartphone,
-  Copy,
-  Check,
-  RefreshCw,
-} from "lucide-react";
+import { Cpu, Globe, Monitor, MonitorSmartphone, Check, Copy, RefreshCw } from "lucide-react";
 import ToolShell from "@/components/ToolShell";
-import { writeClipboard } from "@/components/ui/ToolUI";
-
-/** 非标准但广泛支持的 navigator.deviceMemory */
-interface NavigatorWithDeviceMemory extends Navigator {
-  deviceMemory?: number;
-}
-
-interface DeviceInfo {
-  browser: string;
-  browserVersion: string;
-  language: string;
-  languages: string[];
-
-  userAgent: string;
-
-  os: string;
-  platform: string;
-
-  cpu: number | string;
-  memory: number | string;
-
-  gpuName: string;
-  gpuVendor: string;
-
-  resolution: string;
-  availableResolution: string;
-  colorDepth: number;
-  pixelRatio: number;
-  orientation: string;
-
-  timezone: string;
-}
-
-function parseBrowser(ua: string) {
-  // 各类 Chromium 分支 / iOS 版浏览器必须在通用 "Chrome/"、"Safari/" 之前判断，
-  // 否则 Opera、Samsung Internet、iOS 版 Chrome 都会被误报成 Chrome 或 Safari。
-  const brands: [RegExp, string][] = [
-    [/OPR\/([\d.]+)/, "Opera"],
-    [/EdgiOS\/([\d.]+)/, "Edge (iOS)"],
-    [/CriOS\/([\d.]+)/, "Chrome (iOS)"],
-    [/FxiOS\/([\d.]+)/, "Firefox (iOS)"],
-    [/EdgA?\/([\d.]+)/, "Microsoft Edge"],
-    [/SamsungBrowser\/([\d.]+)/, "Samsung Internet"],
-    [/QQBrowser\/([\d.]+)/, "QQ 浏览器"],
-    [/MicroMessenger\/([\d.]+)/, "微信内置浏览器"],
-    [/Electron\/([\d.]+)/, "Electron"],
-  ];
-  for (const [pattern, name] of brands) {
-    const match = ua.match(pattern);
-    if (match) return { name, version: match[1] || "-" };
-  }
-
-  if (ua.includes("Chrome/")) {
-    return { name: "Google Chrome", version: ua.match(/Chrome\/([\d.]+)/)?.[1] || "-" };
-  }
-  if (ua.includes("Firefox/")) {
-    return { name: "Mozilla Firefox", version: ua.match(/Firefox\/([\d.]+)/)?.[1] || "-" };
-  }
-  if (ua.includes("Safari/")) {
-    return { name: "Safari", version: ua.match(/Version\/([\d.]+)/)?.[1] || "-" };
-  }
-  return { name: "未知浏览器", version: "-" };
-}
-
-function parseOS(ua: string) {
-  // iOS 的 UA 含 "like Mac OS X"，必须先于 macOS 判断，否则一律误报成 macOS
-  if (/iPhone|iPad|iPod/.test(ua)) return "iOS";
-  if (ua.includes("Android")) return "Android";
-  if (ua.includes("CrOS")) return "ChromeOS";
-  if (ua.includes("Windows")) return "Windows";
-  if (ua.includes("Mac")) {
-    // iPadOS 13+ 伪装成 Mac：带 Mobile 标识或多点触控
-    if (/Mobile\/\w+/.test(ua)) return "iPadOS";
-    if (typeof navigator !== "undefined" && navigator.maxTouchPoints > 1) return "iPadOS";
-    return "macOS";
-  }
-  if (ua.includes("Linux")) return "Linux";
-  return "未知系统";
-}
-
-function getGpuInfo() {
-  try {
-    const canvas = document.createElement("canvas");
-    const gl =
-      canvas.getContext("webgl") ||
-      canvas.getContext("experimental-webgl");
-
-    if (!gl) {
-      return { gpuName: "-", gpuVendor: "-" };
-    }
-
-    const context = gl as WebGLRenderingContext;
-    const ext = context.getExtension("WEBGL_debug_renderer_info") as
-      | { UNMASKED_RENDERER_WEBGL: number; UNMASKED_VENDOR_WEBGL: number }
-      | null;
-
-    if (!ext) {
-      return { gpuName: "-", gpuVendor: "-" };
-    }
-
-    const renderer = String(context.getParameter(ext.UNMASKED_RENDERER_WEBGL));
-    const vendor = String(context.getParameter(ext.UNMASKED_VENDOR_WEBGL));
-
-    let gpuName = renderer;
-    const angleMatch = renderer.match(/ANGLE \((.*?) Direct3D/i);
-    if (angleMatch) {
-      gpuName = angleMatch[1];
-    }
-
-    gpuName = gpuName
-      .replace("Google", "")
-      .replace(/\s+/g, " ")
-      .trim();
-
-    let gpuVendor = vendor;
-    if (vendor.includes("NVIDIA")) gpuVendor = "NVIDIA";
-    else if (vendor.includes("Intel")) gpuVendor = "Intel";
-    else if (vendor.includes("AMD")) gpuVendor = "AMD";
-
-    return { gpuName, gpuVendor };
-  } catch {
-    return { gpuName: "-", gpuVendor: "-" };
-  }
-}
+import { KeyRow, Panel, writeClipboard } from "@/components/ui/ToolUI";
+import { collectDeviceInfo, type DeviceInfo } from "./device";
 
 function DeviceInfoCore() {
   const [info, setInfo] = useState<DeviceInfo | null>(null);
@@ -147,70 +18,49 @@ function DeviceInfoCore() {
     if (copyTimer.current) clearTimeout(copyTimer.current);
   }, []);
 
-  const loadInfo = useCallback(() => {
+  const loadInfo = useCallback(async () => {
     setLoading(true);
-
     try {
-      const ua = navigator.userAgent;
-      const browser = parseBrowser(ua);
-      const gpu = getGpuInfo();
-
-      setInfo({
-        browser: browser.name,
-        browserVersion: browser.version,
-        language: navigator.language,
-        languages: [...navigator.languages],
-        userAgent: ua,
-        os: parseOS(ua),
-        platform: navigator.platform,
-        cpu: navigator.hardwareConcurrency || "-",
-        memory: (navigator as NavigatorWithDeviceMemory).deviceMemory || "-",
-        gpuName: gpu.gpuName,
-        gpuVendor: gpu.gpuVendor,
-        resolution: `${screen.width} × ${screen.height}`,
-        availableResolution: `${screen.availWidth} × ${screen.availHeight}`,
-        colorDepth: screen.colorDepth,
-        pixelRatio: window.devicePixelRatio,
-        orientation: screen.orientation?.type || "Unknown",
-        timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
-      });
+      setInfo(await collectDeviceInfo());
     } finally {
       setLoading(false);
     }
   }, []);
 
   useEffect(() => {
-    loadInfo();
+    void loadInfo();
   }, [loadInfo]);
 
   async function copyAll() {
     if (!info) return;
 
-    const text = `
-浏览器：${info.browser}
-版本：${info.browserVersion}
+    const text = `浏览器：${info.browser} ${info.browserVersion}
 语言：${info.language}
-备用语言：${info.languages.join(",")}
+备用语言：${info.languages.join(", ")}
 
 操作系统：${info.os}
-平台：${info.platform}
-CPU线程：${info.cpu}
-设备内存：${info.memory} GB
+系统版本：${info.osVersion}
+CPU 架构：${info.arch}
+CPU 线程：${info.cpu}
+设备内存：${info.memory}
 
-GPU型号：${info.gpuName}
-GPU厂商：${info.gpuVendor}
+GPU 型号：${info.gpuName}
+GPU 厂商：${info.gpuVendor}
 
-分辨率：${info.resolution}
-可用区域：${info.availableResolution}
-颜色深度：${info.colorDepth}
+逻辑分辨率：${info.screenLogical} CSS px
+物理像素：${info.screenPhysical}
+可用区域：${info.screenAvailable}
 像素比：${info.pixelRatio}
+颜色深度：${info.colorDepth}
 屏幕方向：${info.orientation}
+触控点数：${info.touchPoints}
 
-时区：${info.timezone}
+时区：${info.timezone}（${info.utcOffset}）
+当前时间：${info.localTime}
 
 UserAgent：
-${info.userAgent}
-`;
+${info.userAgent}`;
+
     const ok = await writeClipboard(text);
     if (ok) {
       setCopied(true);
@@ -224,7 +74,6 @@ ${info.userAgent}
 
   return (
     <div className="relative">
-      {/* 复制成功的全局提示 */}
       {copied && (
         <div className="absolute inset-0 z-50 bg-emerald-50/95 flex items-center justify-center text-emerald-700 font-medium rounded-2xl border border-emerald-200 shadow-lg backdrop-blur-sm">
           <Check className="w-6 h-6 mr-2" />
@@ -232,175 +81,87 @@ ${info.userAgent}
         </div>
       )}
 
-      {/* 浏览器 */}
-      <div className="ui-panel mb-6">
-        <h3 className="ui-panel-title">
-          <Globe className="ui-panel-icon" />
-          💻 浏览器
-        </h3>
-
+      <Panel icon={Globe} title="浏览器">
         <div className="ui-kv-list">
-          <div className="ui-kv">
-            <span className="text-slate-500">浏览器</span>
-            <span>{info?.browser}</span>
-          </div>
-
-          <div className="ui-kv">
-            <span className="text-slate-500">版本</span>
-            <span>{info?.browserVersion}</span>
-          </div>
-
-          <div className="ui-kv">
-            <span className="text-slate-500">语言</span>
-            <span>{info?.language}</span>
-          </div>
-
-          <div className="flex justify-between items-start">
-            <span className="text-slate-500">备用语言</span>
-            <span className="text-right max-w-[70%] break-all">
-              {info?.languages.join(", ")}
-            </span>
-          </div>
+          <KeyRow label="浏览器" value={info?.browser ?? "检测中…"} />
+          <KeyRow label="版本" value={info?.browserVersion ?? "—"} mono />
+          <KeyRow label="语言" value={info?.language ?? "—"} />
+          <KeyRow label="备用语言" value={info?.languages.join(", ") ?? "—"} />
         </div>
-      </div>
+      </Panel>
 
-      {/* 系统 */}
-      <div className="ui-panel mb-6">
-        <h3 className="ui-panel-title">
-          <Cpu className="ui-panel-icon" />
-          🖥 系统
-        </h3>
-
+      <Panel icon={Cpu} title="系统" className="mt-5">
         <div className="ui-kv-list">
-          <div className="ui-kv">
-            <span className="text-slate-500">操作系统</span>
-            <span>{info?.os}</span>
-          </div>
-
-          <div className="ui-kv">
-            <span className="text-slate-500">平台</span>
-            <span>{info?.platform}</span>
-          </div>
-
-          <div className="ui-kv">
-            <span className="text-slate-500">CPU线程</span>
-            <span>{info?.cpu}</span>
-          </div>
-
-          <div className="ui-kv">
-            <span className="text-slate-500">设备内存</span>
-            <span>{info?.memory} GB</span>
-          </div>
+          <KeyRow label="操作系统" value={info?.os ?? "检测中…"} />
+          <KeyRow label="系统版本" value={info?.osVersion ?? "—"} mono />
+          <KeyRow label="CPU 架构" value={info?.arch ?? "—"} />
+          <KeyRow label="CPU 线程" value={info?.cpu ?? "—"} />
+          <KeyRow label="设备内存" value={info?.memory ?? "—"} />
         </div>
-      </div>
+        {info?.memoryApprox && (
+          <p className="ui-note mt-3">
+            设备内存是浏览器上报的近似值：只取 2 的幂（4 / 8 / 16 GB），部分版本还会截断到 8 GB，因此与系统信息里的容量不一定相同；Safari / Firefox 完全不提供该字段。
+          </p>
+        )}
+      </Panel>
 
-      {/* GPU */}
-      <div className="ui-panel mb-6">
-        <h3 className="ui-panel-title">
-          <MonitorSmartphone className="ui-panel-icon" />
-          🎮 GPU
-        </h3>
-
+      <Panel icon={MonitorSmartphone} title="GPU" className="mt-5">
         <div className="ui-kv-list">
-          <div className="flex justify-between items-start">
-            <span className="text-slate-500">型号</span>
-            <span className="text-right max-w-[70%] break-all">
-              {info?.gpuName}
-            </span>
-          </div>
-
-          <div className="ui-kv">
-            <span className="text-slate-500">厂商</span>
-            <span>{info?.gpuVendor}</span>
-          </div>
+          <KeyRow label="型号" value={info?.gpuName ?? "读取中…"} />
+          <KeyRow label="厂商" value={info?.gpuVendor ?? "—"} />
         </div>
-      </div>
+      </Panel>
 
-      {/* 屏幕 */}
-      <div className="ui-panel mb-6">
-        <h3 className="ui-panel-title">
-          <Monitor className="ui-panel-icon" />
-          📺 屏幕
-        </h3>
-
+      <Panel icon={Monitor} title="屏幕" className="mt-5">
         <div className="ui-kv-list">
-          <div className="ui-kv">
-            <span className="text-slate-500">分辨率</span>
-            <span>{info?.resolution}</span>
-          </div>
-
-          <div className="ui-kv">
-            <span className="text-slate-500">可用区域</span>
-            <span>{info?.availableResolution}</span>
-          </div>
-
-          <div className="ui-kv">
-            <span className="text-slate-500">颜色深度</span>
-            <span>{info?.colorDepth} bit</span>
-          </div>
-
-          <div className="ui-kv">
-            <span className="text-slate-500">像素比</span>
-            <span>{info?.pixelRatio}</span>
-          </div>
-
-          <div className="ui-kv">
-            <span className="text-slate-500">屏幕方向</span>
-            <span>{info?.orientation}</span>
-          </div>
+          <KeyRow label="逻辑分辨率（CSS 像素）" value={info?.screenLogical ?? "—"} mono />
+          <KeyRow label="物理像素" value={info?.screenPhysical ?? "—"} mono />
+          <KeyRow label="可用区域" value={info?.screenAvailable ?? "—"} mono />
+          <KeyRow label="像素比" value={info?.pixelRatio ?? "—"} mono />
+          <KeyRow label="颜色深度" value={info?.colorDepth ?? "—"} />
+          <KeyRow label="屏幕方向" value={info?.orientation ?? "—"} />
+          <KeyRow label="触控点数" value={info ? String(info.touchPoints) : "—"} />
         </div>
-      </div>
+        <p className="ui-note mt-3">
+          逻辑分辨率受系统缩放影响（125% 缩放下 2560 宽会报 2048）；物理像素 = 逻辑分辨率 × 像素比，才是屏幕真实点数。
+        </p>
+      </Panel>
 
-      {/* 时区 */}
-      <div className="ui-panel mb-6">
-        <h3 className="font-semibold text-slate-700 mb-4">
-          🌏 时区
-        </h3>
-
-        <div className="ui-kv text-sm">
-          <span className="text-slate-500">TimeZone</span>
-          <span>{info?.timezone}</span>
+      <Panel title="时区与时间" className="mt-5">
+        <div className="ui-kv-list">
+          <KeyRow label="时区" value={info?.timezone ?? "—"} mono />
+          <KeyRow label="UTC 偏移" value={info?.utcOffset ?? "—"} mono />
+          <KeyRow label="当前时间" value={info?.localTime ?? "—"} />
         </div>
-      </div>
+      </Panel>
 
-      {/* UserAgent */}
-      <div className="ui-panel mb-6">
-        <h3 className="font-semibold text-slate-700 mb-4">
-          📄 UserAgent
-        </h3>
-
-        <div className="bg-slate-50 border border-slate-200 rounded-xl p-4">
+      <Panel title="UserAgent" className="mt-5">
+        <div className="bg-slate-50 border border-slate-200 rounded-xl p-3">
           <pre className="whitespace-pre-wrap break-all text-xs leading-6 text-slate-600 font-mono">
-            {info?.userAgent}
+            {info?.userAgent ?? "读取中…"}
           </pre>
         </div>
-      </div>
+      </Panel>
 
       {copyError && (
-        <p className="mb-3 text-sm text-red-600" role="alert">{copyError}</p>
+        <p className="mt-3 text-sm text-red-600" role="alert">{copyError}</p>
       )}
 
-      {/* 操作按钮 */}
-      <div className="grid grid-cols-2 gap-4">
-        <button
-          onClick={copyAll}
-          className="ui-btn ui-btn-secondary w-full py-3"
-        >
+      <div className="grid grid-cols-2 gap-4 mt-5">
+        <button onClick={copyAll} className="ui-btn ui-btn-secondary w-full py-3">
           <Copy size={18} className="mr-2" />
           复制全部
         </button>
 
-        <button
-          onClick={loadInfo}
-          className="ui-btn ui-btn-primary w-full py-3"
-        >
-          <RefreshCw
-            size={18}
-            className={`mr-2 ${loading ? "animate-spin" : ""}`}
-          />
+        <button onClick={() => void loadInfo()} disabled={loading} className="ui-btn ui-btn-primary w-full py-3">
+          <RefreshCw size={18} className={`mr-2 ${loading ? "animate-spin" : ""}`} />
           重新检测
         </button>
       </div>
+
+      <p className="ui-note mt-4">
+        所有信息都由本机浏览器 API 读出，不上传；浏览器为了防指纹会主动打折上报（内存只给 2 的幂近似值、系统版本与 GPU 可能被冻结或屏蔽），因此个别项与实际硬件不一致属正常。
+      </p>
     </div>
   );
 }

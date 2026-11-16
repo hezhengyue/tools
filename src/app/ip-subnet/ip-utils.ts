@@ -1,5 +1,5 @@
 // app/ip-subnet/ip-utils.ts
-// IPv4 地址、CIDR 与子网划分计算。用无符号 32 位整数做中介，位运算后统一 >>> 0。
+// IPv4 地址与 CIDR 计算。用无符号 32 位整数做中介，位运算后统一 >>> 0。
 
 export interface SubnetInfo {
   ip: string;
@@ -34,10 +34,6 @@ export function parseIpv4(text: string): number {
 export function intToIpv4(value: number): string {
   const n = value >>> 0;
   return [n >>> 24, (n >>> 16) & 255, (n >>> 8) & 255, n & 255].join(".");
-}
-
-export function toBinary(value: number): string {
-  return (value >>> 0).toString(2).padStart(32, "0").match(/.{8}/g)!.join(".");
 }
 
 export function maskFromPrefix(prefix: number): number {
@@ -92,35 +88,6 @@ export function calcSubnet(ipText: string, prefix: number): SubnetInfo {
     networkInt, broadcastInt, firstHost, lastHost, total, usable,
     class: cls, scope,
   };
-}
-
-export interface SubnetSlice {
-  cidr: string;
-  network: string;
-  firstHost: string;
-  lastHost: string;
-  broadcast: string;
-}
-
-export function splitSubnets(info: SubnetInfo, targetPrefix: number, limit = 32): { list: SubnetSlice[]; total: number } {
-  if (targetPrefix <= info.prefix || targetPrefix > 32) return { list: [], total: 0 };
-  const total = 2 ** (targetPrefix - info.prefix);
-  const block = 2 ** (32 - targetPrefix);
-  const count = Math.min(total, limit);
-  const list: SubnetSlice[] = [];
-  for (let index = 0; index < count; index += 1) {
-    const network = (info.networkInt + index * block) >>> 0;
-    const broadcast = (network + block - 1) >>> 0;
-    const usable = targetPrefix >= 31 ? block : Math.max(0, block - 2);
-    list.push({
-      cidr: `${intToIpv4(network)}/${targetPrefix}`,
-      network: intToIpv4(network),
-      firstHost: usable ? intToIpv4(targetPrefix >= 31 ? network : network + 1) : "—",
-      lastHost: usable ? intToIpv4(targetPrefix >= 31 ? broadcast : broadcast - 1) : "—",
-      broadcast: intToIpv4(broadcast),
-    });
-  }
-  return { list, total };
 }
 
 export function containsIp(info: SubnetInfo, ipText: string): boolean {

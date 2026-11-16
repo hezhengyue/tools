@@ -2,7 +2,7 @@
 import {
   Key, FileJson, Shield, Code,
   Hash, KeyRound, FileBadge, FileDiff, Type, Gamepad,
-  Image, FileImage, Sparkles, Globe, MonitorSmartphone, MapPin, FileCode,
+  Image, FileImage, Eraser, Globe, MonitorSmartphone, MapPin, FileCode,
   Camera, ScreenShare, Video, Braces, Clock, Binary,
   Bomb, Grid2x2, Worm, CircleDot,
   Regex, QrCode, Fingerprint, KeySquare, Palette, IdCard, Shapes,
@@ -171,7 +171,7 @@ export const toolsConfig: ToolCategory[] = [
         name: "IP 与子网计算",
         href: "/ip-subnet",
         icon: Network,
-        desc: "IPv4 CIDR 计算：网络/广播地址、掩码、可用主机范围、二进制视图、子网划分与 IP 整数互转。",
+        desc: "IPv4 CIDR 计算：网络/广播地址、掩码、可用主机范围，附内网与公网特殊地址段速查。",
         layout: "medium"
       }
     ]
@@ -222,10 +222,10 @@ export const toolsConfig: ToolCategory[] = [
         layout: "full"
       },
       {
-        name: "背景虚化",
-        href: "/image-background-blur",
-        icon: Sparkles,
-        desc: "涂抹主体后自动虚化背景，模拟单反景深效果。",
+        name: "背景透明",
+        href: "/image-transparent",
+        icon: Eraser,
+        desc: "自动识别纯色背景并抠成透明 PNG，适合 logo、图标与白底截图，边缘保留抗锯齿。",
         layout: "full"
       },
       {
